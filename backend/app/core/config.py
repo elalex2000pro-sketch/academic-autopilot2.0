@@ -6,6 +6,7 @@ arrancar, por lo que un `.env` incompleto falla rapido y claro.
 from __future__ import annotations
 
 from functools import lru_cache
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -117,6 +118,39 @@ class Settings(BaseSettings):
         if v not in {"local", "gemini"}:
             raise ValueError("AI_DEFAULT_PROVIDER debe ser 'local' o 'gemini'")
         return v
+
+    @field_validator("database_url")
+    @classmethod
+    def _normalize_async_db_url(cls, v: str) -> str:
+        """Adapta cadenas de Postgres gestionado (p.ej. Neon) a asyncpg.
+
+        Neon entrega la URL con `?sslmode=require&channel_binding=require`, que
+        asyncpg no entiende (usa `ssl=require` y no soporta `channel_binding`).
+        Asi el usuario puede pegar la URL tal cual, cambiando solo el esquema.
+        """
+        if not v:
+            return v
+        parts = urlsplit(v)
+        if not parts.query:
+            return v
+        params = dict(parse_qsl(parts.query))
+        if "sslmode" in params and "ssl" not in params:
+            params["ssl"] = params.pop("sslmode")
+        params.pop("channel_binding", None)
+        return urlunsplit(parts._replace(query=urlencode(params)))
+
+    @field_validator("database_url_sync")
+    @classmethod
+    def _normalize_sync_db_url(cls, v: str) -> str:
+        """Quita `channel_binding` (psycopg2/libpq); conserva `sslmode`."""
+        if not v:
+            return v
+        parts = urlsplit(v)
+        if not parts.query:
+            return v
+        params = dict(parse_qsl(parts.query))
+        params.pop("channel_binding", None)
+        return urlunsplit(parts._replace(query=urlencode(params)))
 
     @property
     def cors_origins_list(self) -> list[str]:

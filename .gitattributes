@@ -1,5 +1,5 @@
 # Normaliza finales de linea. Los scripts de shell (.sh) DEBEN tener LF para
-# funcionar en la VM Linux; los .cmd/.ps1 de Windows, CRLF.
+# funcionar en Linux; los .cmd/.ps1 de Windows, CRLF.
 * text=auto
 *.sh text eol=lf
 Dockerfile text eol=lf

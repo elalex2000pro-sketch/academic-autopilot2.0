@@ -371,152 +371,101 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 ---
 
-## 11. Publicar gratis en Google Cloud + actualizaciones automaticas (GitHub Actions)
+## 11. Publicar gratis (SIN tarjeta) en Render + Neon con actualizaciones automaticas
 
-Objetivo: dejar la app **en internet, disponible para todo el mundo, gratis
-para siempre**, y que **cada cambio se despliegue solo** al subirlo a GitHub.
+Objetivo: dejar la app **en internet, para todo el mundo, gratis y sin dar
+ninguna tarjeta**, y que **cada cambio se despliegue solo** al subirlo a GitHub.
 
 Arquitectura:
 
 ```
-   Tu PC  --git push-->  GitHub  --(Actions)--> construye imagenes -> ghcr.io
-                            |                                             |
-                            +--------------(SSH deploy)-----------------+
-                                                                          v
-   Usuarios <--HTTPS--> Caddy <- VM Google Cloud e2-micro (Always Free) -> backend/frontend/db
+   Tu PC --git push--> GitHub (gratis) --auto-deploy--> Render (gratis)
+                                                           |        |
+                                       backend + frontend  |        |  Neon (gratis)
+                                                           |        |  PostgreSQL
+   Usuarios <---------------- https://...onrender.com ----+--------+
 ```
 
-- **GitHub** (gratis): guarda el codigo y, en cada `push` a `main`, construye las
-  imagenes Docker y las publica en **GitHub Container Registry** (`ghcr.io`).
-- **VM Google Cloud e2-micro "Always Free"**: ejecuta la app 24/7 sin coste. La
-  VM solo **descarga** las imagenes ya construidas (no compila, porque tiene
-  poca memoria).
-- **DuckDNS** (gratis): da un dominio para el HTTPS automatico de Caddy.
+- **GitHub** (gratis, sin tarjeta): guarda el codigo. Render detecta cada push.
+- **Render** (gratis, sin tarjeta): construye y ejecuta el backend y el frontend
+  desde sus Dockerfiles. **No pide tarjeta** para el plan *Free*.
+- **Neon** (gratis, sin tarjeta): base de datos PostgreSQL en la nube, sin fecha
+  de caducidad.
 
-> **Coste 0**: se usa solo la capa *Always Free* (1 VM e2-micro + 30 GB de disco
-> estandar + IP reservada). Google pide una tarjeta al registrarte **solo para
-> verificar identidad**; mientras no salgas de la capa gratuita no se cobra.
-> Activa alertas de presupuesto por si acaso.
+Todo se define en el archivo **`render.yaml`** que ya esta en el repositorio.
 
-### 11.1. Crear la cuenta de GitHub y subir el proyecto
+> **Limites del plan gratis (importante saberlo):**
+> - Las apps **se duermen** tras 15 min sin visitas y tardan ~30-60 s en
+>   despertar en la siguiente visita.
+> - **No hay disco persistente**: los archivos que suban los usuarios (fotos,
+>   PDFs adjuntos) se pierden al volver a desplegar. Las tareas/notas/horario
+>   SI se conservan (estan en Neon).
+> - Es perfecto para un proyecto de clase; si necesitas 24/7 sin dormir, eso ya
+>   es de pago (o una VM, que requiere tarjeta).
 
-1. Crea una cuenta en https://github.com (gratis).
-2. Instala Git si no lo tienes: https://git-scm.com/download/win (siguiente,
-   siguiente). Abre "Git Bash".
-3. En la carpeta del proyecto, sube el codigo (sustituye `TU_USUARIO`):
+### 11.1. Subir el proyecto a GitHub
 
-   ```bash
-   cd "ruta/al/proyecto"          # la carpeta academic-autopilot
-   git init
-   git add .
-   git commit -m "Primera version"
-   git branch -M main
-   # Crea ANTES un repositorio VACIO y PUBLICO en https://github.com/new
-   # llamado "academic-autopilot" (sin README ni .gitignore).
-   git remote add origin https://github.com/TU_USUARIO/academic-autopilot.git
-   git push -u origin main
+Ya esta hecho desde el asistente. Si lo haces a mano:
+
+```bash
+cd "ruta/al/proyecto"
+git init && git add . && git commit -m "Primera version"
+git branch -M main
+# Crea un repositorio VACIO y PUBLICO en https://github.com/new
+git remote add origin https://github.com/TU_USUARIO/academic-autopilot.git
+git push -u origin main
+```
+
+### 11.2. Crear la base de datos en Neon (gratis)
+
+1. Entra en **https://neon.com** y crea una cuenta (con Google/GitHub, sin
+   tarjeta).
+2. **New Project** → nombre `academic-autopilot`, region la mas cercana
+   (`Europe (Frankfurt)` o `AWS eu-central-1`). Crea el proyecto.
+3. En **Connect** (o *Connection string*), **desactiva "Connection pooling"**
+   (usa el endpoint directo) y copia la cadena. Sera parecida a:
+
+   ```
+   postgresql://USUARIO:PASSWORD@ep-xxxx.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
    ```
 
-   > El repositorio debe ser **Publico**: asi GitHub Actions es gratis sin limite
-   > y la VM puede descargar las imagenes sin contraseñas. Secreto alguno
-   > (`.env`) no se sube: ya esta en `.gitignore`.
+4. Necesitas **dos** versiones de esa misma cadena (cambia solo el principio):
+   - Para `DATABASE_URL` (asincrono):  `postgresql+asyncpg://...`  el resto igual.
+   - Para `DATABASE_URL_SYNC` (migraciones): `postgresql+psycopg2://...` el resto igual.
 
-4. Tras el primer `push`, en GitHub ve a **Actions**: se ejecutara el workflow
-   "Deploy" (aun fallara en el paso de desplegar porque falta la VM; es normal).
+   > La app ya sabe arreglar `sslmode`/`channel_binding` para el driver; pega la
+   > cadena tal cual, cambiando solo el prefijo.
 
-### 11.2. Crear la VM gratuita en Google Cloud
+### 11.3. Desplegar en Render (gratis)
 
-1. Entra en https://console.cloud.google.com y crea una cuenta (te pedira una
-   tarjeta para verificar; no se cobra en la capa gratuita).
-2. Crea un proyecto nuevo (arriba a la izquierda).
-3. **Compute Engine → Instances → Create instance**:
-   - Nombre: `academic-autopilot`.
-   - **Region**: `us-central1`, `us-east1` o `us-west1` (las unicas donde la
-     e2-micro es gratis).
-   - **Machine type**: `e2-micro`.
-   - **Boot disk**: **Ubuntu 22.04 LTS**, tamaño 30 GB, tipo **Standard**.
-   - **Firewall**: marca **Allow HTTP traffic** y **Allow HTTPS traffic**.
-   - Crea la instancia.
-4. **IP fija**: Networking → **IP addresses → Reserve external static address**
-   y asignala a la VM (asi la IP no cambia nunca).
-5. Anota la **IP externa** (la usaremos luego como `SSH_HOST`).
+1. Entra en **https://render.com** y **Sign up with GitHub** (sin tarjeta).
+   Autoriza el acceso a tus repositorios.
+2. En el panel: **New + → Blueprint**.
+3. Elige el repositorio **academic-autopilot**. Render detectara `render.yaml`
+   y mostrara dos servicios: `academic-autopilot-api` y
+   `academic-autopilot-web`.
+4. Te pedira el valor de las variables **DATABASE_URL** y **DATABASE_URL_SYNC**
+   (estan marcadas como `sync: false`). Pega las dos cadenas de Neon del paso
+   11.2.
+5. Pulsa **Apply** / **Create**. Render construye e inicia los servicios (tarda
+   varios minutos la primera vez).
 
-### 11.3. Abrir los puertos 80 y 443
+### 11.4. Comprobar las URLs publicas (importante)
 
-En **VPC network → Firewall → Create firewall rule** (dos reglas):
-- Nombre `allow-http`, Direction Ingress, Targets: All, Source `0.0.0.0/0`,
-  Protocolos y puertos: `tcp:80`.
-- Nombre `allow-https`, igual pero `tcp:443`.
+Render asigna a cada servicio una URL `https://<nombre>.onrender.com`. Si
+aparece un aviso de que el nombre ya estaba cogido, Render añadira un sufijo
+(p. ej. `academic-autopilot-web-a1b2`). En ese caso:
 
-### 11.4. Dominio gratis con DuckDNS
+- Actualiza en el servicio **api** la variable `CORS_ORIGINS` (y
+  `CORS_ORIGIN_REGEX`) con la URL real del **frontend**.
+- Actualiza en el servicio **web** la variable `NEXT_PUBLIC_API_URL` con la URL
+  real del **api**. Al cambiarla, pulsa **Manual Deploy → Clear build cache &
+  deploy** (esa variable se incrusta en tiempo de build).
 
-1. Entra en https://www.duckdns.org (login con Google/GitHub).
-2. Crea un subdominio, p. ej. `miacademia` → `miacademia.duckdns.org`.
-3. En el campo de IP pone la **IP externa de la VM** y pulsa *update*
-   (o pega esta URL en el navegador cambiando los datos):
-   `https://www.duckdns.org/update?domains=miacademia&token=TU_TOKEN&ip=IP_DE_LA_VM`
+Cuando ambas URLs coincidan con los nombres de `render.yaml`, no hay que tocar
+nada.
 
-### 11.5. Preparar la VM (una sola vez)
-
-1. En la consola de Google Cloud, en la VM, pulsa **SSH** (abre una terminal en
-   el navegador).
-2. Descarga el proyecto y prepara el sistema:
-
-   ```bash
-   git clone https://github.com/TU_USUARIO/academic-autopilot.git
-   cd academic-autopilot
-   bash deploy/gcp-vm-setup.sh        # instala Docker + 2 GB de swap
-   ```
-
-3. **Cierra la sesion SSH y vuelve a entrar** (para usar Docker sin `sudo`).
-4. Crea el archivo `.env` de la nube:
-
-   ```bash
-   cp .env.cloud.example .env
-   nano .env
-   ```
-
-   Rellena obligatoriamente:
-   - `SECRET_KEY` → genera con `openssl rand -hex 32` y pega el resultado.
-   - `POSTGRES_PASSWORD` → una contraseña fuerte.
-   - `IMAGE_REGISTRY` → `ghcr.io/tu-usuario-github` (tu usuario en **minusculas**).
-   - `SITE_ADDRESS`, `CORS_ORIGINS`, `CORS_ORIGIN_REGEX` → tu dominio DuckDNS.
-   Guarda con `Ctrl+O`, Enter y sal con `Ctrl+X`.
-
-5. Primer arranque manual:
-
-   ```bash
-   ./deploy/server-deploy.sh
-   ```
-
-   Caddy obtiene el certificado HTTPS en 1-2 minutos. Abre en el navegador:
-   **https://miacademia.duckdns.org**
-
-### 11.6. Conectar GitHub con la VM (para que actualice sola)
-
-1. En la terminal SSH de la VM, genera una clave solo para el despliegue y
-   autorizala:
-
-   ```bash
-   ssh-keygen -t ed25519 -N "" -f ~/.ssh/gh_actions
-   cat ~/.ssh/gh_actions.pub >> ~/.ssh/authorized_keys
-   echo "Usuario SSH:"; whoami
-   cat ~/.ssh/gh_actions            # COPIA TODO este texto (clave privada)
-   ```
-
-2. En GitHub, en el repositorio → **Settings → Secrets and variables → Actions
-   → New repository secret**. Crea tres secretos:
-   - `SSH_HOST` → la **IP externa** de la VM.
-   - `SSH_USER` → el usuario que mostro `whoami` arriba.
-   - `SSH_KEY` → **todo** el contenido de `~/.ssh/gh_actions` que copiaste.
-
-3. Listo. A partir de ahora, cada `git push` a `main` reconstruye las imagenes y
-   actualiza la app automaticamente (tarda unos minutos). Puedes forzarlo desde
-   **Actions → Deploy → Run workflow**.
-
-### 11.7. Actualizaciones del dia a dia
-
-Para publicar un cambio: editar el codigo en tu PC y:
+### 11.5. Actualizaciones del dia a dia
 
 ```bash
 git add .
@@ -524,21 +473,23 @@ git commit -m "Descripcion del cambio"
 git push
 ```
 
-GitHub construye y despliega solo. En la VM no hay que hacer nada.
+Render reconstruye y despliega **solo** en cada push. No hay que entrar en
+Render ni en Neon.
 
-### 11.8. Inteligencia artificial en la nube
+### 11.6. Inteligencia artificial
 
-En una VM pequena no cabe Ollama, por eso `.env.cloud.example` ya trae
+`.env` de nube no aplica aqui: los valores van en `render.yaml`. Ya trae
 `AI_DEFAULT_PROVIDER=gemini`. Cada usuario entra en **Ajustes → Motor del
 asistente IA**, elige **Gemini** y pega **su propia** clave de
-https://aistudio.google.com/apikey (asi no dependes de una sola cuota).
+https://aistudio.google.com/apikey.
 
-### 11.9. Notas y mantenimiento
+### 11.7. Notas y mantenimiento
 
-- **Backups**: `docker compose -f docker-compose.cloud.yml exec db pg_dump -U autopilot academic_autopilot > backup.sql`.
-- **Ver el estado**: `docker compose -f docker-compose.cloud.yml ps` y
-  `docker compose -f docker-compose.cloud.yml logs -f`.
-- **Repositorio privado** (opcional): si prefieres que el codigo no sea publico,
-  deberas (a) iniciar sesion en `ghcr.io` en la VM con un *personal access
-  token*, y (b) dar acceso de lectura al repo en el despliegue. Mas complejo;
-  para empezar, publico es lo mas sencillo y sigue siendo gratis.
+- **Ver logs**: en Render, abre el servicio → pestana **Logs**.
+- **Redeploy manual**: servicio → **Manual Deploy → Deploy latest commit**.
+- **Datos**: viven en Neon (sobreviven a los despliegues). Backup desde Neon:
+  *Branches → ... → Restore/Export*, o `pg_dump` con la cadena de conexion.
+- **Dominio propio** (opcional): Render permite añadir un dominio personalizado
+  gratis; Neon no interviene.
+- **Escalado**: el plan gratis de Render da 750 horas-instancia al mes por
+  espacio de trabajo; con los dormidos suele ser suficiente para uso ocasional.
