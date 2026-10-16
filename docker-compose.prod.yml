@@ -1,0 +1,25 @@
+# Extension de produccion para desplegar en un servidor (p.ej. Oracle Cloud
+# Always Free) con HTTPS automatico via Caddy y un dominio (DuckDNS).
+#
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Requiere en .env:
+#   SITE_ADDRESS=tuapp.duckdns.org
+services:
+  proxy:
+    environment:
+      # Caddy obtiene el certificado TLS automaticamente para este dominio
+      # (Let's Encrypt por HTTP-01; necesita los puertos 80 y 443 abiertos).
+      SITE_ADDRESS: ${SITE_ADDRESS}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+
+volumes:
+  caddydata:
+  caddyconfig:
