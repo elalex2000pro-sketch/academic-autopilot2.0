@@ -35,9 +35,9 @@ services:
         sync: false
       - key: DATABASE_URL_SYNC
         sync: false
-      # --- CORS: frontend de Render y cualquier despliegue de Vercel ---
+      # --- CORS: frontend de Render, Vercel y desarrollo local ---
       - key: CORS_ORIGINS
-        value: https://academic-autopilot-web.onrender.com
+        value: https://academic-autopilot-web.onrender.com,http://localhost:3000,http://127.0.0.1:3000
       - key: CORS_ORIGIN_REGEX
         value: '^https://(academic-autopilot-web\.onrender\.com|.*\.vercel\.app)$'
       # --- Planificador dentro de la API (los "workers" de Render son de pago) ---
