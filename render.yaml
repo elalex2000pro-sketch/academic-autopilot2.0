@@ -1,0 +1,82 @@
+# Despliegue gratis (sin tarjeta) en Render:
+#   - academic-autopilot-api : backend FastAPI (Docker) + planificador interno
+#   - academic-autopilot-web : frontend Next.js (Docker)
+#   - Base de datos         : Neon (gratis, sin tarjeta) -> se pegan las URLs en
+#                             DATABASE_URL / DATABASE_URL_SYNC desde el panel.
+#
+# Render construye cada servicio desde su Dockerfile y vuelve a desplegar solo
+# en cada push a la rama main. No hay que configurar nada mas.
+#
+# IMPORTANTE: si al crear los servicios Render cambia el "name" (porque ya
+# existe ese subdominio), hay que actualizar aqui las dos URLs publicas:
+#   NEXT_PUBLIC_API_URL (frontend)  -> https://<name-del-api>.onrender.com
+#   CORS_ORIGINS       (backend)    -> https://<name-del-web>.onrender.com
+services:
+  - type: web
+    name: academic-autopilot-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PORT
+        value: "8000"
+      - key: BACKEND_PORT
+        value: "8000"
+      # --- Base de datos (pegar las URLs de Neon en el panel de Render) ---
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_SYNC
+        sync: false
+      # --- CORS: frontend de Render y cualquier despliegue de Vercel ---
+      - key: CORS_ORIGINS
+        value: https://academic-autopilot-web.onrender.com
+      - key: CORS_ORIGIN_REGEX
+        value: '^https://(academic-autopilot-web\.onrender\.com|.*\.vercel\.app)$'
+      # --- Planificador dentro de la API (los "workers" de Render son de pago) ---
+      - key: ENABLE_SCHEDULER
+        value: "true"
+      - key: SYNC_INTERVAL_MINUTES
+        value: "30"
+      - key: REALTIME_ENABLED
+        value: "true"
+      # --- IA: Gemini (cada usuario pone su clave en Ajustes) ---
+      - key: AI_ENABLED
+        value: "true"
+      - key: AI_DEFAULT_PROVIDER
+        value: gemini
+      # Render (plan free) no tiene disco persistente: los archivos subidos son
+      # temporales y se pierden al redesplegar (el chat, el calendario y las
+      # clases compartidas viven en la base de datos de Neon). Aun asi, la
+      # subida es por trozos de 25 MB y se puede reanudar, con un limite de
+      # 20 GB por archivo.
+      - key: FILES_DIR
+        value: /tmp/files
+      - key: MAX_UPLOAD_MB
+        value: "20480"
+      - key: UPLOAD_CHUNK_MB
+        value: "25"
+      - key: UPLOAD_SESSION_TTL_HOURS
+        value: "48"
+
+  - type: web
+    name: academic-autopilot-web
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    autoDeploy: true
+    envVars:
+      # Se incrusta en el build (Render pasa las env vars como build args).
+      - key: NEXT_PUBLIC_API_URL
+        value: https://academic-autopilot-api.onrender.com
+      - key: PORT
+        value: "3000"
