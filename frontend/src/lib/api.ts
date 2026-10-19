@@ -29,28 +29,20 @@ import type {
 const TOKEN_KEY = "autopilot_token";
 
 // Resuelve la base de la API en tiempo de ejecucion:
-// - Si hay una URL publica configurada (no local) se usa tal cual (p. ej. el
-//   frontend en Vercel apuntando al backend en Render).
+// - Desplegada (Vercel, Render, Caddy...): MISMO origen (rutas relativas). El
+//   servidor reenvia /api/* al backend real (rewrites de Next en Vercel y
+//   Render; Caddy en docker), asi el navegador nunca habla directamente con
+//   otro dominio y no puede fallar por CORS ni por conexiones cruzadas.
 // - Sirviendo en el puerto 3000 (dev) se apunta al backend en :8000 del mismo host.
-// - En cualquier otro caso (proxy Caddy, Vercel, tunel) se usa el MISMO origen
-//   (rutas relativas), de modo que no depende de puertos raros.
 function resolveApiBase(): string {
-  const configured = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
-  if (configured && !configured.includes("localhost") && !configured.includes("127.0.0.1")) {
-    return configured;
-  }
   if (typeof window !== "undefined") {
     const { protocol, hostname, port } = window.location;
-    if (!port) {
-      // Puerto estandar (80/443): dominio con proxy o hosting externo. La API
-      // se sirve en el mismo origen o se configuro NEXT_PUBLIC_API_URL.
-      return "";
-    }
     if (port === "3000") {
       return `${protocol}//${hostname}:8000`;
     }
     return "";
   }
+  const configured = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
   return configured || "http://localhost:8000";
 }
 
@@ -60,11 +52,20 @@ export function apiBase(): string {
   return resolveApiBase();
 }
 
-// URL del WebSocket de sincronizacion en tiempo real.
+// URL del WebSocket de sincronizacion en tiempo real. Se conecta DIRECTO al
+// backend (NEXT_PUBLIC_API_URL) cuando esta configurado, porque los proxies
+// HTTP no garantizan el reenvio de conexiones WebSocket de larga duracion;
+// sin URL configurada se usa el mismo origen (dev/Caddy).
 export function realtimeUrl(): string {
   if (typeof window === "undefined") return "";
   const token = tokenStore.get();
-  const base = resolveApiBase();
+  const configured = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
+  const base =
+    configured &&
+    !configured.includes("localhost") &&
+    !configured.includes("127.0.0.1")
+      ? configured
+      : resolveApiBase();
   const origin = (base || window.location.origin).replace(/^http/, "ws");
   return `${origin}/api/v1/ws?token=${encodeURIComponent(token ?? "")}`;
 }
