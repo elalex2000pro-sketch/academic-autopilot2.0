@@ -9,6 +9,7 @@ from __future__ import annotations
 import base64
 import os
 import uuid
+from datetime import timedelta, timezone
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import delete, select
@@ -17,10 +18,12 @@ from app.api.deps import CurrentUser, DbSession
 from app.core import crypto
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.db.base import utcnow
 from app.models.assistant_message import AssistantMessage
 from app.models.document import Document
 from app.schemas.assistant import (
     AiProfileUpdate,
+    AssistantImportRequest,
     AssistantMessageRead,
     AssistantStatus,
     ChatRequest,
@@ -63,11 +66,16 @@ async def get_profile(current_user: CurrentUser) -> AssistantStatus:
 async def update_profile(
     payload: AiProfileUpdate, current_user: CurrentUser, db: DbSession
 ) -> AssistantStatus:
-    """Cambia el proveedor de IA (Local Ollama / Gemini) y guarda la clave si llega."""
+    """Cambia el proveedor de IA (Local, Gemini, ChatGPT, Claude...) y su clave."""
     current_user.ai_provider = payload.provider
     if payload.api_key is not None:
         # Cadena vacia = borrar la clave guardada.
         current_user.ai_api_key_encrypted = crypto.encrypt(payload.api_key.strip()) or None
+    if payload.model is not None:
+        # Cadena vacia = volver al modelo por defecto del proveedor.
+        current_user.ai_model = payload.model.strip() or None
+    if payload.base_url is not None:
+        current_user.ai_base_url = payload.base_url.strip().rstrip("/") or None
     db.add(current_user)
     await db.commit()
     await db.refresh(current_user)
@@ -206,6 +214,42 @@ async def clear_messages(current_user: CurrentUser, db: DbSession) -> None:
     await db.execute(delete(AssistantMessage).where(AssistantMessage.user_id == current_user.id))
     await db.commit()
     notify(current_user.id, "assistant", {"action": "cleared"})
+
+
+@router.get("/messages/export", response_model=list[AssistantMessageRead])
+async def export_messages(current_user: CurrentUser, db: DbSession) -> list[AssistantMessage]:
+    """Exporta TODA la conversacion (para transportarla a otro dispositivo)."""
+    result = await db.execute(
+        select(AssistantMessage)
+        .where(AssistantMessage.user_id == current_user.id)
+        .order_by(AssistantMessage.created_at.asc())
+    )
+    return list(result.scalars().all())
+
+
+@router.post("/messages/import")
+async def import_messages(
+    payload: AssistantImportRequest, current_user: CurrentUser, db: DbSession
+) -> dict[str, int]:
+    """Importa una conversacion exportada (se fusiona con la actual)."""
+    base_time = utcnow()
+    for index, item in enumerate(payload.messages):
+        created = item.created_at
+        if created is not None and created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        message = AssistantMessage(
+            user_id=current_user.id,
+            role=item.role,
+            content=item.content.strip(),
+            source="imported",
+        )
+        # Sin fecha en el archivo: se conserva el orden original de los mensajes.
+        message.created_at = created or base_time + timedelta(milliseconds=index)
+        db.add(message)
+    await db.commit()
+    notify(current_user.id, "assistant", {"action": "imported", "count": len(payload.messages)})
+    logger.info("Importados %d mensajes para %s", len(payload.messages), current_user.email)
+    return {"imported": len(payload.messages)}
 
 
 async def _image_data_url(

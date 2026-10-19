@@ -122,6 +122,8 @@ class ClassEvent(UUIDPkMixin, TimestampMixin, Base):
     start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     end_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     all_day: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # True si es un examen: se resalta en el calendario de la clase.
+    is_exam: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     shared_class: Mapped["SharedClass"] = relationship(back_populates="events")
     creator: Mapped["User"] = relationship()

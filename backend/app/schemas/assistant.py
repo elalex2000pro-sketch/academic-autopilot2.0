@@ -59,7 +59,23 @@ class AssistantStatus(BaseModel):
 class AiProfileUpdate(BaseModel):
     """Cambio de proveedor de IA desde Ajustes."""
 
-    provider: str = Field(..., pattern="^(local|gemini)$")
-    # Clave de API de Gemini. Si no se envia, se conserva la guardada.
+    provider: str = Field(..., pattern="^(local|gemini|openai|claude|openrouter|custom)$")
+    # Clave de API del proveedor. Si no se envia, se conserva la guardada.
     api_key: str | None = Field(default=None, max_length=500)
+    # Modelo concreto (opcional; vacio = modelo por defecto del proveedor).
+    model: str | None = Field(default=None, max_length=120)
+    # Endpoint personalizado (solo para "custom"; los presets ya lo definen).
+    base_url: str | None = Field(default=None, max_length=300)
+
+
+class AssistantImportMessage(BaseModel):
+    """Mensaje de una conversacion exportada (transportar los chats)."""
+
+    role: str = Field(..., pattern="^(user|assistant)$")
+    content: str = Field(min_length=1, max_length=8000)
+    created_at: datetime | None = None
+
+
+class AssistantImportRequest(BaseModel):
+    messages: list[AssistantImportMessage] = Field(..., min_length=1, max_length=2000)
 

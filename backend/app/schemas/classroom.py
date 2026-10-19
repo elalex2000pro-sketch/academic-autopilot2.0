@@ -71,6 +71,8 @@ class EventCreate(BaseModel):
     start_at: datetime
     end_at: datetime | None = None
     all_day: bool = False
+    # Marca de examen: se resalta en el calendario de toda la clase.
+    is_exam: bool = False
 
 
 class EventUpdate(BaseModel):
@@ -80,6 +82,7 @@ class EventUpdate(BaseModel):
     start_at: datetime | None = None
     end_at: datetime | None = None
     all_day: bool | None = None
+    is_exam: bool | None = None
 
 
 class EventRead(BaseModel):
@@ -93,4 +96,5 @@ class EventRead(BaseModel):
     start_at: datetime
     end_at: datetime | None
     all_day: bool
+    is_exam: bool = False
     created_at: datetime

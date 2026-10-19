@@ -29,10 +29,14 @@ class User(UUIDPkMixin, TimestampMixin, Base):
     full_name: Mapped[str | None] = mapped_column(String(200))
     timezone: Mapped[str] = mapped_column(String(64), default="UTC", nullable=False)
 
-    # Proveedor de IA elegido por el usuario: "local" (Ollama) o "gemini".
+    # Proveedor de IA elegido por el usuario: local | gemini | openai | claude |
+    # openrouter | custom (ver app/services/ai_service.py).
     ai_provider: Mapped[str] = mapped_column(String(16), default="local", nullable=False)
-    # Clave de API cifrada (solo necesaria para Gemini). Nunca en claro.
+    # Clave de API cifrada (necesaria en los proveedores remotos). Nunca en claro.
     ai_api_key_encrypted: Mapped[str | None] = mapped_column(String(512))
+    # Modelo y endpoint personalizados (opcionales; override de los presets).
+    ai_model: Mapped[str | None] = mapped_column(String(120))
+    ai_base_url: Mapped[str | None] = mapped_column(String(300))
 
     # Relaciones (cascade para limpieza total al borrar el usuario).
     integrations: Mapped[list["Integration"]] = relationship(

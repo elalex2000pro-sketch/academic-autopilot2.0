@@ -298,6 +298,7 @@ export default function ClassDetailPage() {
   const [eventEnd, setEventEnd] = useState("");
   const [eventLocation, setEventLocation] = useState("");
   const [eventDescription, setEventDescription] = useState("");
+  const [eventIsExam, setEventIsExam] = useState(false);
   const [savingEvent, setSavingEvent] = useState(false);
 
   const monthLabel = useMemo(
@@ -362,6 +363,7 @@ export default function ClassDetailPage() {
         end_at: endIso,
         location: eventLocation.trim() || null,
         description: eventDescription.trim() || null,
+        is_exam: eventIsExam,
       });
       setEvents((prev) =>
         [...prev, created].sort((a, b) => a.start_at.localeCompare(b.start_at)),
@@ -370,6 +372,7 @@ export default function ClassDetailPage() {
       setEventEnd("");
       setEventLocation("");
       setEventDescription("");
+      setEventIsExam(false);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -744,7 +747,11 @@ export default function ClassDetailPage() {
                         {dayEvents.slice(0, 2).map((event) => (
                           <div
                             key={event.id}
-                            className="truncate rounded bg-primary/10 px-1 py-0.5 text-[10px] text-primary"
+                            className={`truncate rounded px-1 py-0.5 text-[10px] ${
+                              event.is_exam
+                                ? "bg-red-500/15 font-semibold text-red-500"
+                                : "bg-primary/10 text-primary"
+                            }`}
                           >
                             {event.title}
                           </div>
@@ -827,6 +834,14 @@ export default function ClassDetailPage() {
                       maxLength={2000}
                     />
                   </div>
+                  <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={eventIsExam}
+                      onChange={(e) => setEventIsExam(e.target.checked)}
+                    />
+                    Es un examen (se resalta en rojo para toda la clase)
+                  </label>
                   <Button
                     type="submit"
                     size="sm"
@@ -852,10 +867,19 @@ export default function ClassDetailPage() {
                 {upcomingEvents.map((event) => (
                   <div
                     key={event.id}
-                    className="flex items-start justify-between gap-2 rounded-md border border-border/60 px-3 py-2 text-sm"
+                    className={`flex items-start justify-between gap-2 rounded-md border px-3 py-2 text-sm ${
+                      event.is_exam ? "border-red-500/40 bg-red-500/5" : "border-border/60"
+                    }`}
                   >
                     <div className="min-w-0">
-                      <p className="truncate font-medium">{event.title}</p>
+                      <p className="flex items-center gap-2 truncate font-medium">
+                        {event.is_exam && (
+                          <span className="shrink-0 rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-500">
+                            Examen
+                          </span>
+                        )}
+                        <span className="truncate">{event.title}</span>
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         {formatEventRange(event)}
                         {event.location ? ` - ${event.location}` : ""}

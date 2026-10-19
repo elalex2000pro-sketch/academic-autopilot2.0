@@ -77,15 +77,26 @@ class Settings(BaseSettings):
     ai_tools_enabled: bool = True
     ai_max_tool_iterations: int = 6
 
-    # --- Proveedor hibrido: Local (Ollama) o Gemini (Google AI Studio) ---
+    # --- Proveedor hibrido: Local, Gemini, ChatGPT, Claude, OpenRouter... ---
     # El usuario elige en Ajustes; aqui se definen los valores de cada preset.
-    ai_default_provider: str = "local"  # local | gemini
+    # Todos los proveedores externos hablan la API compatible con OpenAI.
+    ai_default_provider: str = "local"  # local | gemini | openai | claude | openrouter | custom
     # Endpoint compatible con OpenAI de Gemini (para tool calling + vision).
     ai_gemini_base_url: str = (
         "https://generativelanguage.googleapis.com/v1beta/openai/"
     )
     ai_gemini_model: str = "gemini-2.5-flash"
     ai_gemini_vision_model: str = "gemini-2.5-flash"
+    # ChatGPT (OpenAI): clave en platform.openai.com -> API keys.
+    ai_openai_base_url: str = "https://api.openai.com/v1"
+    ai_openai_model: str = "gpt-4o-mini"
+    # Claude (Anthropic; usa su capa compatible con OpenAI): console.anthropic.com
+    ai_claude_base_url: str = "https://api.anthropic.com/v1"
+    ai_claude_model: str = "claude-3-5-haiku-latest"
+    # OpenRouter: una sola clave con acceso a casi todos los modelos
+    # (GPT, Claude, Gemini, Llama, Mistral...): openrouter.ai/keys
+    ai_openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    ai_openrouter_model: str = "openai/gpt-4o-mini"
 
     # --- Almacenamiento de archivos (documentos por asignatura) ---
     files_dir: str = "/data/files"

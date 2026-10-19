@@ -91,7 +91,7 @@ export interface AssistantStatus {
   vision_model: string;
   tools_enabled: boolean;
   base_url: string;
-  provider: "local" | "gemini";
+  provider: string;
   has_api_key: boolean;
 }
 
@@ -176,6 +176,7 @@ export interface ClassEvent {
   start_at: string;
   end_at: string | null;
   all_day: boolean;
+  is_exam: boolean;
   created_at: string;
 }
 

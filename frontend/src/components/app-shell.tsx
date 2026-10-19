@@ -21,6 +21,7 @@ import {
 
 import { useAuth } from "@/components/auth-provider";
 import { AssistantFab } from "@/components/assistant-fab";
+import { HelpWidget } from "@/components/help-widget";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -49,7 +50,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (!loading && !user && !isPublic) router.replace("/login");
   }, [loading, user, isPublic, router]);
 
-  if (isPublic) return <>{children}</>;
+  if (isPublic) {
+    return (
+      <>
+        {children}
+        <HelpWidget />
+      </>
+    );
+  }
 
   if (loading || !user) {
     return (
@@ -98,6 +106,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main className="flex-1 overflow-x-hidden">
         {children}
         <AssistantFab />
+        <HelpWidget />
       </main>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Cpu, Loader2, Link2, Plus, Trash2 } from "lucide-react";
+import { BookOpen, Cpu, Loader2, Link2, Plus, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,40 @@ const PROVIDER_LABEL: Record<string, string> = {
 
 const AI_PROVIDER_LABEL: Record<string, string> = {
   local: "Local (Ollama)",
-  gemini: "Gemini (Google)",
+  gemini: "Gemini",
+  openai: "ChatGPT",
+  claude: "Claude",
+  openrouter: "OpenRouter",
+  custom: "Otra IA",
+};
+
+// Ayuda contextual de cada proveedor de IA (etiqueta y pista de la clave).
+const AI_PROVIDER_INFO: Record<string, { keyLabel: string; keyHelp: string }> = {
+  local: {
+    keyLabel: "",
+    keyHelp: "",
+  },
+  gemini: {
+    keyLabel: "Clave de API de Google AI Studio",
+    keyHelp: "Consíguela gratis en aistudio.google.com → API keys. Se guarda cifrada.",
+  },
+  openai: {
+    keyLabel: "Clave de API de OpenAI (ChatGPT)",
+    keyHelp: "Créala en platform.openai.com → API keys. Se guarda cifrada.",
+  },
+  claude: {
+    keyLabel: "Clave de API de Anthropic (Claude)",
+    keyHelp: "Créala en console.anthropic.com → API keys. Se guarda cifrada.",
+  },
+  openrouter: {
+    keyLabel: "Clave de API de OpenRouter",
+    keyHelp:
+      "Una sola clave con acceso a casi todas las IAs (GPT, Claude, Gemini, Llama...): openrouter.ai/keys.",
+  },
+  custom: {
+    keyLabel: "Clave de API (si tu servicio la pide)",
+    keyHelp: "Para cualquier API compatible con la de OpenAI (LM Studio, vLLM, tu servidor...).",
+  },
 };
 
 function SettingsInner() {
@@ -44,8 +77,10 @@ function SettingsInner() {
 
   // Proveedor de IA
   const [aiProfile, setAiProfile] = useState<AssistantStatus | null>(null);
-  const [aiProvider, setAiProvider] = useState<"local" | "gemini">("local");
+  const [aiProvider, setAiProvider] = useState<string>("local");
   const [aiKey, setAiKey] = useState("");
+  const [aiModel, setAiModel] = useState("");
+  const [aiBaseUrl, setAiBaseUrl] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -57,8 +92,15 @@ function SettingsInner() {
     setIntegrations(ints);
     setBlocks(sbs);
     setAiProfile(prof);
-    setAiProvider(prof.provider);
   }, []);
+
+  // Sincroniza el formulario de IA cuando carga (o cambia) el perfil.
+  useEffect(() => {
+    if (!aiProfile) return;
+    setAiProvider(aiProfile.provider);
+    setAiModel(aiProfile.model ?? "");
+    setAiBaseUrl(aiProfile.provider === "custom" ? (aiProfile.base_url ?? "") : "");
+  }, [aiProfile]);
 
   useEffect(() => {
     loadData().catch((e) => setNotice(e instanceof Error ? e.message : "Error"));
@@ -149,9 +191,10 @@ function SettingsInner() {
       const updated = await api.updateAiProfile({
         provider: aiProvider,
         api_key: aiKey.trim() ? aiKey.trim() : null,
+        model: aiModel.trim(),
+        base_url: aiProvider === "custom" ? aiBaseUrl.trim() : "",
       });
       setAiProfile(updated);
-      setAiProvider(updated.provider);
       setAiKey("");
       setNotice(`Asistente configurado con ${AI_PROVIDER_LABEL[updated.provider] ?? updated.provider}`);
     } catch (e) {
@@ -250,7 +293,7 @@ function SettingsInner() {
         </CardContent>
       </Card>
 
-      {/* ---- Asistente IA (proveedor hibrido) ---- */}
+      {/* ---- Asistente IA (multi-proveedor) ---- */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
@@ -259,50 +302,97 @@ function SettingsInner() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Elige donde corre la IA. <strong>Local</strong> usa Ollama en tu PC (gratis, offline).
-            <strong> Gemini</strong> usa Google (mas potente y gratis con limite diario).
+            Elige con qué IA responde tu asistente: <strong>Gemini</strong> o{" "}
+            <strong>ChatGPT</strong> (gratis con límite diario en sus planes básicos),{" "}
+            <strong>Claude</strong>, <strong>OpenRouter</strong> (una clave para casi todas) o
+            cualquier otra API compatible. Tu clave se guarda cifrada.
           </p>
 
           <form onSubmit={saveAiProfile} className="space-y-3">
             <div className="space-y-2">
               <Label>Proveedor</Label>
-              <div className="flex gap-2">
-                {(["local", "gemini"] as const).map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setAiProvider(value)}
-                    className={`flex-1 rounded-md border px-3 py-2 text-sm transition-colors ${
-                      aiProvider === value
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border text-muted-foreground hover:bg-accent"
-                    }`}
-                  >
-                    {AI_PROVIDER_LABEL[value]}
-                  </button>
-                ))}
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {(["local", "gemini", "openai", "claude", "openrouter", "custom"] as const).map(
+                  (value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => {
+                        setAiProvider(value);
+                        if (value !== aiProfile?.provider) setAiModel("");
+                      }}
+                      className={`rounded-md border px-3 py-2 text-sm transition-colors ${
+                        aiProvider === value
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      {AI_PROVIDER_LABEL[value]}
+                    </button>
+                  ),
+                )}
               </div>
             </div>
 
-            {aiProvider === "gemini" && (
+            {aiProvider !== "local" && (
               <div className="space-y-2">
-                <Label htmlFor="aiKey">Clave de API de Google AI Studio</Label>
+                <Label htmlFor="aiKey">{AI_PROVIDER_INFO[aiProvider]?.keyLabel}</Label>
                 <Input
                   id="aiKey"
                   type="password"
-                  placeholder={aiProfile?.has_api_key ? "••••••••  (guardada)" : "AIza..."}
+                  placeholder={
+                    aiProfile?.has_api_key && aiProfile.provider === aiProvider
+                      ? "••••••••  (guardada)"
+                      : "Pega aquí tu clave"
+                  }
                   value={aiKey}
                   onChange={(e) => setAiKey(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Consiguela gratis en aistudio.google.com &rarr; API keys. Se guarda cifrada.
+                  {AI_PROVIDER_INFO[aiProvider]?.keyHelp}
                 </p>
               </div>
             )}
 
+            {aiProvider === "custom" && (
+              <div className="space-y-2">
+                <Label htmlFor="aiBaseUrl">URL base (endpoint compatible con OpenAI)</Label>
+                <Input
+                  id="aiBaseUrl"
+                  placeholder="https://mi-servidor.com/v1"
+                  value={aiBaseUrl}
+                  onChange={(e) => setAiBaseUrl(e.target.value)}
+                />
+              </div>
+            )}
+
+            {aiProvider !== "local" && (
+              <div className="space-y-2">
+                <Label htmlFor="aiModel">Modelo (opcional)</Label>
+                <Input
+                  id="aiModel"
+                  placeholder={
+                    aiProfile?.provider === aiProvider ? aiProfile.model : "modelo por defecto"
+                  }
+                  value={aiModel}
+                  onChange={(e) => setAiModel(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Déjalo vacío para usar el modelo recomendado del proveedor.
+                </p>
+              </div>
+            )}
+
+            {aiProvider === "local" && (
+              <p className="rounded-md border border-border/60 px-3 py-2 text-xs text-muted-foreground">
+                Ollama se instala en tu propio ordenador (gratis y sin claves). En la versión web
+                alojada no está disponible: usa Gemini, ChatGPT, Claude u OpenRouter.
+              </p>
+            )}
+
             {aiProfile && (
               <div className="rounded-md border border-border/60 px-3 py-2 text-xs text-muted-foreground">
-                Modelo activo: <span className="font-medium">{aiProfile.model}</span> · Vision:{" "}
+                Modelo activo: <span className="font-medium">{aiProfile.model}</span> · Visión:{" "}
                 <span className="font-medium">{aiProfile.vision_model}</span> ·{" "}
                 {aiProfile.configured ? (
                   <span className="text-primary">listo para usar</span>
@@ -316,6 +406,35 @@ function SettingsInner() {
               {aiBusy && <Loader2 className="h-4 w-4 animate-spin" />} Guardar motor IA
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* ---- NotebookLM (Google) ---- */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <BookOpen className="h-4 w-4" /> NotebookLM (Google)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Google todavía no ofrece una API pública de NotebookLM, así que se conecta de forma
+            manual y sencilla: genera tus resúmenes e infografías en <strong>IA Studio</strong> (o
+            exporta tus chats desde el <strong>Asistente</strong>) y súbelos a un cuaderno de
+            NotebookLM para estudiar con sus explicaciones, mapas y preguntas guiadas.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <a href="https://notebooklm.google.com" target="_blank" rel="noreferrer">
+              <Button type="button" size="sm" variant="outline">
+                Abrir NotebookLM
+              </Button>
+            </a>
+            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
+              <Button type="button" size="sm" variant="ghost">
+                Conseguir clave de Gemini gratis
+              </Button>
+            </a>
+          </div>
         </CardContent>
       </Card>
 

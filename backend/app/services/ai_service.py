@@ -74,11 +74,15 @@ class AiResult:
     events: list[str] = field(default_factory=list)
 
 
+# Proveedores remotos que exigen clave de API (local y custom pueden no tenerla).
+_API_KEY_REQUIRED = {"gemini", "openai", "claude", "openrouter"}
+
+
 @dataclass
 class AiProfile:
     """Configuracion efectiva de IA para un usuario concreto (proveedor hibrido)."""
 
-    provider: str  # local | gemini
+    provider: str  # local | gemini | openai | claude | openrouter | custom
     base_url: str
     model: str
     vision_model: str
@@ -90,10 +94,10 @@ class AiProfile:
 
     @property
     def configured(self) -> bool:
-        """Listo para llamar al modelo? (Gemini exige clave; local solo base+modelo)."""
+        """Listo para llamar al modelo? (los remotos exigen clave; local no)."""
         if not self.base_url or not self.model:
             return False
-        if self.provider == "gemini" and not self.api_key:
+        if self.provider in _API_KEY_REQUIRED and not self.api_key:
             return False
         return True
 
@@ -101,19 +105,67 @@ class AiProfile:
 def resolve_profile(user: User) -> AiProfile:
     """Resuelve que modelo/endpoint usar segun el proveedor elegido por el usuario.
 
-    - "local": Ollama (u otra API compatible con OpenAI) definida en el .env.
-    - "gemini": endpoint compatible de Google AI Studio. La clave se guarda
-      cifrada por usuario en `users.ai_api_key_encrypted`.
+    Todos los proveedores se llaman con la API compatible con OpenAI:
+    - "local": Ollama u otro servidor propio (AI_BASE_URL del .env).
+    - "gemini": Google AI Studio (Gemini).
+    - "openai": ChatGPT (api.openai.com).
+    - "claude": Claude de Anthropic (capa compatible con OpenAI).
+    - "openrouter": una clave con acceso a casi todos los modelos.
+    - "custom": cualquier otro endpoint compatible indicado por el usuario.
+    La clave de API se guarda cifrada por usuario en `users.ai_api_key_encrypted`.
     """
     provider = (user.ai_provider or settings.ai_default_provider or "local").lower()
+    user_model = (user.ai_model or "").strip()
+    user_base = (user.ai_base_url or "").strip().rstrip("/")
+    api_key = crypto.decrypt(user.ai_api_key_encrypted) or ""
 
-    if provider == "gemini":
+    if provider == "custom":
         return AiProfile(
-            provider="gemini",
-            base_url=settings.ai_gemini_base_url,
-            model=settings.ai_gemini_model,
-            vision_model=settings.ai_gemini_vision_model,
-            api_key=crypto.decrypt(user.ai_api_key_encrypted) or "",
+            provider="custom",
+            base_url=user_base,
+            model=user_model,
+            vision_model=user_model,
+            api_key=api_key,
+            temperature=settings.ai_temperature,
+            timeout_seconds=settings.ai_timeout_seconds,
+            tools_enabled=settings.ai_tools_enabled,
+            max_tool_iterations=settings.ai_max_tool_iterations,
+        )
+
+    presets: dict[str, tuple[str, str, str]] = {
+        "gemini": (
+            settings.ai_gemini_base_url,
+            settings.ai_gemini_model,
+            settings.ai_gemini_vision_model,
+        ),
+        "openai": (
+            settings.ai_openai_base_url,
+            settings.ai_openai_model,
+            settings.ai_openai_model,
+        ),
+        "claude": (
+            settings.ai_claude_base_url,
+            settings.ai_claude_model,
+            settings.ai_claude_model,
+        ),
+        "openrouter": (
+            settings.ai_openrouter_base_url,
+            settings.ai_openrouter_model,
+            settings.ai_openrouter_model,
+        ),
+    }
+
+    if provider in presets:
+        base_url, model, vision_model = presets[provider]
+        if user_model:
+            model = user_model
+            vision_model = user_model
+        return AiProfile(
+            provider=provider,
+            base_url=base_url,
+            model=model,
+            vision_model=vision_model,
+            api_key=api_key,
             temperature=settings.ai_temperature,
             timeout_seconds=settings.ai_timeout_seconds,
             tools_enabled=settings.ai_tools_enabled,

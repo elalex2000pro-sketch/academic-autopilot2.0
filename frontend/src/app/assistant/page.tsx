@@ -4,12 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Bot,
   Check,
+  Download,
   Loader2,
   Paperclip,
   Send,
   ShieldAlert,
   Sparkles,
   Trash2,
+  Upload,
   User as UserIcon,
   X,
 } from "lucide-react";
@@ -74,6 +76,7 @@ export default function AssistantPage() {
   const [confirming, setConfirming] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     const [history, st] = await Promise.all([
@@ -187,6 +190,80 @@ export default function AssistantPage() {
     }
   }
 
+  // --- Transportar el chat: exportar / importar ---
+  async function exportChat() {
+    try {
+      const history = await api.assistantExport();
+      const payload = {
+        app: "Academic Autopilot",
+        kind: "assistant-chat",
+        version: 1,
+        exported_at: new Date().toISOString(),
+        messages: history.map((m) => ({
+          role: m.role,
+          content: m.content,
+          created_at: m.created_at,
+        })),
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `chat-asistente-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
+
+  async function importChat(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setError(null);
+    try {
+      const parsed: unknown = JSON.parse(await file.text());
+      const rawList = Array.isArray(parsed)
+        ? parsed
+        : ((parsed as { messages?: unknown }).messages ?? []);
+      if (!Array.isArray(rawList) || rawList.length === 0) {
+        setError("El archivo no contiene mensajes compatibles.");
+        return;
+      }
+      const messages = rawList
+        .map((item) => {
+          const raw = item as { role?: unknown; content?: unknown; created_at?: unknown };
+          const role =
+            raw.role === "assistant" ? "assistant" : raw.role === "user" ? "user" : null;
+          if (!role || typeof raw.content !== "string" || !raw.content.trim()) return null;
+          return {
+            role,
+            content: raw.content.slice(0, 8000),
+            created_at: typeof raw.created_at === "string" ? raw.created_at : null,
+          };
+        })
+        .filter(
+          (m): m is { role: string; content: string; created_at: string | null } => m !== null,
+        )
+        .slice(0, 2000);
+      if (messages.length === 0) {
+        setError("El archivo no contiene mensajes compatibles.");
+        return;
+      }
+      await api.assistantImport(messages);
+      setMessages(await api.assistantMessages(100));
+    } catch (e) {
+      if (e instanceof SyntaxError) {
+        setError("El archivo no es un chat valido (JSON).");
+      } else {
+        setError(errorMessage(e));
+      }
+    }
+  }
+
   function onKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -207,18 +284,41 @@ export default function AssistantPage() {
             analiza.
           </p>
         </div>
-        <Button variant="ghost" size="sm" onClick={clearHistory} disabled={messages.length === 0}>
-          <Trash2 className="h-4 w-4" /> Limpiar
-        </Button>
+        <div className="flex shrink-0 items-center gap-1">
+          <input
+            ref={importInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={importChat}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => importInputRef.current?.click()}
+            title="Importar una conversación exportada"
+          >
+            <Upload className="h-4 w-4" /> Importar
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={exportChat}
+            disabled={messages.length === 0}
+            title="Descargar la conversación como archivo"
+          >
+            <Download className="h-4 w-4" /> Exportar
+          </Button>
+          <Button variant="ghost" size="sm" onClick={clearHistory} disabled={messages.length === 0}>
+            <Trash2 className="h-4 w-4" /> Limpiar
+          </Button>
+        </div>
       </header>
 
       {status && !status.configured && (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
-          El modelo de IA no esta configurado. Para usar Ollama: instala Ollama, ejecuta{" "}
-          <code className="rounded bg-secondary px-1">ollama pull {status.model}</code> (y{" "}
-          <code className="rounded bg-secondary px-1">ollama pull {status.vision_model}</code> para
-          fotos) y define <code className="rounded bg-secondary px-1">AI_BASE_URL</code> en tu{" "}
-          <code>.env</code>. Mientras tanto respondere con el motor de reglas.
+          La IA no está configurada. Ve a <strong>Ajustes</strong> y elige un motor (Gemini,
+          ChatGPT, Claude, OpenRouter...). Mientras tanto responderé con el motor de reglas.
         </div>
       )}
 

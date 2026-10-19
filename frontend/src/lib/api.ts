@@ -268,7 +268,12 @@ export const api = {
   // --- Asistente de IA ---
   assistantStatus: () => request<AssistantStatus>("/api/v1/assistant/status"),
   getAiProfile: () => request<AssistantStatus>("/api/v1/assistant/profile"),
-  updateAiProfile: (body: { provider: "local" | "gemini"; api_key?: string | null }) =>
+  updateAiProfile: (body: {
+    provider: string;
+    api_key?: string | null;
+    model?: string | null;
+    base_url?: string | null;
+  }) =>
     request<AssistantStatus>("/api/v1/assistant/profile", {
       method: "PUT",
       body: JSON.stringify(body),
@@ -287,6 +292,12 @@ export const api = {
     }),
   clearAssistant: () =>
     request<void>("/api/v1/assistant/messages", { method: "DELETE" }),
+  assistantExport: () => request<AssistantMessage[]>("/api/v1/assistant/messages/export"),
+  assistantImport: (messages: { role: string; content: string; created_at?: string | null }[]) =>
+    request<{ imported: number }>("/api/v1/assistant/messages/import", {
+      method: "POST",
+      body: JSON.stringify({ messages }),
+    }),
 
   // --- Archivos (documentos por asignatura) ---
   files: (courseId?: string, classId?: string) => {
@@ -394,10 +405,28 @@ export const api = {
       description?: string | null;
       location?: string | null;
       all_day?: boolean;
+      is_exam?: boolean;
     },
   ) =>
     request<ClassEvent>(`/api/v1/classes/${id}/events`, {
       method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateClassEvent: (
+    id: string,
+    eventId: string,
+    body: {
+      title?: string;
+      start_at?: string;
+      end_at?: string | null;
+      description?: string | null;
+      location?: string | null;
+      all_day?: boolean;
+      is_exam?: boolean;
+    },
+  ) =>
+    request<ClassEvent>(`/api/v1/classes/${id}/events/${eventId}`, {
+      method: "PATCH",
       body: JSON.stringify(body),
     }),
   deleteClassEvent: (id: string, eventId: string) =>

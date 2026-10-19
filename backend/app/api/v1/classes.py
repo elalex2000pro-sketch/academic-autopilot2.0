@@ -186,6 +186,7 @@ def _event_read(event: ClassEvent, creator_name: str | None) -> EventRead:
         start_at=event.start_at,
         end_at=event.end_at,
         all_day=event.all_day,
+        is_exam=event.is_exam,
         created_at=event.created_at,
     )
 
@@ -567,6 +568,7 @@ async def create_event(
         start_at=payload.start_at,
         end_at=payload.end_at,
         all_day=payload.all_day,
+        is_exam=payload.is_exam,
     )
     db.add(event)
     await db.commit()
