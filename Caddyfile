@@ -1,0 +1,12 @@
+# Proxy inverso: expone frontend + backend bajo un unico origen.
+# - Local/LAN/tunel: escucha en :8080 (sin TLS), se usa tal cual.
+# - Nube: define SITE_ADDRESS=tuapp.duckdns.org y Caddy obtiene HTTPS
+#   automatico (Let's Encrypt) escuchando en 80/443.
+{$SITE_ADDRESS::8080} {
+	# API y WebSocket van al backend.
+	@backend path /api/* /ws /ws/*
+	reverse_proxy @backend backend:8000
+
+	# Todo lo demas lo sirve Next.js.
+	reverse_proxy frontend:3000
+}
