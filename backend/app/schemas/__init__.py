@@ -6,6 +6,20 @@ from app.schemas.assistant import (
     ChatResponse,
 )
 from app.schemas.auth import Token, UserLogin, UserRead, UserRegister
+from app.schemas.classroom import (
+    ClassCreate,
+    ClassDetail,
+    ClassJoin,
+    ClassMemberRead,
+    ClassRead,
+    ClassUpdate,
+    EventCreate,
+    EventRead,
+    EventUpdate,
+    MessageCreate,
+    MessageRead,
+    MessageUpdate,
+)
 from app.schemas.course import CourseCreate, CourseRead, CourseUpdate
 from app.schemas.file import DocumentRead
 from app.schemas.grade import (
@@ -48,6 +62,7 @@ from app.schemas.timetable import (
     TimetableEntryRead,
     TimetableEntryUpdate,
 )
+from app.schemas.upload import ChunkRead, UploadCreate, UploadRead
 
 __all__ = [
     "AssistantMessageRead",
@@ -58,10 +73,25 @@ __all__ = [
     "UserLogin",
     "UserRead",
     "UserRegister",
+    "ClassCreate",
+    "ClassDetail",
+    "ClassJoin",
+    "ClassMemberRead",
+    "ClassRead",
+    "ClassUpdate",
+    "EventCreate",
+    "EventRead",
+    "EventUpdate",
+    "MessageCreate",
+    "MessageRead",
+    "MessageUpdate",
     "CourseCreate",
     "CourseRead",
     "CourseUpdate",
     "DocumentRead",
+    "ChunkRead",
+    "UploadCreate",
+    "UploadRead",
     "CourseGradeSummary",
     "GradeCreate",
     "GradeRead",

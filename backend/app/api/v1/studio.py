@@ -67,7 +67,10 @@ async def delete_output(
 
     if output.output_document_id is not None:
         doc_result = await db.execute(
-            select(Document).where(Document.id == output.output_document_id)
+            select(Document).where(
+                Document.id == output.output_document_id,
+                Document.user_id == current_user.id,
+            )
         )
         doc = doc_result.scalar_one_or_none()
         if doc is not None:

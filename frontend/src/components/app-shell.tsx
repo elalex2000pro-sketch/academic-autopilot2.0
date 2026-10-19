@@ -15,6 +15,7 @@ import {
   Settings,
   Sparkles,
   Target,
+  Users,
   Wand2,
 } from "lucide-react";
 
@@ -31,6 +32,7 @@ const NAV = [
   { href: "/exams", label: "Examenes", icon: ClipboardList },
   { href: "/studio", label: "IA Studio", icon: Wand2 },
   { href: "/assistant", label: "Asistente IA", icon: Sparkles },
+  { href: "/classes", label: "Clases compartidas", icon: Users },
   { href: "/files", label: "Archivos", icon: FolderOpen },
   { href: "/focus", label: "Modo Enfoque", icon: Target },
   { href: "/settings", label: "Ajustes", icon: Settings },

@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.core.logging import get_logger
 from app.db.session import AsyncSessionLocal
 from app.services.sync_service import sync_all_users
+from app.services.upload_service import purge_stale_sessions
 
 logger = get_logger(__name__)
 
@@ -25,6 +26,15 @@ async def _run_sync_job() -> None:
     logger.info("Sincronizacion automatica finalizada.")
 
 
+async def _run_cleanup_job() -> None:
+    """Job periodico: limpia subidas a medias abandonadas."""
+    async with AsyncSessionLocal() as session:
+        try:
+            await purge_stale_sessions(session)
+        except Exception as exc:  # noqa: BLE001 - el worker nunca debe caer
+            logger.exception("Fallo la limpieza de subidas: %s", exc)
+
+
 def start_scheduler() -> AsyncIOScheduler | None:
     """Arranca el scheduler si esta habilitado. Idempotente."""
     global _scheduler
@@ -39,6 +49,14 @@ def start_scheduler() -> AsyncIOScheduler | None:
         _run_sync_job,
         trigger=IntervalTrigger(minutes=settings.sync_interval_minutes),
         id="sync_all_users",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    _scheduler.add_job(
+        _run_cleanup_job,
+        trigger=IntervalTrigger(hours=6),
+        id="cleanup_uploads",
         replace_existing=True,
         max_instances=1,
         coalesce=True,

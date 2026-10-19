@@ -15,23 +15,35 @@ from app.models.document import Document
 from app.models.grade import Grade
 from app.models.integration import Integration
 from app.models.schedule_block import ScheduleBlock
+from app.models.shared_class import (
+    ClassEvent,
+    ClassMembership,
+    ClassMessage,
+    SharedClass,
+)
 from app.models.sync_log import SyncLog
 from app.models.task import Task
 from app.models.timetable_entry import TimetableEntry
+from app.models.upload_session import UploadSession
 from app.models.user import User
 
 __all__ = [
     "AiOutput",
     "AssistantMessage",
     "Base",
+    "ClassEvent",
+    "ClassMembership",
+    "ClassMessage",
     "Course",
     "Document",
     "Grade",
     "Integration",
     "ScheduleBlock",
+    "SharedClass",
     "SyncLog",
     "Task",
     "TimetableEntry",
+    "UploadSession",
     "User",
     "IntegrationStatus",
     "Provider",

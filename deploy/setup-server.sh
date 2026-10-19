@@ -107,7 +107,9 @@ GOOGLE_REDIRECT_URI=https://${DOMAIN}/settings
 GOOGLE_CLASSROOM_SCOPES=https://www.googleapis.com/auth/classroom.courses.readonly,https://www.googleapis.com/auth/classroom.coursework.me.readonly
 
 FILES_DIR=/data/files
-MAX_UPLOAD_MB=25
+MAX_UPLOAD_MB=20480
+UPLOAD_CHUNK_MB=25
+UPLOAD_SESSION_TTL_HOURS=48
 ALLOWED_UPLOAD_EXTENSIONS=pdf,doc,docx,ppt,pptx,xls,xlsx,txt,md,csv,png,jpg,jpeg,gif
 
 AI_ENABLED=$( [ "$WITH_AI" -eq 1 ] && echo true || echo false )
@@ -118,8 +120,7 @@ AI_TIMEOUT_SECONDS=120
 AI_TEMPERATURE=0.3
 AI_STUDIO_MAX_CHARS=12000
 
-NEXT_PUBLIC_API_URL=http://localhost:8000
-ENVIRONMENT=production
+NEXT_PUBLIC_API_URL=https://${DOMAIN}
 "
 chmod 600 .env
 log "Secretos generados y guardados en .env"

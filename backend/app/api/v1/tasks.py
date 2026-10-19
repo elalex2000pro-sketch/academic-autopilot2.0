@@ -107,9 +107,21 @@ async def update_task(
 
 @router.post("/{task_id}/complete", response_model=TaskRead)
 async def complete_task(task_id: uuid.UUID, current_user: CurrentUser, db: DbSession) -> Task:
-    """Marca una tarea (y sus hermanas si es subtarea) como completada."""
+    """Marca una tarea como completada (y sus subtareas pendientes si las tiene)."""
     task = await _get_owned_task(db, current_user.id, task_id)
     task.status = TaskStatus.completed
+
+    # Si el planificador dividio la tarea en subtareas, se completan tambien
+    # las que sigan pendientes para no dejar "partes" sueltas en la agenda.
+    result = await db.execute(
+        select(Task).where(
+            Task.parent_task_id == task.id,
+            Task.status.in_([TaskStatus.pending, TaskStatus.in_progress]),
+        )
+    )
+    for subtask in result.scalars().all():
+        subtask.status = TaskStatus.completed
+
     await db.commit()
     await db.refresh(task)
     notify(current_user.id, "tasks", {"action": "completed", "id": str(task.id)})

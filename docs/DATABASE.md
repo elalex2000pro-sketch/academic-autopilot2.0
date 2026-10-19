@@ -9,7 +9,7 @@ Motor: **PostgreSQL 16**. Gestado con SQLAlchemy 2.0 y migrado con Alembic.
 │           User            │
 ├───────────────────────────┤
 │ id            UUID  PK     │
-│ email         CITEXT UNIQ  │
+│ email    VARCHAR(320) UNIQ │
 │ hashed_password TEXT       │
 │ full_name     TEXT         │
 │ timezone      TEXT         │
@@ -55,7 +55,7 @@ Motor: **PostgreSQL 16**. Gestado con SQLAlchemy 2.0 y migrado con Alembic.
 | Campo | Tipo | Notas |
 |-------|------|-------|
 | `id` | UUID | PK, `gen_random_uuid()` |
-| `email` | CITEXT | Unico, case-insensitive |
+| `email` | VARCHAR(320) | Unico, case-insensitive |
 | `hashed_password` | TEXT | bcrypt |
 | `full_name` | TEXT | |
 | `timezone` | TEXT | IANA, ej. `America/Mexico_City` |
@@ -130,6 +130,72 @@ Auditoria de cada sincronizacion.
 | `message` | TEXT | resumen |
 | `errors` | JSONB | lista de errores por conector |
 
+## Tablas de clases compartidas y subidas (v0.7)
+
+Estas tablas llegan con las **clases compartidas** (codigo permanente, chat,
+calendario y archivos en comun) y la **subida por trozos** (hasta 20 GB).
+
+### `SharedClass`
+Clase compartida: un grupo con **codigo permanente** de union.
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| `id` | UUID | PK |
+| `name` / `description` | TEXT | |
+| `code` | VARCHAR(12) | Unico (`ix_shared_classes_code`), sin caracteres confundibles |
+| `owner_id` | UUID | FK → User (on delete cascade) |
+
+### `ClassMembership`
+Union de un usuario a una clase (permanente hasta que salga).
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| `id` | UUID | PK |
+| `class_id` | UUID | FK → SharedClass (cascade) |
+| `user_id` | UUID | FK → User (cascade) |
+| `role` | VARCHAR(16) | `owner` / `member` |
+| `UNIQUE(class_id, user_id)` | | |
+
+### `ClassMessage`
+Mensajes del chat de la clase; los anuncios del propietario se pueden fijar.
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| `id` | UUID | PK |
+| `class_id` | UUID | FK → SharedClass (cascade) |
+| `user_id` | UUID | FK → User (cascade) |
+| `content` | TEXT | |
+| `kind` | VARCHAR(16) | `message` / `announcement` |
+| `pinned` | BOOL | los anuncios se fijan arriba |
+
+### `ClassEvent`
+Calendario conjunto de la clase.
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| `id` | UUID | PK |
+| `class_id` | UUID | FK → SharedClass (cascade) |
+| `created_by` | UUID | FK → User (cascade) |
+| `title` / `description` / `location` | TEXT | |
+| `start_at` / `end_at` | TIMESTAMPTZ | fin opcional |
+| `all_day` | BOOL | reservado |
+
+### `UploadSession`
+Subida por trozos reanudable (`MAX_UPLOAD_MB=20480` → 20 GB por archivo).
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| `id` | UUID | PK |
+| `user_id` | UUID | FK → User (cascade) |
+| `course_id` / `class_id` | UUID | destino opcional (FK, `SET NULL`) |
+| `document_id` | UUID | FK → Document; se rellena al completar |
+| `filename` / `content_type` | VARCHAR | |
+| `size_bytes` / `received_bytes` | BIGINT | total y ya subido |
+| `chunk_size` | INT | 25 MB por defecto (`UPLOAD_CHUNK_MB`) |
+| `status` | VARCHAR(16) | `pending` / `completed` / `aborted` |
+| `storage_path` | VARCHAR(1000) | ruta del `.part` en `FILES_DIR` |
+
+> Las subidas sin terminar se limpian solas a las `UPLOAD_SESSION_TTL_HOURS`
+> horas (48 por defecto): al crear una subida nueva y con un job cada 6 h.
+
+Tambien `Document` gana `class_id` (FK → SharedClass, `ON DELETE SET NULL`):
+un documento puede pertenecer a una asignatura o a una clase compartida.
+
 ## Indices clave
 
 ```sql
@@ -138,6 +204,10 @@ CREATE INDEX ix_task_user_target_start ON tasks (user_id, target_start_at);
 CREATE INDEX ix_task_due_at            ON tasks (due_at);
 CREATE INDEX ix_synclog_user_started   ON sync_logs (user_id, started_at DESC);
 CREATE INDEX ix_schedule_user_day      ON schedule_blocks (user_id, day_of_week);
+CREATE INDEX ix_class_memberships_user ON class_memberships (user_id);
+CREATE INDEX ix_class_messages_class   ON class_messages (class_id);
+CREATE INDEX ix_class_events_class     ON class_events (class_id);
+CREATE INDEX ix_upload_sessions_user   ON upload_sessions (user_id);
 ```
 
 ## Enums (PostgreSQL nativos)

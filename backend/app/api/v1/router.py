@@ -4,6 +4,7 @@ from fastapi import APIRouter
 from app.api.v1 import (
     assistant,
     auth,
+    classes,
     courses,
     files,
     grades,
@@ -14,6 +15,7 @@ from app.api.v1 import (
     sync,
     tasks,
     timetable,
+    uploads,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -24,6 +26,8 @@ api_router.include_router(courses.router)
 api_router.include_router(grades.router)
 api_router.include_router(timetable.router)
 api_router.include_router(tasks.router)
+api_router.include_router(classes.router)
+api_router.include_router(uploads.router)
 api_router.include_router(files.router)
 api_router.include_router(assistant.router)
 api_router.include_router(schedule.router)

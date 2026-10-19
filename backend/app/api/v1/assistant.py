@@ -127,9 +127,19 @@ async def chat(
     db.add(user_message)
     await db.commit()
 
-    result_ai = await ai_service.generate_reply(
-        db, current_user, payload.message, history, image_data_url=image_data_url
-    )
+    try:
+        result_ai = await ai_service.generate_reply(
+            db, current_user, payload.message, history, image_data_url=image_data_url
+        )
+    except Exception as exc:  # noqa: BLE001 - el usuario siempre debe recibir respuesta
+        logger.error("Fallo inesperado del asistente: %s", exc)
+        result_ai = ai_service.AiResult(
+            reply=(
+                "Lo siento, ha ocurrido un error interno al procesar tu mensaje. "
+                "Vuelve a intentarlo en unos segundos."
+            ),
+            source="error",
+        )
 
     assistant_message = AssistantMessage(
         user_id=current_user.id, role="assistant", content=result_ai.reply, source=result_ai.source

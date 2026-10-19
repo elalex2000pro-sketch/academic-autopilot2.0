@@ -110,10 +110,72 @@ export interface ChatResponse {
 
 export interface DocumentFile {
   id: string;
+  user_id: string;
   course_id: string | null;
+  class_id: string | null;
   filename: string;
   content_type: string;
   size_bytes: number;
+  created_at: string;
+}
+
+// --- Subidas por trozos (archivos grandes) ---
+export interface UploadSession {
+  id: string;
+  filename: string;
+  size_bytes: number;
+  received_bytes: number;
+  chunk_size: number;
+  status: string;
+  created_at: string;
+}
+
+// --- Clases compartidas ---
+export interface SharedClass {
+  id: string;
+  name: string;
+  description: string | null;
+  code: string;
+  owner_id: string;
+  created_at: string;
+  member_count: number;
+  my_role: "owner" | "member" | string;
+}
+
+export interface ClassMember {
+  user_id: string;
+  email: string;
+  full_name: string | null;
+  role: string;
+  joined_at: string;
+}
+
+export interface ClassDetail extends SharedClass {
+  members: ClassMember[];
+}
+
+export interface ClassMessage {
+  id: string;
+  class_id: string;
+  user_id: string;
+  author_name: string | null;
+  content: string;
+  kind: "message" | "announcement" | string;
+  pinned: boolean;
+  created_at: string;
+}
+
+export interface ClassEvent {
+  id: string;
+  class_id: string;
+  created_by: string;
+  creator_name: string | null;
+  title: string;
+  description: string | null;
+  location: string | null;
+  start_at: string;
+  end_at: string | null;
+  all_day: boolean;
   created_at: string;
 }
 

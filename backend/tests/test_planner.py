@@ -25,6 +25,12 @@ def test_split_minutes_no_deja_residuo_corto():
     assert all(p >= 30 for p in parts)
 
 
+def test_split_minutes_no_infla_tareas_cortas():
+    # Una tarea de 10 minutos ocupa 10 minutos: no se infla al minimo.
+    assert split_minutes(10, max_minutes=90, min_minutes=30) == [10]
+    assert split_minutes(45, max_minutes=90, min_minutes=30) == [45]
+
+
 def test_prioridad_urgente_por_fecha():
     now = datetime(2026, 1, 1, tzinfo=timezone.utc)
     task = PlannerTask(task_id="t1", title="Examen", estimated_minutes=60,

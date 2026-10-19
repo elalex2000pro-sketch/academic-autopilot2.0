@@ -15,6 +15,15 @@ y checklist para eliminar la procrastinacion.
                               +---------------+
 ```
 
+## Funciones
+
+- **Panel** con plan diario, **Asignaturas**, **Horario** semanal, **Calendario**, **Examenes** y **Modo Enfoque**.
+- **Asistente IA** (chat flotante en toda la app; con reglas si no hay modelo configurado).
+- **IA Studio**: resumenes e infografias en PDF a partir de tus apuntes.
+- **Archivos** por asignatura, con **subida por trozos reanudable de hasta 20 GB** por archivo.
+- **Clases compartidas**: grupo con **codigo permanente**, chat con anuncios, calendario comun
+  y archivos compartidos.
+
 ## Stack
 
 | Capa            | Tecnologia                                              |
@@ -59,5 +68,5 @@ Guia completa (local sin Docker, OAuth de Google, tokens de Moodle) en
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — decisiones de diseno y flujo de sincronizacion.
 - [docs/DATABASE.md](docs/DATABASE.md) — esquema relacional (ER) de `User`, `Course`, `Task`,
-  `ScheduleBlock`, `SyncLog`, `Integration`.
+  `ScheduleBlock`, `SyncLog`, `Integration` y las tablas de clases compartidas y subidas.
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — configuracion, variables de entorno y despliegue.

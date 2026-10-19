@@ -1,4 +1,8 @@
-"""Endpoints de archivos: subida, listado, descarga y borrado por asignatura."""
+"""Endpoints de archivos: subida, listado, descarga y borrado.
+
+Ademas de la subida en una sola peticion (archivos pequenos), existe la
+subida por trozos en `/files/uploads` (archivos grandes, reanudable).
+"""
 from __future__ import annotations
 
 import os
@@ -14,7 +18,9 @@ from app.core.config import settings
 from app.core.logging import get_logger
 from app.models.course import Course
 from app.models.document import Document
+from app.models.shared_class import ClassMembership, SharedClass
 from app.schemas.file import DocumentRead
+from app.services import class_service
 from app.services.realtime import notify
 
 logger = get_logger(__name__)
@@ -29,10 +35,19 @@ async def list_files(
     current_user: CurrentUser,
     db: DbSession,
     course_id: uuid.UUID | None = None,
+    class_id: uuid.UUID | None = None,
 ) -> list[Document]:
-    stmt = select(Document).where(Document.user_id == current_user.id)
-    if course_id is not None:
-        stmt = stmt.where(Document.course_id == course_id)
+    """Lista los documentos del usuario (o los de una clase compartida)."""
+    if class_id is not None:
+        await _ensure_class_member(db, current_user.id, class_id)
+        stmt = select(Document).where(Document.class_id == class_id)
+    else:
+        stmt = select(Document).where(
+            Document.user_id == current_user.id,
+            Document.class_id.is_(None),
+        )
+        if course_id is not None:
+            stmt = stmt.where(Document.course_id == course_id)
     stmt = stmt.order_by(Document.created_at.desc())
     result = await db.execute(stmt)
     return list(result.scalars().all())
@@ -45,6 +60,7 @@ async def upload_file(
     file: UploadFile = File(...),
     course_id: uuid.UUID | None = Form(None),
 ) -> Document:
+    """Sube un archivo en una sola peticion (recomendado solo para tamano pequeno)."""
     if course_id is not None:
         await _ensure_owned_course(db, current_user.id, course_id)
 
@@ -112,7 +128,8 @@ async def upload_file(
 async def download_file(
     document_id: uuid.UUID, current_user: CurrentUser, db: DbSession
 ) -> FileResponse:
-    document = await _get_owned_document(db, current_user.id, document_id)
+    """Descarga un documento propio o compartido en una clase a la que perteneces."""
+    document = await _get_readable_document(db, current_user.id, document_id)
     abs_path = os.path.join(settings.files_dir, document.storage_path)
     if not os.path.exists(abs_path):
         raise HTTPException(
@@ -130,14 +147,36 @@ async def download_file(
 async def delete_file(
     document_id: uuid.UUID, current_user: CurrentUser, db: DbSession
 ) -> None:
-    document = await _get_owned_document(db, current_user.id, document_id)
+    """Borra un documento: quien lo subio o el propietario de la clase."""
+    document = await _get_readable_document(db, current_user.id, document_id)
+    if document.user_id != current_user.id:
+        is_owner = (
+            document.class_id is not None
+            and await _is_class_owner(db, current_user.id, document.class_id)
+        )
+        if not is_owner:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo quien lo subio o el propietario de la clase pueden borrarlo",
+            )
+
     abs_path = os.path.join(settings.files_dir, document.storage_path)
+    owner_id = document.user_id
+    class_id = document.class_id
     await db.delete(document)
     await db.commit()
     _safe_remove(abs_path)
-    notify(current_user.id, "files", {"action": "deleted", "id": str(document_id)})
+
+    notify(owner_id, "files", {"action": "deleted", "id": str(document_id)})
+    if current_user.id != owner_id:
+        notify(current_user.id, "files", {"action": "deleted", "id": str(document_id)})
+    if class_id is not None:
+        await class_service.notify_class(db, class_id, "file", id=str(document_id))
 
 
+# --------------------------------------------------------------------------- #
+# Helpers
+# --------------------------------------------------------------------------- #
 async def _ensure_owned_course(
     db: DbSession, user_id: uuid.UUID, course_id: uuid.UUID
 ) -> None:
@@ -150,18 +189,54 @@ async def _ensure_owned_course(
         )
 
 
-async def _get_owned_document(
+async def _ensure_class_member(
+    db: DbSession, user_id: uuid.UUID, class_id: uuid.UUID
+) -> None:
+    result = await db.execute(
+        select(ClassMembership.id).where(
+            ClassMembership.class_id == class_id,
+            ClassMembership.user_id == user_id,
+        )
+    )
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No eres miembro de esta clase",
+        )
+
+
+async def _is_class_owner(
+    db: DbSession, user_id: uuid.UUID, class_id: uuid.UUID
+) -> bool:
+    result = await db.execute(
+        select(SharedClass.id).where(
+            SharedClass.id == class_id, SharedClass.owner_id == user_id
+        )
+    )
+    return result.scalar_one_or_none() is not None
+
+
+async def _get_readable_document(
     db: DbSession, user_id: uuid.UUID, document_id: uuid.UUID
 ) -> Document:
-    result = await db.execute(
-        select(Document).where(Document.id == document_id, Document.user_id == user_id)
-    )
+    """Devuelve el documento si es del usuario o si es miembro de su clase."""
+    result = await db.execute(select(Document).where(Document.id == document_id))
     document = result.scalar_one_or_none()
-    if document is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado"
-        )
-    return document
+    if document is not None:
+        if document.user_id == user_id:
+            return document
+        if document.class_id is not None:
+            membership = await db.execute(
+                select(ClassMembership.id).where(
+                    ClassMembership.class_id == document.class_id,
+                    ClassMembership.user_id == user_id,
+                )
+            )
+            if membership.scalar_one_or_none() is not None:
+                return document
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado"
+    )
 
 
 def _safe_remove(path: str) -> None:

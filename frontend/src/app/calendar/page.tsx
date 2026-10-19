@@ -33,9 +33,13 @@ function errorMessage(error: unknown): string {
   return "Error inesperado";
 }
 
-// Devuelve la clave YYYY-MM-DD (en UTC) de un ISO, para agrupar por dia.
+// Devuelve la clave YYYY-MM-DD en hora LOCAL del navegador, para agrupar por dia.
+// (Con ISO en UTC, una entrega de medianoche local caia en el dia anterior.)
 function dayKey(iso: string | null): string | null {
-  return iso ? iso.slice(0, 10) : null;
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso.slice(0, 10);
+  return keyOf(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
 function pad(n: number): string {
@@ -123,9 +127,10 @@ export default function CalendarPage() {
     if (!selectedDay || !title.trim()) return;
     setNotice(null);
     try {
+      // Mediodia LOCAL del dia elegido: la tarea nunca se desplaza de dia.
       await api.createTask({
         title: title.trim(),
-        due_at: `${selectedDay}T12:00:00Z`,
+        due_at: new Date(`${selectedDay}T12:00:00`).toISOString(),
         estimated_minutes: minutes,
         course_id: courseId || undefined,
       });

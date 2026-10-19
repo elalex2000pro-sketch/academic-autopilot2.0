@@ -563,6 +563,15 @@ async def _h_complete_task(db, user, args) -> tuple[dict, list[str]]:
             return {"ok": False, "error": "Varias tareas coinciden; se mas especifico", "matches": [t.title for t in matches]}, []
         return {"ok": False, "error": f"No encontre la tarea '{title}'"}, []
     task.status = TaskStatus.completed
+    # Completa tambien las subtareas pendientes del planificador, si las hay.
+    subtasks = await db.execute(
+        select(Task).where(
+            Task.parent_task_id == task.id,
+            Task.status.in_([TaskStatus.pending, TaskStatus.in_progress]),
+        )
+    )
+    for subtask in subtasks.scalars().all():
+        subtask.status = TaskStatus.completed
     await db.commit()
     return {"ok": True, "completed": task.title}, ["tasks"]
 

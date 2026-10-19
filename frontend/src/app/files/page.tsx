@@ -13,8 +13,10 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { useRealtime } from "@/components/realtime-provider";
 import { api, ApiError } from "@/lib/api";
+import { uploadFileInChunks, type UploadProgress } from "@/lib/upload";
 import type { Course, DocumentFile } from "@/lib/types";
 
 const ACCEPT =
@@ -29,7 +31,8 @@ function errorMessage(error: unknown): string {
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
 export default function FilesPage() {
@@ -37,6 +40,7 @@ export default function FilesPage() {
   const [files, setFiles] = useState<DocumentFile[]>([]);
   const [selected, setSelected] = useState<string | null>(null); // null = General
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -77,14 +81,20 @@ export default function FilesPage() {
     event.target.value = "";
     if (!file) return;
     setUploading(true);
+    setProgress({ uploadedBytes: 0, totalBytes: file.size, percent: 0 });
     setError(null);
     try {
-      await api.uploadFile(file, selected);
+      // Subida por trozos: vale para archivos pequenos y de hasta 20 GB.
+      await uploadFileInChunks(file, {
+        courseId: selected,
+        onProgress: setProgress,
+      });
       await load();
     } catch (e) {
       setError(errorMessage(e));
     } finally {
       setUploading(false);
+      setProgress(null);
     }
   }
 
@@ -110,8 +120,8 @@ export default function FilesPage() {
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Archivos</h1>
         <p className="text-sm text-muted-foreground">
-          Sube PDFs y apuntes. Cada asignatura tiene su propia carpeta; lo que no asignes va a
-          &quot;General&quot;.
+          Sube PDFs y apuntes (hasta 20 GB por archivo, con subida reanudable). Cada asignatura
+          tiene su propia carpeta; lo que no asignes va a &quot;General&quot;.
         </p>
       </header>
 
@@ -184,6 +194,18 @@ export default function FilesPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-2">
+            {uploading && progress && (
+              <div className="space-y-1 rounded-md border border-border/60 px-3 py-2">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Subiendo... {progress.percent}%</span>
+                  <span>
+                    {formatBytes(progress.uploadedBytes)} / {formatBytes(progress.totalBytes)}
+                  </span>
+                </div>
+                <Progress value={progress.percent} />
+              </div>
+            )}
+
             {loading && <p className="text-sm text-muted-foreground">Cargando...</p>}
 
             {!loading &&

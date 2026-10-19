@@ -11,7 +11,9 @@ class DocumentRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    user_id: uuid.UUID
     course_id: uuid.UUID | None
+    class_id: uuid.UUID | None = None
     filename: str
     content_type: str
     size_bytes: int

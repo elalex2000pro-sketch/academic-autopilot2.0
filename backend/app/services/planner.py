@@ -103,11 +103,13 @@ def classify_priority(task: PlannerTask, now: datetime, urgency_hours: int = 72)
 def split_minutes(total: int, max_minutes: int, min_minutes: int) -> list[int]:
     """Trocea `total` minutos en sesiones de tamano entre min y max.
 
-    Evita dejar una ultima sesion mas corta que `min_minutes` absorbiendola
-    en la sesion anterior.
+    Para tareas cortas (total <= max) se agenda una unica sesion con su
+    duracion real: no se infla a `min_minutes` (una tarea de 10 minutos debe
+    ocupar 10 minutos, no 30). Al dividir tareas largas se evita dejar una
+    ultima sesion mas corta que `min_minutes` absorbiendola en la anterior.
     """
     if total <= max_minutes:
-        return [max(total, min_minutes)]
+        return [total]
     parts: list[int]
     count = math.ceil(total / max_minutes)
     parts = [total // count] * count

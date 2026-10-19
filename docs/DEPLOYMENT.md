@@ -39,13 +39,13 @@ docker compose up --build
 
 Esto levanta:
 
-| Servicio | URL | Query |
-|----------|-----|-------|
-| Proxy (acceso unico) | http://localhost:8080 | - |
-| Frontend | http://localhost:3000 | 11 |
-| Backend (Swagger) | http://localhost:8000/docs | 12 |
-| PostgreSQL | localhost:5432 | 13 |
-| Worker | (sin puerto) | 14 |
+| Servicio | URL |
+|----------|-----|
+| Proxy (acceso unico) | http://localhost:8080 |
+| Frontend | http://localhost:3000 |
+| Backend (Swagger) | http://localhost:8000/docs |
+| PostgreSQL | localhost:5432 |
+| Worker | (sin puerto; sincronizacion periodica) |
 
 El contenedor `backend` aplica las migraciones de Alembic automaticamente al
 arrancar (`entrypoint.sh`). El `worker` ejecuta la sincronizacion periodica.
@@ -368,3 +368,90 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 - **Backups**: `docker compose exec db pg_dump -U postgres academic_autopilot > backup.sql`.
 - **HTTPS/renovacion**: Caddy renueva el certificado solo; los datos quedan en el
   volumen `caddydata`.
+
+---
+
+## 11. La nube en 30 minutos: Vercel + Render + Neon (sin administrar servidores)
+
+Alternativa recomendada si no quieres mantener una VM: el **frontend** vive en
+Vercel, el **backend** en Render y la **base de datos** en Neon (Postgres
+gratuito). Todo con planes gratuitos, salvo el disco de archivos (ver abajo).
+
+> **Por que el backend no puede ir en Vercel**: las funciones de Vercel no
+> mantienen WebSockets (`/api/v1/ws`), no ejecutan tareas programadas
+> (APScheduler) y limitan el cuerpo de cada peticion a ~4.5 MB. El backend
+> necesita un proceso vivo: Render (o la VM del apartado 10). Gracias a la
+> **subida por trozos** (25 MB por peticion) se pueden subir archivos de hasta
+> **20 GB** aunque el proxy corte las peticiones grandes.
+
+### 11.1. Base de datos en Neon
+
+1. Crea una cuenta en <https://neon.tech> y un proyecto (elige la region mas
+   cercana).
+2. Copia la cadena de conexion y prepara las dos variantes que usa la app:
+   ```
+   DATABASE_URL=postgresql+asyncpg://USUARIO:PASSWORD@HOST/DB?ssl=require
+   DATABASE_URL_SYNC=postgresql+psycopg2://USUARIO:PASSWORD@HOST/DB?sslmode=require
+   ```
+   (quita `?sslmode=require` del final si Neon ya lo incluye).
+3. No hace falta crear tablas a mano: el backend ejecuta `alembic upgrade head`
+   al arrancar.
+
+### 11.2. Backend en Render
+
+1. En <https://render.com> crea un **Web Service** conectado a tu repositorio de
+   GitHub:
+   - **Root Directory**: `backend`
+   - **Runtime**: `Docker` (usa el `Dockerfile` incluido) o `Python`:
+     - Build: `pip install -e .`
+     - Start: `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+   - **Health Check Path**: `/health`
+2. Variables de entorno:
+
+   ```dotenv
+   ENVIRONMENT=production
+   SECRET_KEY=<openssl rand -hex 32>
+   DATABASE_URL=postgresql+asyncpg://...@....neon.tech/<db>?ssl=require
+   DATABASE_URL_SYNC=postgresql+psycopg2://...@...neon.tech/<db>?sslmode=require
+   CORS_ORIGINS=https://<tu-app>.vercel.app,http://localhost:3000
+   REALTIME_ENABLED=true
+   ENABLE_SCHEDULER=true
+   FILES_DIR=/data/files
+   MAX_UPLOAD_MB=20480
+   UPLOAD_CHUNK_MB=25
+   UPLOAD_SESSION_TTL_HOURS=48
+   ```
+
+   > `CORS_ORIGINS` debe contener el dominio exacto de Vercel (vale tambien el
+   > dominio propio, y varios separados por coma). Si dejas el dominio de
+   > preview, anade `CORS_ORIGIN_REGEX=^https://.*\.vercel\.app$`.
+3. **Archivos y 20 GB**: los servicios gratuitos de Render no conservan el disco
+   entre despliegues. Para que los archivos sobrevivan monta un **disco
+   persistente** (de pago) en `/data/files` y deja `FILES_DIR=/data/files`. Sin
+   disco, chat y calendario funcionan igual, pero los archivos se pierden al
+   redesplegar.
+
+### 11.3. Frontend en Vercel
+
+1. Importa el repositorio en <https://vercel.com/new>.
+2. **Root Directory**: `frontend` (Vercel detecta Next.js; deja el resto de
+   valores por defecto).
+3. Variable de entorno (marca **Production** y **Preview**):
+   ```
+   NEXT_PUBLIC_API_URL=https://<tu-servicio>.onrender.com
+   ```
+4. Deploy. Cuando tengas el dominio de Vercel, **anadelo a `CORS_ORIGINS`** en
+   Render y guarda (el servicio se reinicia solo).
+
+> `NEXT_PUBLIC_API_URL` se incrusta en el build: si cambia la URL del backend,
+> vuelve a desplegar en Vercel (Deployments → ⋯ → Redeploy).
+
+### 11.4. Comprobar que todo funciona
+
+1. `https://<tu-servicio>.onrender.com/health` responde con estado ok.
+2. Abre la app en Vercel, crea una cuenta y prueba:
+   - El **asistente** contesta (modo heuristico si no hay modelo de IA).
+   - En **Archivos**, sube un archivo grande: veras la barra de progreso.
+   - En **Clases compartidas**, crea una clase, copia el codigo y unete desde
+     otro navegador: el chat, el calendario y los archivos se sincronizan.
+

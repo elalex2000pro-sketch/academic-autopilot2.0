@@ -39,6 +39,8 @@ _APP_KNOWLEDGE = (
     "Sus secciones son: Panel (resumen y plan del dia), Asignaturas (cursos y sus notas), "
     "Horario (clases semanales), Calendario (vista mensual de entregas y tareas), Examenes, "
     "IA Studio (resumenes e infografias a partir de apuntes), Asistente (este chat), "
+    "Clases compartidas (grupos con un codigo permanente, chat, calendario en comun y "
+    "archivos compartidos hasta 20 GB), "
     "Archivos (apuntes por asignatura), Enfoque/Focus (temporizador de estudio) y Ajustes "
     "(disponibilidad semanal y cuenta). Explica estas secciones si te preguntan."
 )
@@ -453,8 +455,8 @@ def heuristic_reply(ctx: dict[str, Any], message: str) -> str:
         )
 
     lines.append(
-        "\nNota: no he podido usar el modelo de IA local (revisa que Ollama este activo), "
-        "asi que te respondo con el motor de reglas."
+        "\nNota: te respondo con el motor de reglas porque el asistente de IA no "
+        "esta disponible ahora mismo (revisa Ajustes, seccion Motor del asistente IA)."
     )
     return "\n".join(lines)
 

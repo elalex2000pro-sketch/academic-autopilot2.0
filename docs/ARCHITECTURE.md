@@ -35,15 +35,18 @@ No hay acoplamiento de runtime: el frontend solo conoce `NEXT_PUBLIC_API_URL`.
 │   ├── /courses       asignaturas (manuales)                           │
 │   ├── /grades        notas + /grades/summary (media ponderada)        │
 │   ├── /timetable     horario semanal                                  │
-│   ├── /files         subida/descarga de documentos                    │
+│   ├── /files         documentos + subida por trozos (20 GB)           │
+│   ├── /classes       clases compartidas: chat, calendario y archivos  │
 │   ├── /assistant     chat con IA (Ollama)                             │
 │   ├── /studio        resumenes e infografias en PDF                   │
 │   └── /ws            WebSocket de sincronizacion en tiempo real       │
 │                                                                       │
-│  Services        Connectors            Workers                        │
-│   ├── sync_service  ├── moodle.py       └── scheduler.py (APScheduler) │
-│   ├── planner.py    └── classroom.py                                  │
-│   └── task_service                                                    │
+│  Services                                  Connectors                    │
+│   ├── sync_service / planner.py            ├── moodle.py                 │
+│   ├── ai_service / ai_tools / realtime     └── classroom.py              │
+│   ├── ai_studio_service / pdf_service                                   │
+│   ├── upload_service / class_service                                    │
+│   └── scheduler.py (APScheduler) en el worker                           │
 │                                                                       │
 │  SQLAlchemy 2.0 (async, asyncpg)                                      │
 └───────────────────────────────┬──────────────────────────────────────┘
@@ -144,8 +147,6 @@ WebSocket en tiempo de ejecucion, de modo que funciona igual en localhost, LAN o
 tras un tunel (proxy Caddy en un unico origen).
 
 ## 8. Escalabilidad futura
-
-## 6. Escalabilidad futura
 
 - Sustituir APScheduler por Celery + Redis si el numero de usuarios crece.
 - Cache de respuestas de conector en Redis (TTL corto) para evitar rate limits.

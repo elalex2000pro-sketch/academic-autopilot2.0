@@ -26,6 +26,11 @@ class Document(UUIDPkMixin, TimestampMixin, Base):
     course_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("courses.id", ondelete="SET NULL"), index=True
     )
+    # Si el documento se comparte en una clase compartida, apunta a ella.
+    # Al borrar la clase el archivo se conserva (vuelve a ser personal).
+    class_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("shared_classes.id", ondelete="SET NULL"), index=True
+    )
 
     filename: Mapped[str] = mapped_column(String(500), nullable=False)
     content_type: Mapped[str] = mapped_column(String(200), default="application/octet-stream")

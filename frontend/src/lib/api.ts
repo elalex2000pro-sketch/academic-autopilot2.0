@@ -4,6 +4,9 @@ import type {
   AssistantMessage,
   AssistantStatus,
   ChatResponse,
+  ClassDetail,
+  ClassEvent,
+  ClassMessage,
   Course,
   DailyAgenda,
   DocumentFile,
@@ -14,32 +17,47 @@ import type {
   PendingAction,
   Provider,
   ScheduleBlock,
+  SharedClass,
   SyncLog,
   SyncResult,
   Task,
   TimetableEntry,
+  UploadSession,
   User,
 } from "@/lib/types";
 
 const TOKEN_KEY = "autopilot_token";
 
 // Resuelve la base de la API en tiempo de ejecucion:
-// - Si hay una URL publica configurada (no local) se usa tal cual.
+// - Si hay una URL publica configurada (no local) se usa tal cual (p. ej. el
+//   frontend en Vercel apuntando al backend en Render).
 // - Sirviendo en el puerto 3000 (dev) se apunta al backend en :8000 del mismo host.
-// - En cualquier otro caso (detras del proxy) se usa el MISMO origen (rutas relativas),
-//   de modo que funciona igual en local, en la LAN y por un tunel externo.
+// - En cualquier otro caso (proxy Caddy, Vercel, tunel) se usa el MISMO origen
+//   (rutas relativas), de modo que no depende de puertos raros.
 function resolveApiBase(): string {
   const configured = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
   if (configured && !configured.includes("localhost") && !configured.includes("127.0.0.1")) {
     return configured;
   }
   if (typeof window !== "undefined") {
-    if (window.location.port && window.location.port !== "3000") {
+    const { protocol, hostname, port } = window.location;
+    if (!port) {
+      // Puerto estandar (80/443): dominio con proxy o hosting externo. La API
+      // se sirve en el mismo origen o se configuro NEXT_PUBLIC_API_URL.
       return "";
     }
-    return `${window.location.protocol}//${window.location.hostname}:8000`;
+    if (port === "3000") {
+      return `${protocol}//${hostname}:8000`;
+    }
+    return "";
   }
   return configured || "http://localhost:8000";
+}
+
+// Base de la API (para peticiones que no pasan por `request`, como la subida
+// por trozos con XMLHttpRequest).
+export function apiBase(): string {
+  return resolveApiBase();
 }
 
 // URL del WebSocket de sincronizacion en tiempo real.
@@ -249,8 +267,13 @@ export const api = {
     request<void>("/api/v1/assistant/messages", { method: "DELETE" }),
 
   // --- Archivos (documentos por asignatura) ---
-  files: (courseId?: string) =>
-    request<DocumentFile[]>(`/api/v1/files${courseId ? `?course_id=${courseId}` : ""}`),
+  files: (courseId?: string, classId?: string) => {
+    const params = new URLSearchParams();
+    if (courseId) params.set("course_id", courseId);
+    if (classId) params.set("class_id", classId);
+    const query = params.toString();
+    return request<DocumentFile[]>(`/api/v1/files${query ? `?${query}` : ""}`);
+  },
   uploadFile: (file: File, courseId?: string | null) => {
     const form = new FormData();
     form.append("file", file);
@@ -285,6 +308,79 @@ export const api = {
     anchor.remove();
     URL.revokeObjectURL(url);
   },
+
+  // --- Subidas por trozos (archivos grandes, reanudables) ---
+  createUpload: (body: {
+    filename: string;
+    size_bytes: number;
+    content_type?: string;
+    course_id?: string | null;
+    class_id?: string | null;
+  }) =>
+    request<UploadSession>("/api/v1/files/uploads", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  uploadStatus: (id: string) => request<UploadSession>(`/api/v1/files/uploads/${id}`),
+  completeUpload: (id: string) =>
+    request<DocumentFile>(`/api/v1/files/uploads/${id}/complete`, { method: "POST" }),
+  abortUpload: (id: string) =>
+    request<void>(`/api/v1/files/uploads/${id}`, { method: "DELETE" }),
+
+  // --- Clases compartidas (codigo, chat, calendario y archivos) ---
+  classes: () => request<SharedClass[]>("/api/v1/classes"),
+  createClass: (body: { name: string; description?: string }) =>
+    request<SharedClass>("/api/v1/classes", { method: "POST", body: JSON.stringify(body) }),
+  joinClass: (code: string) =>
+    request<SharedClass>("/api/v1/classes/join", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    }),
+  classDetail: (id: string) => request<ClassDetail>(`/api/v1/classes/${id}`),
+  updateClass: (id: string, body: { name?: string; description?: string | null }) =>
+    request<SharedClass>(`/api/v1/classes/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  regenerateClassCode: (id: string) =>
+    request<SharedClass>(`/api/v1/classes/${id}/regenerate-code`, { method: "POST" }),
+  deleteClass: (id: string) =>
+    request<void>(`/api/v1/classes/${id}`, { method: "DELETE" }),
+  leaveClass: (id: string) =>
+    request<void>(`/api/v1/classes/${id}/leave`, { method: "POST" }),
+  classMessages: (id: string, limit = 100) =>
+    request<ClassMessage[]>(`/api/v1/classes/${id}/messages?limit=${limit}`),
+  sendClassMessage: (id: string, body: { content: string; kind?: "message" | "announcement" }) =>
+    request<ClassMessage>(`/api/v1/classes/${id}/messages`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateClassMessage: (id: string, messageId: string, body: { pinned: boolean }) =>
+    request<ClassMessage>(`/api/v1/classes/${id}/messages/${messageId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteClassMessage: (id: string, messageId: string) =>
+    request<void>(`/api/v1/classes/${id}/messages/${messageId}`, { method: "DELETE" }),
+  classEvents: (id: string) => request<ClassEvent[]>(`/api/v1/classes/${id}/events`),
+  createClassEvent: (
+    id: string,
+    body: {
+      title: string;
+      start_at: string;
+      end_at?: string | null;
+      description?: string | null;
+      location?: string | null;
+      all_day?: boolean;
+    },
+  ) =>
+    request<ClassEvent>(`/api/v1/classes/${id}/events`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  deleteClassEvent: (id: string, eventId: string) =>
+    request<void>(`/api/v1/classes/${id}/events/${eventId}`, { method: "DELETE" }),
+  classFiles: (id: string) => request<DocumentFile[]>(`/api/v1/files?class_id=${id}`),
 
   // --- IA Studio (resumenes e infografias en PDF) ---
   studioOutputs: () => request<AiOutput[]>("/api/v1/studio/outputs"),

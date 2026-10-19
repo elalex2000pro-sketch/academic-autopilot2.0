@@ -40,7 +40,9 @@ services:
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:3000/settings}
       GOOGLE_CLASSROOM_SCOPES: ${GOOGLE_CLASSROOM_SCOPES:-https://www.googleapis.com/auth/classroom.courses.readonly,https://www.googleapis.com/auth/classroom.coursework.me.readonly}
       FILES_DIR: /data/files
-      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-25}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-20480}
+      UPLOAD_CHUNK_MB: ${UPLOAD_CHUNK_MB:-25}
+      UPLOAD_SESSION_TTL_HOURS: ${UPLOAD_SESSION_TTL_HOURS:-48}
       AI_ENABLED: ${AI_ENABLED:-true}
       AI_BASE_URL: ${AI_BASE_URL:-http://host.docker.internal:11434/v1}
       AI_API_KEY: ${AI_API_KEY:-}
@@ -76,10 +78,15 @@ services:
       DATABASE_URL_SYNC: postgresql+psycopg2://${POSTGRES_USER:-autopilot}:${POSTGRES_PASSWORD:-autopilot}@db:5432/${POSTGRES_DB:-academic_autopilot}
       ENABLE_SCHEDULER: "true"
       SYNC_INTERVAL_MINUTES: ${SYNC_INTERVAL_MINUTES:-30}
+      # El worker limpia subidas a medias, asi que necesita la misma carpeta.
+      FILES_DIR: /data/files
+      UPLOAD_SESSION_TTL_HOURS: ${UPLOAD_SESSION_TTL_HOURS:-48}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
     healthcheck:
       disable: true
+    volumes:
+      - appfiles:/data/files
 
   frontend:
     build:

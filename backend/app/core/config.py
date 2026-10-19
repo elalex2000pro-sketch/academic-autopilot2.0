@@ -89,7 +89,14 @@ class Settings(BaseSettings):
 
     # --- Almacenamiento de archivos (documentos por asignatura) ---
     files_dir: str = "/data/files"
-    max_upload_mb: int = 25
+    # Limite por archivo en MB. 20480 MB = 20 GB. Los archivos grandes se suben
+    # por trozos (UPLOAD_CHUNK_MB) y la subida se puede reanudar si se corta.
+    max_upload_mb: int = 20480
+    # Tamano de cada trozo de subida en MB. 25 MB funciona bien detras de
+    # proxys inversos (Caddy, Render, Cloudflare) sin cortar peticiones.
+    upload_chunk_mb: int = 25
+    # Horas que se conserva una subida a medias antes de limpiarla.
+    upload_session_ttl_hours: int = 48
     allowed_upload_extensions: str = "pdf,doc,docx,ppt,pptx,xls,xlsx,txt,md,csv,png,jpg,jpeg,gif"
 
     # --- IA Studio (resumenes e infografias en PDF) ---

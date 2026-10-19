@@ -101,6 +101,32 @@ pantalla para que le pidas cambios sin ir a la seccion "Asistente".
 Los borrados siempre te pediran confirmacion antes de hacerse.
 
 
+Clases compartidas (trabajar en grupo)
+--------------------------------------
+En el menu lateral, "Clases compartidas" permite crear un grupo de
+estudio con tus companeros:
+
+  - Crea la clase y copia su codigo (boton con el candado / copiar).
+  - Compartelo (WhatsApp, correo...). Quien lo pegue en "Unirse con
+    codigo" entra de forma PERMANENTE a la clase.
+  - Dentro de la clase teneis cuatro pestanas: un chat (el propietario
+    puede publicar anuncios que quedan fijados arriba), un calendario
+    en comun (para examenes y entregas), una carpeta de archivos
+    compartidos y la lista de miembros.
+
+El propietario (quien creo la clase) puede renombrarla, generar un
+codigo nuevo (el anterior deja de servir) y eliminarla. Cualquiera
+puede salir de la clase y volver a entrar con el codigo.
+
+
+Archivos grandes (hasta 20 GB)
+------------------------------
+Tanto en "Archivos" como en cada clase compartida puedes subir apuntes
+de hasta 20 GB por archivo. Los archivos grandes se suben por trozos:
+veras una barra de progreso y, si se corta la conexion, la subida se
+reanuda sola desde donde se habia quedado.
+
+
 Problemas frecuentes
 --------------------
 - "No encuentro Docker" al iniciar:

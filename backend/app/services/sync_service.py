@@ -298,10 +298,24 @@ async def _archive_orphans(
         )
     )
     removed = 0
+    orphan_ids = []
     for task in result.scalars().all():
         if task.external_id not in seen_ids:
             task.status = TaskStatus.archived
+            orphan_ids.append(task.id)
             removed += 1
+    if orphan_ids:
+        # Las subtareas del planificador (source=manual) de una tarea archivada
+        # dejan de tener sentido: se archivan tambien para que no queden
+        # "fantasmas" en la agenda.
+        sub_result = await session.execute(
+            select(Task).where(
+                Task.parent_task_id.in_(orphan_ids),
+                Task.status.in_([TaskStatus.pending, TaskStatus.in_progress]),
+            )
+        )
+        for subtask in sub_result.scalars().all():
+            subtask.status = TaskStatus.archived
     await session.flush()
     return removed
 
