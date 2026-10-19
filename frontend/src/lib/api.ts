@@ -112,15 +112,36 @@ async function request<T>(
   if (response.status === 204) return undefined as T;
 
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  let data: unknown = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      // Respuesta no JSON (p. ej. un error 500 en texto plano): se maneja abajo.
+      data = null;
+    }
+  }
 
   if (!response.ok) {
-    const detail =
-      (data && (data.detail || data.message)) ||
-      `Error ${response.status}`;
-    throw new ApiError(response.status, typeof detail === "string" ? detail : "Error de la API");
+    throw new ApiError(response.status, extractErrorMessage(response.status, data));
   }
   return data as T;
+}
+
+// Mensaje legible para errores de la API sin romperse con cuerpos no JSON ni
+// con los arrays de validacion de FastAPI.
+function extractErrorMessage(status: number, data: unknown): string {
+  const body = (data ?? {}) as { detail?: unknown; message?: unknown };
+  const detail = body.detail ?? body.message;
+  if (typeof detail === "string" && detail.trim()) return detail;
+  if (Array.isArray(detail)) {
+    const first = detail[0] as { msg?: unknown } | undefined;
+    if (first && typeof first.msg === "string" && first.msg.trim()) return first.msg;
+  }
+  if (status >= 500) {
+    return "Error interno del servidor. Intentalo de nuevo en unos segundos.";
+  }
+  return `Error ${status}`;
 }
 
 export const api = {
