@@ -43,7 +43,7 @@ export function ThemeToggle({
             className={cn(
               "flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors",
               active
-                ? "bg-card text-primary shadow-sm ring-1 ring-border"
+                ? "bg-card text-primary shadow-sm ring-1 ring-border dark:text-indigo-300"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >

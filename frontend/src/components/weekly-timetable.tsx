@@ -116,7 +116,7 @@ export function WeeklyTimetable({
       >
         <table
           className="w-full border-collapse bg-white text-sm dark:bg-card"
-          style={{ minWidth: `${92 + visibleDays.length * 116}px` }}
+          style={{ minWidth: `${88 + visibleDays.length * 112}px` }}
         >
           <caption className="sr-only">Horario semanal por días y franjas horarias</caption>
           <thead>
@@ -124,7 +124,7 @@ export function WeeklyTimetable({
               <th
                 scope="col"
                 aria-label="Hora"
-                className="sticky left-0 z-20 w-[92px] min-w-[92px] border border-slate-300 bg-slate-100 px-1.5 py-3 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.25)] dark:border-slate-600 dark:bg-slate-800"
+                className="sticky left-0 z-20 w-[88px] min-w-[88px] border border-slate-300 bg-slate-100 px-1.5 py-3 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.25)] dark:border-slate-600 dark:bg-slate-800"
               />
               {visibleDays.map((day) => (
                 <th
@@ -142,7 +142,7 @@ export function WeeklyTimetable({
               <tr key={`${row.start}-${row.end}`}>
                 <th
                   scope="row"
-                  className="sticky left-0 z-10 w-[92px] min-w-[92px] whitespace-nowrap border border-slate-300 bg-slate-50 px-1.5 py-2 text-center text-[11px] font-semibold text-slate-600 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.25)] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                  className="sticky left-0 z-10 w-[88px] min-w-[88px] whitespace-nowrap border border-slate-300 bg-slate-50 px-1.5 py-2 text-center text-[11px] font-semibold text-slate-600 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.25)] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
                 >
                   {rangeLabel(row.start, row.end)}
                 </th>
