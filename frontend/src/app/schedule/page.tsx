@@ -110,7 +110,7 @@ export default function SchedulePage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-6">
+    <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Horario</h1>
@@ -140,7 +140,7 @@ export default function SchedulePage() {
             {entries.length} {entries.length === 1 ? "clase" : "clases"}
           </span>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 sm:p-6">
           {entries.length > 0 ? (
             <WeeklyTimetable entries={entries} courses={courses} onDelete={removeEntry} />
           ) : (
