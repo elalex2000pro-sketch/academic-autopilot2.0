@@ -16,6 +16,7 @@ import {
   Trash2,
 } from "lucide-react";
 
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -282,6 +283,24 @@ function SettingsInner() {
           {notice}
         </div>
       )}
+
+      {/* ---- Apariencia ---- */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Palette className="h-4 w-4" /> Apariencia
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Elige cómo quieres ver la aplicación. El cambio se guarda en este navegador.
+          </p>
+          <ThemeToggle className="max-w-md" />
+          <p className="text-xs text-muted-foreground">
+            Con «Sistema» se sigue automáticamente la preferencia de tu dispositivo.
+          </p>
+        </CardContent>
+      </Card>
 
       {/* ---- Integraciones ---- */}
       <Card>

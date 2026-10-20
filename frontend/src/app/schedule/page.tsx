@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CalendarDays, FileUp, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
+import { CalendarDays, FileUp, Loader2, Plus, Sparkles } from "lucide-react";
 
+import { WeeklyTimetable } from "@/components/weekly-timetable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -51,11 +52,6 @@ export default function SchedulePage() {
       load().catch(() => undefined);
     }
   });
-
-  const courseName = useCallback(
-    (id: string | null) => (id ? courses.find((c) => c.id === id)?.name ?? null : null),
-    [courses],
-  );
 
   function addEntry(event: React.FormEvent) {
     event.preventDefault();
@@ -114,60 +110,60 @@ export default function SchedulePage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Horario</h1>
-        <p className="text-sm text-muted-foreground">
-          Define tus clases semanales recurrentes por dia y franja horaria.
-        </p>
+    <div className="mx-auto max-w-6xl space-y-6 p-6">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Horario</h1>
+          <p className="text-sm text-muted-foreground">
+            Tu semana de un vistazo: cada asignatura conserva su color.
+          </p>
+        </div>
+        <Button asChild variant="outline">
+          <a href="#add-class">
+            <Plus className="h-4 w-4" /> Añadir clase
+          </a>
+        </Button>
       </header>
 
-      {notice && <p className="text-sm text-muted-foreground">{notice}</p>}
+      {notice && (
+        <p className="text-sm text-muted-foreground" role="status">
+          {notice}
+        </p>
+      )}
 
-      <Card className="border-indigo-100 bg-gradient-to-br from-indigo-50/60 to-white">
-        <CardHeader>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="h-4 w-4 text-indigo-600" /> Importar horario desde foto o PDF
+            <CalendarDays className="h-4 w-4" /> Horario semanal
           </CardTitle>
+          <span className="text-xs text-muted-foreground">
+            {entries.length} {entries.length === 1 ? "clase" : "clases"}
+          </span>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Sube una foto del horario, un PDF o un Word. La IA detecta los días, las horas y las
-            asignaturas; si no tienes IA configurada, se intenta con un lector de líneas.
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,.xlsx"
-              onChange={(event) => setImportFile(event.target.files?.[0] ?? null)}
-              className="block w-full max-w-sm text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-indigo-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-indigo-700 hover:file:bg-indigo-200"
-            />
-            <Button onClick={importSchedule} disabled={importing || !importFile}>
-              {importing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <FileUp className="h-4 w-4" />
-              )}
-              {importing ? "Leyendo horario..." : "Importar"}
-            </Button>
-            <label className="flex items-center gap-2 text-xs text-slate-600">
-              <input
-                type="checkbox"
-                checked={replace}
-                onChange={(event) => setReplace(event.target.checked)}
-                className="h-4 w-4 rounded border-slate-300"
-              />
-              Reemplazar el horario actual
-            </label>
-          </div>
+        <CardContent>
+          {entries.length > 0 ? (
+            <WeeklyTimetable entries={entries} courses={courses} onDelete={removeEntry} />
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 p-8 text-center">
+              <CalendarDays className="mx-auto h-8 w-8 text-slate-400" />
+              <p className="mt-2 text-sm font-medium">Tu horario está vacío</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Añade una clase o importa una foto o un PDF de tu horario.
+              </p>
+              <Button asChild size="sm" className="mt-4">
+                <a href="#add-class">
+                  <Plus className="h-4 w-4" /> Añadir la primera clase
+                </a>
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="add-class" className="scroll-mt-24">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <CalendarDays className="h-4 w-4" /> Horario semanal
+            <Plus className="h-4 w-4" /> Añadir clase
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -233,45 +229,49 @@ export default function SchedulePage() {
               </Button>
             </div>
           </form>
+          <p className="text-xs text-muted-foreground">
+            Consejo: si añades «Recreo» en la misma franja de lunes a viernes, se mostrará como una
+            fila gris.
+          </p>
+        </CardContent>
+      </Card>
 
-          <div className="space-y-4">
-            {DAYS.map((dayLabel, dayIndex) => {
-              const dayEntries = entries.filter((e) => e.day_of_week === dayIndex);
-              if (dayEntries.length === 0) return null;
-              return (
-                <div key={dayLabel} className="space-y-2">
-                  <p className="text-xs font-medium uppercase text-muted-foreground">
-                    {dayLabel}
-                  </p>
-                  {dayEntries.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2 text-sm"
-                    >
-                      <span>
-                        <span className="text-muted-foreground">
-                          {entry.start_time.slice(0, 5)}–{entry.end_time.slice(0, 5)}
-                        </span>{" "}
-                        <span className="font-medium">
-                          {courseName(entry.course_id) ?? entry.title ?? "Clase"}
-                        </span>
-                        {entry.location && (
-                          <span className="text-muted-foreground"> · {entry.location}</span>
-                        )}
-                      </span>
-                      <Button variant="ghost" size="icon" onClick={() => removeEntry(entry.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-            {entries.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Aun no hay clases. Anade la primera arriba.
-              </p>
-            )}
+      <Card className="border-indigo-100 bg-gradient-to-br from-indigo-50/60 to-white">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Sparkles className="h-4 w-4 text-indigo-600" /> Importar horario desde foto o PDF
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Sube una foto del horario, un PDF o un Word. La IA detecta los días, las horas y las
+            asignaturas; si no tienes IA configurada, se intenta con un lector de líneas.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,.xlsx"
+              onChange={(event) => setImportFile(event.target.files?.[0] ?? null)}
+              className="block w-full max-w-sm text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-indigo-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-indigo-700 hover:file:bg-indigo-200"
+            />
+            <Button onClick={importSchedule} disabled={importing || !importFile}>
+              {importing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileUp className="h-4 w-4" />
+              )}
+              {importing ? "Leyendo horario..." : "Importar"}
+            </Button>
+            <label className="flex items-center gap-2 text-xs text-slate-600">
+              <input
+                type="checkbox"
+                checked={replace}
+                onChange={(event) => setReplace(event.target.checked)}
+                className="h-4 w-4 rounded border-slate-300"
+              />
+              Reemplazar el horario actual
+            </label>
           </div>
         </CardContent>
       </Card>

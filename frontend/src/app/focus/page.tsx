@@ -205,7 +205,15 @@ export default function FocusPage() {
 
           <div className="relative mx-auto mt-6 flex h-52 w-52 items-center justify-center">
             <svg className="absolute inset-0 -rotate-90" viewBox="0 0 200 200">
-              <circle cx="100" cy="100" r="86" fill="none" stroke="#eef2ff" strokeWidth="12" />
+              <circle
+                cx="100"
+                cy="100"
+                r="86"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="12"
+                className="text-indigo-50 dark:text-slate-800"
+              />
               <circle
                 cx="100"
                 cy="100"
