@@ -18,6 +18,7 @@ from app.db.base import utcnow
 from app.models.ai_output import AiOutput
 from app.models.document import Document
 from app.models.user import User
+from app.services.ai_service import resolve_profile
 from app.services.pdf_service import build_infographic_pdf, build_mindmap_pdf, build_summary_pdf
 
 try:
@@ -93,10 +94,21 @@ def _sanitize(text: str) -> str:
     return text.strip()
 
 
-async def call_llm(user_text: str, kind: str) -> dict[str, Any]:
-    """Llama a Ollama para obtener resumen o infografia estructurados."""
-    if not settings.ai_configured:
-        raise RuntimeError("IA no configurada")
+async def call_llm(user_text: str, kind: str, user: User | None = None) -> dict[str, Any]:
+    """Llama al modelo del usuario (o al global) para obtener el resultado estructurado."""
+    profile = resolve_profile(user) if user is not None else None
+    if profile is not None and profile.configured:
+        model = profile.model
+        base_url = profile.base_url
+        api_key = profile.api_key
+        timeout = profile.timeout_seconds
+    else:
+        if not settings.ai_configured:
+            raise RuntimeError("IA no configurada")
+        model = settings.ai_model
+        base_url = settings.ai_base_url
+        api_key = settings.ai_api_key
+        timeout = settings.ai_timeout_seconds
 
     system_summary = (
         "Eres un asistente academico especializado en resumir documentos en espanol. "
@@ -119,7 +131,7 @@ async def call_llm(user_text: str, kind: str) -> dict[str, Any]:
     )
 
     payload = {
-        "model": settings.ai_model,
+        "model": model,
         "messages": [
             {
                 "role": "system",
@@ -135,11 +147,11 @@ async def call_llm(user_text: str, kind: str) -> dict[str, Any]:
         "stream": False,
     }
     headers = {"Content-Type": "application/json"}
-    if settings.ai_api_key:
-        headers["Authorization"] = f"Bearer {settings.ai_api_key}"
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
 
-    url = settings.ai_base_url.rstrip("/") + "/chat/completions"
-    async with httpx.AsyncClient(timeout=settings.ai_timeout_seconds) as client:
+    url = base_url.rstrip("/") + "/chat/completions"
+    async with httpx.AsyncClient(timeout=timeout) as client:
         resp = await client.post(url, json=payload, headers=headers)
         resp.raise_for_status()
         data = resp.json()
@@ -213,7 +225,7 @@ async def generate(
     source = "ai"
     text = extract_text(document)
     try:
-        data = await call_llm(text, kind)
+        data = await call_llm(text, kind, user)
     except Exception as exc:  # noqa: BLE001
         logger.warning("AI Studio usando heuristico: %s", exc)
         source = "heuristic"

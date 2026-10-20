@@ -116,11 +116,12 @@ export default function DashboardPage() {
   );
 
   const name = user?.full_name?.trim() || user?.email.split("@")[0] || "";
-  const today = new Date().toLocaleDateString("es-ES", {
+  const rawDate = new Date().toLocaleDateString("es-ES", {
     weekday: "long",
     day: "numeric",
     month: "long",
   });
+  const today = rawDate.charAt(0).toUpperCase() + rawDate.slice(1);
 
   return (
     <div className="mx-auto max-w-6xl space-y-7 p-4 sm:p-6">
@@ -128,7 +129,7 @@ export default function DashboardPage() {
       <section className="animate-fade-up relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-500 p-6 text-white shadow-xl shadow-indigo-500/20 sm:p-8">
         <div className="pointer-events-none absolute -right-10 -top-16 h-52 w-52 rounded-full bg-white/15 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-20 right-24 h-44 w-44 rounded-full bg-cyan-300/20 blur-2xl" />
-        <p className="text-sm capitalize text-white/75">{today}</p>
+        <p className="text-sm text-white/75">{today}</p>
         <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
           Hola, {name} 👋
         </h1>

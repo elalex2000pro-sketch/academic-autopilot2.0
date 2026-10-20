@@ -69,13 +69,13 @@ function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
 }
 
-function Logo({ compact = false }: { compact?: boolean }) {
+function Logo() {
   return (
     <Link href="/" className="flex items-center gap-3">
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 text-white shadow-lg shadow-indigo-500/25">
         <CalendarCheck className="h-5 w-5" />
       </span>
-      <span className={cn("min-w-0", compact && "hidden sm:block")}>
+      <span className="min-w-0">
         <span className="block truncate text-sm font-bold tracking-tight">Academic Autopilot</span>
         <span className="block truncate text-[11px] text-muted-foreground">Tu copiloto académico</span>
       </span>
@@ -196,7 +196,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* Barra superior móvil */}
         <header className="sticky top-0 z-40 border-b border-white/70 bg-white/80 backdrop-blur-xl md:hidden">
           <div className="flex items-center justify-between px-4 py-2.5">
-            <Logo compact />
+            <Logo />
             <Button variant="ghost" size="icon" onClick={logout} aria-label="Cerrar sesión">
               <LogOut className="h-4 w-4" />
             </Button>

@@ -67,6 +67,12 @@ export default function StudioPage() {
       .catch((e) => setNotice(errorMessage(e)));
   }
 
+  // Los PDF generados también se guardan como documentos: no deben aparecer
+  // como material de origen en «Mis documentos».
+  const sourceFiles = files.filter(
+    (file) => !outputs.some((output) => output.output_document_id === file.id),
+  );
+
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-6">
       <header>
@@ -88,7 +94,7 @@ export default function StudioPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {files.map((file) => (
+          {sourceFiles.map((file) => (
             <div
               key={file.id}
               className="flex flex-col gap-2 rounded-md border border-border/60 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
@@ -125,7 +131,7 @@ export default function StudioPage() {
               </div>
             </div>
           ))}
-          {files.length === 0 && (
+          {sourceFiles.length === 0 && (
             <p className="text-sm text-muted-foreground">
               Sube documentos en la seccion Archivos para poder resumirlos aqui.
             </p>

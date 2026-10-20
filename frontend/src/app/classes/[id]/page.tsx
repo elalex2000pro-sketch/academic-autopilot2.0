@@ -301,10 +301,10 @@ export default function ClassDetailPage() {
   const [eventIsExam, setEventIsExam] = useState(false);
   const [savingEvent, setSavingEvent] = useState(false);
 
-  const monthLabel = useMemo(
-    () => month.toLocaleDateString("es-ES", { month: "long", year: "numeric" }),
-    [month],
-  );
+  const monthLabel = useMemo(() => {
+    const label = month.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }, [month]);
 
   const eventsByDay = useMemo(() => {
     const map = new Map<string, ClassEvent[]>();
@@ -703,7 +703,7 @@ export default function ClassDetailPage() {
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <CardTitle className="text-base capitalize">{monthLabel}</CardTitle>
+              <CardTitle className="text-base">{monthLabel}</CardTitle>
               <Button
                 variant="ghost"
                 size="icon"
