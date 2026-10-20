@@ -1,9 +1,10 @@
 """Sesiones de enfoque (Pomodoro) y estadisticas de estudio."""
 from __future__ import annotations
 
+import uuid
 from datetime import timedelta
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 
 from app.api.deps import CurrentUser, DbSession
@@ -40,6 +41,23 @@ async def list_sessions(
         .limit(limit)
     )
     return list(result.scalars().all())
+
+
+@router.delete(
+    "/sessions/{session_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+)
+async def delete_session(
+    session_id: uuid.UUID, current_user: CurrentUser, db: DbSession
+) -> None:
+    session = await db.get(FocusSession, session_id)
+    if session is None or session.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Sesion no encontrada"
+        )
+    await db.delete(session)
+    await db.commit()
 
 
 @router.get("/stats", response_model=FocusStats)

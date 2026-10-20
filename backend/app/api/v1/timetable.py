@@ -281,7 +281,9 @@ def _heuristic_schedule(text: str) -> list[dict]:
             continue
         rest = (match.group(4) or "").strip(" -–|")
         location = None
-        location_match = re.search(r"\b(?:en|aula|sal[oó]n)\s+(.+)$", rest, re.IGNORECASE)
+        location_match = re.search(
+            r"\b((?:en|aula|sal[oó]n)\s+.+)$", rest, re.IGNORECASE
+        )
         if location_match:
             location = location_match.group(1).strip()[:200]
             rest = rest[: location_match.start()].strip(" -–|")
