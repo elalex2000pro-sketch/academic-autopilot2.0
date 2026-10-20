@@ -4,6 +4,7 @@ from fastapi import APIRouter
 from app.api.v1 import (
     assistant,
     auth,
+    books,
     classes,
     courses,
     exports,
@@ -39,6 +40,7 @@ api_router.include_router(assistant.router)
 api_router.include_router(schedule.router)
 api_router.include_router(studio.router)
 api_router.include_router(notebooks.router)
+api_router.include_router(books.router)
 api_router.include_router(learning.router)
 api_router.include_router(focus.router)
 api_router.include_router(reminders.router)

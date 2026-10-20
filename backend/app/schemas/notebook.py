@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -31,3 +32,21 @@ class NotebookRead(BaseModel):
     share_permission: str = "read"
     created_at: datetime
     updated_at: datetime
+
+
+class NotebookSourceCreate(BaseModel):
+    book_id: uuid.UUID | None = None
+    document_id: uuid.UUID | None = None
+
+
+class NotebookSourceRead(BaseModel):
+    id: uuid.UUID
+    notebook_id: uuid.UUID
+    kind: Literal["book", "file"]
+    title: str
+    subtitle: str | None = None
+    book_id: uuid.UUID | None = None
+    document_id: uuid.UUID | None = None
+    format: str | None = None
+    size_bytes: int = 0
+    created_at: datetime

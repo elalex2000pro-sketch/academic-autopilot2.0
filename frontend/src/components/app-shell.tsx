@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import {
   AudioLines,
+  BookOpen,
   Brain,
   CalendarCheck,
   CalendarDays,
@@ -43,6 +44,7 @@ const NAV_GROUPS = [
   {
     label: "Estudia",
     items: [
+      { href: "/library", label: "Biblioteca", icon: BookOpen },
       { href: "/subjects", label: "Asignaturas", icon: Library },
       { href: "/exams", label: "Exámenes", icon: ClipboardList },
       { href: "/notebooks", label: "Cuadernos", icon: NotebookPen },

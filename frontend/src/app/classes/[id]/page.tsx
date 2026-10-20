@@ -9,6 +9,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  ClipboardCheck,
   Copy,
   Download,
   FileText,
@@ -21,6 +22,7 @@ import {
   NotebookPen,
   Pin,
   PinOff,
+  Plus,
   Send,
   Trash2,
   Upload,
@@ -36,12 +38,20 @@ import { useAuth } from "@/components/auth-provider";
 import { useRealtime } from "@/components/realtime-provider";
 import { api, ApiError } from "@/lib/api";
 import { uploadFileInChunks, type UploadProgress } from "@/lib/upload";
-import type { ClassDetail, ClassEvent, ClassMessage, DocumentFile, Notebook } from "@/lib/types";
+import type {
+  ClassAssignment,
+  ClassDetail,
+  ClassEvent,
+  ClassMessage,
+  DocumentFile,
+  Notebook,
+} from "@/lib/types";
 
-type Tab = "chat" | "calendar" | "notebooks" | "files" | "members";
+type Tab = "chat" | "work" | "calendar" | "notebooks" | "files" | "members";
 
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: "chat", label: "Chat", icon: MessageSquare },
+  { id: "chat", label: "Tablón", icon: MessageSquare },
+  { id: "work", label: "Trabajo", icon: ClipboardCheck },
   { id: "calendar", label: "Calendario", icon: CalendarDays },
   { id: "notebooks", label: "Cuadernos", icon: NotebookPen },
   { id: "files", label: "Archivos", icon: FolderOpen },
@@ -50,7 +60,7 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: st
 
 const WEEKDAYS = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"];
 const ACCEPT =
-  ".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md,.csv,.png,.jpg,.jpeg,.gif";
+  ".pdf,.epub,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md,.csv,.png,.jpg,.jpeg,.gif";
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
@@ -82,6 +92,25 @@ function formatDateTime(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatDueDate(iso: string | null): string {
+  if (!iso) return "Sin fecha límite";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "Sin fecha límite";
+  return date.toLocaleString("es-ES", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function isOverdue(iso: string | null): boolean {
+  if (!iso) return false;
+  const date = new Date(iso);
+  return !Number.isNaN(date.getTime()) && date.getTime() < Date.now();
 }
 
 function formatEventRange(event: ClassEvent): string {
@@ -117,6 +146,7 @@ export default function ClassDetailPage() {
   const [events, setEvents] = useState<ClassEvent[]>([]);
   const [files, setFiles] = useState<DocumentFile[]>([]);
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
+  const [assignments, setAssignments] = useState<ClassAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("chat");
@@ -138,6 +168,7 @@ export default function ClassDetailPage() {
     setEvents(evs);
     setFiles(fls);
     setNotebooks(nbs);
+    setAssignments(await api.classAssignments(classId));
   }, [classId]);
 
   useEffect(() => {
@@ -287,6 +318,79 @@ export default function ClassDetailPage() {
     try {
       await api.deleteClassMessage(classId, message.id);
       setMessages((prev) => prev.filter((m) => m.id !== message.id));
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
+  // ----------------------------------------------------------- trabajo de clase
+  const [showAssignmentForm, setShowAssignmentForm] = useState(false);
+  const [assignmentTitle, setAssignmentTitle] = useState("");
+  const [assignmentDescription, setAssignmentDescription] = useState("");
+  const [assignmentDue, setAssignmentDue] = useState("");
+  const [savingAssignment, setSavingAssignment] = useState(false);
+  const [updatingAssignmentId, setUpdatingAssignmentId] = useState<string | null>(null);
+
+  const pendingAssignments = useMemo(
+    () => assignments.filter((assignment) => !assignment.my_completed),
+    [assignments],
+  );
+  const finishedAssignments = useMemo(
+    () => assignments.filter((assignment) => assignment.my_completed),
+    [assignments],
+  );
+  const myAssignmentProgress =
+    assignments.length === 0
+      ? 0
+      : Math.round((finishedAssignments.length / assignments.length) * 100);
+
+  async function createAssignment(e: React.FormEvent) {
+    e.preventDefault();
+    if (!assignmentTitle.trim() || savingAssignment) return;
+    setSavingAssignment(true);
+    setError(null);
+    try {
+      const created = await api.createClassAssignment(classId, {
+        title: assignmentTitle.trim(),
+        description: assignmentDescription.trim() || null,
+        due_at: assignmentDue ? new Date(assignmentDue).toISOString() : null,
+      });
+      setAssignments((prev) => [created, ...prev]);
+      setAssignmentTitle("");
+      setAssignmentDescription("");
+      setAssignmentDue("");
+      setShowAssignmentForm(false);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSavingAssignment(false);
+    }
+  }
+
+  async function toggleAssignment(assignment: ClassAssignment) {
+    setUpdatingAssignmentId(assignment.id);
+    setError(null);
+    try {
+      const updated = await api.setAssignmentCompletion(
+        classId,
+        assignment.id,
+        !assignment.my_completed,
+      );
+      setAssignments((prev) =>
+        prev.map((item) => (item.id === assignment.id ? updated : item)),
+      );
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setUpdatingAssignmentId(null);
+    }
+  }
+
+  async function removeAssignment(assignment: ClassAssignment) {
+    if (!window.confirm(`¿Eliminar la tarea "${assignment.title}" de la clase?`)) return;
+    try {
+      await api.deleteClassAssignment(classId, assignment.id);
+      setAssignments((prev) => prev.filter((item) => item.id !== assignment.id));
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -942,6 +1046,251 @@ export default function ClassDetailPage() {
             </Card>
           </div>
         </div>
+      )}
+
+      {/* ----------------------------------------------------------- Trabajo */}
+      {tab === "work" && (
+        <Card>
+          <CardHeader className="flex-row flex-wrap items-start justify-between gap-3 space-y-0 pb-3">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ClipboardCheck className="h-4 w-4 text-primary" /> Trabajo de clase
+              </CardTitle>
+              <p className="mt-1 max-w-2xl text-xs text-muted-foreground">
+                Las tareas y fechas que el grupo tiene en común. Cada persona marca su propia
+                entrega; así todos ven el mismo plan sin depender de mensajes sueltos.
+              </p>
+            </div>
+            {isOwner && (
+              <Button
+                size="sm"
+                onClick={() => setShowAssignmentForm((value) => !value)}
+                variant={showAssignmentForm ? "secondary" : "default"}
+              >
+                <Plus className="h-4 w-4" /> {showAssignmentForm ? "Cerrar" : "Publicar tarea"}
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span className="font-semibold text-indigo-800">
+                  Tu progreso: {finishedAssignments.length} de {assignments.length} tareas hechas
+                </span>
+                <span className="text-indigo-700/70">{myAssignmentProgress}%</span>
+              </div>
+              <Progress value={myAssignmentProgress} className="mt-2 h-1.5 bg-white" />
+            </div>
+
+            {showAssignmentForm && isOwner && (
+              <form
+                onSubmit={createAssignment}
+                className="space-y-3 rounded-2xl border border-border/70 bg-muted/30 p-4"
+              >
+                <div>
+                  <Label htmlFor="assignment-title">Tarea o entrega</Label>
+                  <Input
+                    id="assignment-title"
+                    value={assignmentTitle}
+                    onChange={(event) => setAssignmentTitle(event.target.value)}
+                    placeholder="Ej.: Leer el capítulo 3 y entregar el resumen"
+                    maxLength={300}
+                    required
+                  />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="assignment-due">Fecha límite (opcional)</Label>
+                    <Input
+                      id="assignment-due"
+                      type="datetime-local"
+                      value={assignmentDue}
+                      onChange={(event) => setAssignmentDue(event.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="assignment-description">Detalles (opcional)</Label>
+                    <Input
+                      id="assignment-description"
+                      value={assignmentDescription}
+                      onChange={(event) => setAssignmentDescription(event.target.value)}
+                      placeholder="Qué hay que hacer, formato, páginas..."
+                      maxLength={4000}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAssignmentForm(false)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button type="submit" size="sm" disabled={savingAssignment || !assignmentTitle.trim()}>
+                    {savingAssignment ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Plus className="h-4 w-4" />
+                    )}
+                    Publicar en la clase
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {assignments.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-border p-8 text-center">
+                <ClipboardCheck className="mx-auto h-8 w-8 text-muted-foreground/60" />
+                <p className="mt-2 text-sm font-semibold">Todavía no hay trabajo de clase</p>
+                <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
+                  {isOwner
+                    ? "Publica la primera tarea con su fecha. Los compañeros la verán en su Tablón y podrán marcar su entrega."
+                    : "Cuando el propietario publique una tarea, aparecerá aquí con su fecha y podrás marcarla como hecha."}
+                </p>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Pendientes ({pendingAssignments.length})
+                  </p>
+                  <div className="space-y-2">
+                    {pendingAssignments.length === 0 && (
+                      <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                        <Check className="mr-1 inline h-3.5 w-3.5" /> No te queda nada pendiente en
+                        esta clase.
+                      </p>
+                    )}
+                    {pendingAssignments.map((assignment) => (
+                      <div
+                        key={assignment.id}
+                        className={`flex items-start gap-3 rounded-xl border px-3 py-3 ${
+                          isOverdue(assignment.due_at)
+                            ? "border-rose-200 bg-rose-50/40"
+                            : "border-border/70 bg-card"
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => void toggleAssignment(assignment)}
+                          disabled={updatingAssignmentId === assignment.id}
+                          className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-slate-300 text-transparent transition-colors hover:border-emerald-500 hover:text-emerald-500 disabled:opacity-50"
+                          aria-label={`Marcar ${assignment.title} como hecha`}
+                        >
+                          {updatingAssignmentId === assignment.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
+                          ) : (
+                            <Check className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold leading-5">{assignment.title}</p>
+                          {assignment.description && (
+                            <p className="mt-0.5 whitespace-pre-wrap text-xs text-muted-foreground">
+                              {assignment.description}
+                            </p>
+                          )}
+                          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                            <span
+                              className={
+                                isOverdue(assignment.due_at) ? "font-semibold text-rose-600" : ""
+                              }
+                            >
+                              <CalendarDays className="mr-1 inline h-3 w-3" />
+                              {formatDueDate(assignment.due_at)}
+                              {isOverdue(assignment.due_at) ? " · vencida" : ""}
+                            </span>
+                            <span>
+                              {assignment.creator_name ?? "Profesor/a"} ·{" "}
+                              {assignment.completed_count}/{assignment.total_members} entregas
+                            </span>
+                          </div>
+                          {assignment.total_members > 1 && (
+                            <Progress
+                              value={
+                                (assignment.completed_count / Math.max(1, assignment.total_members)) *
+                                100
+                              }
+                              className="mt-2 h-1"
+                            />
+                          )}
+                        </div>
+                        {isOwner && (
+                          <button
+                            type="button"
+                            onClick={() => void removeAssignment(assignment)}
+                            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-rose-500"
+                            title="Eliminar tarea"
+                            aria-label="Eliminar tarea"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {finishedAssignments.length > 0 && (
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Hechas ({finishedAssignments.length})
+                    </p>
+                    <div className="space-y-1.5">
+                      {finishedAssignments.map((assignment) => (
+                        <div
+                          key={assignment.id}
+                          className="flex items-center gap-3 rounded-xl border border-emerald-200/70 bg-emerald-50/40 px-3 py-2.5"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => void toggleAssignment(assignment)}
+                            disabled={updatingAssignmentId === assignment.id}
+                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white"
+                            aria-label={`Desmarcar ${assignment.title}`}
+                          >
+                            {updatingAssignmentId === assignment.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Check className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-slate-600 line-through decoration-emerald-400/70">
+                              {assignment.title}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {assignment.completed_count}/{assignment.total_members} entregas ·{" "}
+                              {formatDueDate(assignment.due_at)}
+                            </p>
+                          </div>
+                          {isOwner && (
+                            <button
+                              type="button"
+                              onClick={() => void removeAssignment(assignment)}
+                              className="rounded p-1 text-muted-foreground hover:bg-white hover:text-rose-500"
+                              aria-label="Eliminar tarea"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            <p className="text-[11px] leading-4 text-muted-foreground">
+              Inspirado en el Trabajo de clase de Google Classroom: una fecha común, un estado de
+              entrega visible y menos mensajes de “¿qué había que hacer?”. Las tareas personales
+              siguen viviendo en tu planificador.
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       {/* -------------------------------------------------------------- Cuadernos */}

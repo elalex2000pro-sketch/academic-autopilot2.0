@@ -291,6 +291,19 @@ export interface Notebook {
   updated_at: string;
 }
 
+export interface NotebookSource {
+  id: string;
+  notebook_id: string;
+  kind: "book" | "file" | string;
+  title: string;
+  subtitle: string | null;
+  book_id: string | null;
+  document_id: string | null;
+  format: string | null;
+  size_bytes: number;
+  created_at: string;
+}
+
 // --- Repaso: flashcards y examenes ---
 export interface Flashcard {
   id: string;
@@ -375,4 +388,96 @@ export interface TimetableImportResult {
   created: number;
   source: string;
   entries: TimetableEntry[];
+}
+
+// --- Biblioteca de libros completos ---
+export interface Book {
+  id: string;
+  user_id: string;
+  course_id: string | null;
+  document_id: string | null;
+  title: string;
+  author: string | null;
+  format: string;
+  cover_color: string;
+  status: "processing" | "ready" | "error" | string;
+  error_message: string | null;
+  total_sections: number;
+  total_chars: number;
+  current_section_index: number;
+  progress_percent: number;
+  last_opened_at: string | null;
+  source_filename: string;
+  size_bytes: number;
+  created_at: string;
+  updated_at: string;
+  current_section_title: string | null;
+  estimated_minutes: number;
+}
+
+export interface BookSectionMeta {
+  id: string;
+  section_index: number;
+  title: string;
+  char_count: number;
+  page_start: number | null;
+  page_end: number | null;
+}
+
+export interface BookSection extends BookSectionMeta {
+  content: string;
+}
+
+export interface BookDetail extends Book {
+  sections: BookSectionMeta[];
+}
+
+export interface BookCitation {
+  section_id: string;
+  section_index: number;
+  title: string;
+  quote: string;
+  page_start: number | null;
+  page_end: number | null;
+}
+
+export interface BookAnswer {
+  answer: string;
+  citations: BookCitation[];
+  source: "ai" | "extractive" | "heuristic" | string;
+  notice: string | null;
+  created_at: string;
+}
+
+export interface BookSummary {
+  title: string;
+  summary: string;
+  key_points: string[];
+  citations: BookCitation[];
+  source: "ai" | "extractive" | "heuristic" | string;
+  notice: string | null;
+}
+
+export interface BookMessage {
+  id: string;
+  role: "user" | "assistant" | string;
+  content: string;
+  citations: BookCitation[];
+  source: string;
+  created_at: string;
+}
+
+// --- Trabajo de clase (estilo Classroom) ---
+export interface ClassAssignment {
+  id: string;
+  class_id: string;
+  created_by: string;
+  creator_name: string | null;
+  title: string;
+  description: string | null;
+  due_at: string | null;
+  created_at: string;
+  my_completed: boolean;
+  completed_count: number;
+  total_members: number;
 }

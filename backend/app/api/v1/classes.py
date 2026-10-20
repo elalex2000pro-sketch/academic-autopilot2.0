@@ -20,15 +20,21 @@ from sqlalchemy import func, select
 
 from app.api.deps import CurrentUser, DbSession
 from app.core.logging import get_logger
+from app.models.classwork import ClassAssignment, ClassAssignmentCompletion
+from app.models.document import Document
+from app.models.notebook import Notebook
 from app.models.shared_class import (
     ClassEvent,
     ClassMembership,
     ClassMessage,
     SharedClass,
 )
-from app.models.notebook import Notebook
 from app.models.user import User
 from app.schemas.classroom import (
+    AssignmentCompletionUpdate,
+    AssignmentCreate,
+    AssignmentRead,
+    AssignmentUpdate,
     ClassCreate,
     ClassDetail,
     ClassJoin,
@@ -42,9 +48,8 @@ from app.schemas.classroom import (
     MessageRead,
     MessageUpdate,
 )
-from app.schemas.notebook import NotebookRead
 from app.schemas.file import DocumentRead
-from app.models.document import Document
+from app.schemas.notebook import NotebookRead
 from app.services import class_service
 from app.services.realtime import notify
 
@@ -190,6 +195,59 @@ def _event_read(event: ClassEvent, creator_name: str | None) -> EventRead:
         all_day=event.all_day,
         is_exam=event.is_exam,
         created_at=event.created_at,
+    )
+
+
+async def _get_assignment(
+    db: DbSession, class_id: uuid.UUID, assignment_id: uuid.UUID
+) -> ClassAssignment:
+    result = await db.execute(
+        select(ClassAssignment).where(
+            ClassAssignment.id == assignment_id,
+            ClassAssignment.class_id == class_id,
+        )
+    )
+    assignment = result.scalar_one_or_none()
+    if assignment is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Tarea de clase no encontrada"
+        )
+    return assignment
+
+
+async def _assignment_read(
+    db: DbSession,
+    assignment: ClassAssignment,
+    user_id: uuid.UUID,
+    total_members: int,
+    creator_name: str | None = None,
+) -> AssignmentRead:
+    completed_count = await db.execute(
+        select(func.count())
+        .select_from(ClassAssignmentCompletion)
+        .where(ClassAssignmentCompletion.assignment_id == assignment.id)
+    )
+    mine = await db.execute(
+        select(ClassAssignmentCompletion.id).where(
+            ClassAssignmentCompletion.assignment_id == assignment.id,
+            ClassAssignmentCompletion.user_id == user_id,
+        )
+    )
+    if creator_name is None:
+        creator = await db.get(User, assignment.created_by)
+        creator_name = (creator.full_name or creator.email) if creator else None
+    return AssignmentRead(
+        id=assignment.id,
+        class_id=assignment.class_id,
+        created_by=assignment.created_by,
+        creator_name=creator_name,
+        title=assignment.title,
+        description=assignment.description,
+        due_at=assignment.due_at,
+        created_at=assignment.created_at,
+        my_completed=mine.scalar_one_or_none() is not None,
+        completed_count=int(completed_count.scalar_one()),
+        total_members=total_members,
     )
 
 
@@ -638,6 +696,172 @@ async def delete_event(
     await db.delete(event)
     await db.commit()
     await class_service.notify_class(db, class_id, "event", id=str(event_id))
+
+
+# --------------------------------------------------------------------------- #
+# Trabajo de clase (tareas y entregas)
+# --------------------------------------------------------------------------- #
+@router.get("/{class_id}/assignments", response_model=list[AssignmentRead])
+async def list_assignments(
+    class_id: uuid.UUID, current_user: CurrentUser, db: DbSession
+) -> list[AssignmentRead]:
+    """Tareas publicadas por el propietario y estado de entrega de cada miembro."""
+    await _require_member(db, class_id, current_user.id)
+    rows = await db.execute(
+        select(ClassAssignment, User.full_name, User.email)
+        .join(User, User.id == ClassAssignment.created_by)
+        .where(ClassAssignment.class_id == class_id)
+        .order_by(ClassAssignment.due_at.asc().nullslast(), ClassAssignment.created_at.desc())
+    )
+    assignments = list(rows.all())
+    if not assignments:
+        return []
+    ids = [assignment.id for assignment, _, _ in assignments]
+
+    counts_rows = await db.execute(
+        select(ClassAssignmentCompletion.assignment_id, func.count())
+        .where(ClassAssignmentCompletion.assignment_id.in_(ids))
+        .group_by(ClassAssignmentCompletion.assignment_id)
+    )
+    counts = {assignment_id: int(total) for assignment_id, total in counts_rows.all()}
+    mine_rows = await db.execute(
+        select(ClassAssignmentCompletion.assignment_id).where(
+            ClassAssignmentCompletion.assignment_id.in_(ids),
+            ClassAssignmentCompletion.user_id == current_user.id,
+        )
+    )
+    mine = {row[0] for row in mine_rows.all()}
+    total_members = await _member_count(db, class_id)
+    return [
+        AssignmentRead(
+            id=assignment.id,
+            class_id=assignment.class_id,
+            created_by=assignment.created_by,
+            creator_name=full_name or email,
+            title=assignment.title,
+            description=assignment.description,
+            due_at=assignment.due_at,
+            created_at=assignment.created_at,
+            my_completed=assignment.id in mine,
+            completed_count=counts.get(assignment.id, 0),
+            total_members=total_members,
+        )
+        for assignment, full_name, email in assignments
+    ]
+
+
+@router.post(
+    "/{class_id}/assignments",
+    response_model=AssignmentRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_assignment(
+    class_id: uuid.UUID,
+    payload: AssignmentCreate,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> AssignmentRead:
+    """Publica una tarea de clase (solo el propietario)."""
+    await _require_owner(db, class_id, current_user.id)
+    assignment = ClassAssignment(
+        class_id=class_id,
+        created_by=current_user.id,
+        title=payload.title.strip(),
+        description=(payload.description or "").strip() or None,
+        due_at=payload.due_at,
+    )
+    db.add(assignment)
+    await db.commit()
+    await db.refresh(assignment)
+    await class_service.notify_class(db, class_id, "assignment", id=str(assignment.id))
+    return await _assignment_read(
+        db,
+        assignment,
+        current_user.id,
+        await _member_count(db, class_id),
+        current_user.full_name or current_user.email,
+    )
+
+
+@router.patch("/{class_id}/assignments/{assignment_id}", response_model=AssignmentRead)
+async def update_assignment(
+    class_id: uuid.UUID,
+    assignment_id: uuid.UUID,
+    payload: AssignmentUpdate,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> AssignmentRead:
+    """Edita una tarea de clase (solo el propietario)."""
+    await _require_owner(db, class_id, current_user.id)
+    assignment = await _get_assignment(db, class_id, assignment_id)
+    data = payload.model_dump(exclude_unset=True)
+    if data.get("title") is not None:
+        assignment.title = data["title"].strip()
+    if "description" in data:
+        assignment.description = (data["description"] or "").strip() or None
+    if "due_at" in data:
+        assignment.due_at = data["due_at"]
+    await db.commit()
+    await db.refresh(assignment)
+    await class_service.notify_class(db, class_id, "assignment", id=str(assignment.id))
+    return await _assignment_read(
+        db, assignment, current_user.id, await _member_count(db, class_id)
+    )
+
+
+@router.delete(
+    "/{class_id}/assignments/{assignment_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+)
+async def delete_assignment(
+    class_id: uuid.UUID,
+    assignment_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> None:
+    """Elimina una tarea de clase y sus entregas (solo el propietario)."""
+    await _require_owner(db, class_id, current_user.id)
+    assignment = await _get_assignment(db, class_id, assignment_id)
+    await db.delete(assignment)
+    await db.commit()
+    await class_service.notify_class(db, class_id, "assignment", id=str(assignment_id))
+
+
+@router.put(
+    "/{class_id}/assignments/{assignment_id}/completion",
+    response_model=AssignmentRead,
+)
+async def set_assignment_completion(
+    class_id: uuid.UUID,
+    assignment_id: uuid.UUID,
+    payload: AssignmentCompletionUpdate,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> AssignmentRead:
+    """Marca o desmarca la tarea como hecha para el usuario actual."""
+    await _require_member(db, class_id, current_user.id)
+    assignment = await _get_assignment(db, class_id, assignment_id)
+    existing = await db.execute(
+        select(ClassAssignmentCompletion).where(
+            ClassAssignmentCompletion.assignment_id == assignment.id,
+            ClassAssignmentCompletion.user_id == current_user.id,
+        )
+    )
+    completion = existing.scalar_one_or_none()
+    if payload.completed and completion is None:
+        db.add(
+            ClassAssignmentCompletion(
+                assignment_id=assignment.id, user_id=current_user.id
+            )
+        )
+    elif not payload.completed and completion is not None:
+        await db.delete(completion)
+    await db.commit()
+    await class_service.notify_class(db, class_id, "assignment", id=str(assignment.id))
+    return await _assignment_read(
+        db, assignment, current_user.id, await _member_count(db, class_id)
+    )
 
 
 # --------------------------------------------------------------------------- #

@@ -98,3 +98,33 @@ class EventRead(BaseModel):
     all_day: bool
     is_exam: bool = False
     created_at: datetime
+
+
+class AssignmentCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=300)
+    description: str | None = Field(default=None, max_length=4000)
+    due_at: datetime | None = None
+
+
+class AssignmentUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=300)
+    description: str | None = Field(default=None, max_length=4000)
+    due_at: datetime | None = None
+
+
+class AssignmentCompletionUpdate(BaseModel):
+    completed: bool
+
+
+class AssignmentRead(BaseModel):
+    id: uuid.UUID
+    class_id: uuid.UUID
+    created_by: uuid.UUID
+    creator_name: str | None = None
+    title: str
+    description: str | None
+    due_at: datetime | None
+    created_at: datetime
+    my_completed: bool = False
+    completed_count: int = 0
+    total_members: int = 0

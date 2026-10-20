@@ -109,7 +109,18 @@ class Settings(BaseSettings):
     upload_chunk_mb: int = 25
     # Horas que se conserva una subida a medias antes de limpiarla.
     upload_session_ttl_hours: int = 48
-    allowed_upload_extensions: str = "pdf,doc,docx,ppt,pptx,xls,xlsx,txt,md,csv,png,jpg,jpeg,gif"
+    allowed_upload_extensions: str = (
+        "pdf,epub,doc,docx,ppt,pptx,xls,xlsx,txt,md,csv,png,jpg,jpeg,gif"
+    )
+
+    # --- Biblioteca de libros completos ---
+    # Limite del archivo original que se procesa como libro (los libros normales
+    # ocupan pocos MB). El texto extraido se guarda completo en la base de datos.
+    max_book_mb: int = 512
+    # Topes de seguridad para no agotar la memoria del servidor con un archivo
+    # patologico. Un libro de 1.000 paginas suele rondar 3-6 millones de letras.
+    book_max_chars: int = 20_000_000
+    book_max_sections: int = 2000
 
     # --- IA Studio (resumenes e infografias en PDF) ---
     ai_studio_max_chars: int = 12000

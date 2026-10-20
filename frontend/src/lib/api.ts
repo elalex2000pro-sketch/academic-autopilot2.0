@@ -3,7 +3,14 @@ import type {
   AiOutput,
   AssistantMessage,
   AssistantStatus,
+  Book,
+  BookAnswer,
+  BookDetail,
+  BookMessage,
+  BookSection,
+  BookSummary,
   ChatResponse,
+  ClassAssignment,
   ClassDetail,
   ClassEvent,
   ClassMessage,
@@ -19,6 +26,7 @@ import type {
   GradeSummary,
   Integration,
   Notebook,
+  NotebookSource,
   OptimizedPlan,
   PendingAction,
   Provider,
@@ -413,6 +421,15 @@ export const api = {
     request<Notebook>(`/api/v1/notebooks/${id}/share`, { method: "DELETE" }),
   classNotebooks: (id: string) =>
     request<Notebook[]>(`/api/v1/classes/${id}/notebooks`),
+  notebookSources: (id: string) =>
+    request<NotebookSource[]>(`/api/v1/notebooks/${id}/sources`),
+  addNotebookSource: (id: string, body: { book_id?: string; document_id?: string }) =>
+    request<NotebookSource>(`/api/v1/notebooks/${id}/sources`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  removeNotebookSource: (id: string, sourceId: string) =>
+    request<void>(`/api/v1/notebooks/${id}/sources/${sourceId}`, { method: "DELETE" }),
 
   // --- Repaso: flashcards y examenes ---
   flashcards: (params?: { due_only?: boolean; notebook_id?: string }) => {
@@ -588,6 +605,81 @@ export const api = {
   deleteClassEvent: (id: string, eventId: string) =>
     request<void>(`/api/v1/classes/${id}/events/${eventId}`, { method: "DELETE" }),
   classFiles: (id: string) => request<DocumentFile[]>(`/api/v1/files?class_id=${id}`),
+
+  // --- Trabajo de clase (tareas y entregas) ---
+  classAssignments: (id: string) =>
+    request<ClassAssignment[]>(`/api/v1/classes/${id}/assignments`),
+  createClassAssignment: (
+    id: string,
+    body: { title: string; description?: string | null; due_at?: string | null },
+  ) =>
+    request<ClassAssignment>(`/api/v1/classes/${id}/assignments`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateClassAssignment: (
+    id: string,
+    assignmentId: string,
+    body: { title?: string; description?: string | null; due_at?: string | null },
+  ) =>
+    request<ClassAssignment>(`/api/v1/classes/${id}/assignments/${assignmentId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteClassAssignment: (id: string, assignmentId: string) =>
+    request<void>(`/api/v1/classes/${id}/assignments/${assignmentId}`, {
+      method: "DELETE",
+    }),
+  setAssignmentCompletion: (id: string, assignmentId: string, completed: boolean) =>
+    request<ClassAssignment>(`/api/v1/classes/${id}/assignments/${assignmentId}/completion`, {
+      method: "PUT",
+      body: JSON.stringify({ completed }),
+    }),
+
+  // --- Biblioteca de libros completos ---
+  books: () => request<Book[]>("/api/v1/books"),
+  book: (id: string) => request<BookDetail>(`/api/v1/books/${id}`),
+  importBook: (body: {
+    document_id: string;
+    title?: string | null;
+    author?: string | null;
+    course_id?: string | null;
+  }) =>
+    request<Book>("/api/v1/books/import", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateBook: (
+    id: string,
+    body: { title?: string; author?: string | null; cover_color?: string; course_id?: string | null },
+  ) =>
+    request<Book>(`/api/v1/books/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteBook: (id: string) => request<void>(`/api/v1/books/${id}`, { method: "DELETE" }),
+  reprocessBook: (id: string) =>
+    request<Book>(`/api/v1/books/${id}/reprocess`, { method: "POST" }),
+  bookSection: (id: string, index: number) =>
+    request<BookSection>(`/api/v1/books/${id}/sections/${index}`),
+  updateBookProgress: (id: string, body: { section_index: number; percent?: number }) =>
+    request<Book>(`/api/v1/books/${id}/progress`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  askBook: (id: string, body: { question: string; section_index?: number | null }) =>
+    request<BookAnswer>(`/api/v1/books/${id}/ask`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  bookMessages: (id: string) => request<BookMessage[]>(`/api/v1/books/${id}/messages`),
+  clearBookMessages: (id: string) =>
+    request<void>(`/api/v1/books/${id}/messages`, { method: "DELETE" }),
+  bookSummary: (id: string, body: { scope: "current" | "book"; section_index?: number | null }) =>
+    request<BookSummary>(`/api/v1/books/${id}/summary`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 
   // --- IA Studio (resumenes e infografias en PDF) ---
   studioOutputs: () => request<AiOutput[]>("/api/v1/studio/outputs"),

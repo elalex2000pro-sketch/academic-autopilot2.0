@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
+  BookOpen,
   Download,
   FileText,
   Folder,
@@ -11,6 +13,7 @@ import {
   Upload,
 } from "lucide-react";
 
+import { AddToNotebookButton } from "@/components/add-to-notebook";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -20,7 +23,14 @@ import { uploadFileInChunks, type UploadProgress } from "@/lib/upload";
 import type { Course, DocumentFile } from "@/lib/types";
 
 const ACCEPT =
-  ".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md,.csv,.png,.jpg,.jpeg,.gif";
+  ".pdf,.epub,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md,.csv,.png,.jpg,.jpeg,.gif";
+
+const BOOK_EXTENSIONS = new Set(["pdf", "epub", "docx", "txt", "md"]);
+
+function extensionOf(filename: string): string {
+  const parts = filename.toLowerCase().split(".");
+  return parts.length > 1 ? parts[parts.length - 1] : "";
+}
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
@@ -36,6 +46,7 @@ function formatBytes(bytes: number): string {
 }
 
 export default function FilesPage() {
+  const router = useRouter();
   const [courses, setCourses] = useState<Course[]>([]);
   const [files, setFiles] = useState<DocumentFile[]>([]);
   const [selected, setSelected] = useState<string | null>(null); // null = General
@@ -43,6 +54,7 @@ export default function FilesPage() {
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [convertingId, setConvertingId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -115,13 +127,35 @@ export default function FilesPage() {
     }
   }
 
+  async function convertToBook(file: DocumentFile) {
+    if (!BOOK_EXTENSIONS.has(extensionOf(file.filename))) {
+      setError("Para convertirlo en libro usa PDF, EPUB, DOCX, TXT o Markdown.");
+      return;
+    }
+    setConvertingId(file.id);
+    setError(null);
+    try {
+      await api.importBook({
+        document_id: file.id,
+        title: file.filename.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " "),
+        course_id: file.course_id,
+      });
+      router.push("/library");
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setConvertingId(null);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-6">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Archivos</h1>
         <p className="text-sm text-muted-foreground">
           Sube PDFs y apuntes (hasta 20 GB por archivo, con subida reanudable). Cada asignatura
-          tiene su propia carpeta; lo que no asignes va a &quot;General&quot;.
+          tiene su propia carpeta; lo que no asignes va a &quot;General&quot;. Desde aquí puedes
+          añadir cualquier archivo como fuente de un cuaderno o convertirlo en libro.
         </p>
       </header>
 
@@ -222,6 +256,23 @@ export default function FilesPage() {
                     </span>
                   </span>
                   <div className="flex shrink-0 items-center gap-1">
+                    <AddToNotebookButton documentId={file.id} label="" size="icon" />
+                    {BOOK_EXTENSIONS.has(extensionOf(file.filename)) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => void convertToBook(file)}
+                        disabled={convertingId === file.id}
+                        title="Convertir en libro y abrir en la Biblioteca"
+                        aria-label="Convertir en libro"
+                      >
+                        {convertingId === file.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <BookOpen className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
                     <Button variant="ghost" size="icon" onClick={() => download(file)}>
                       <Download className="h-4 w-4" />
                     </Button>

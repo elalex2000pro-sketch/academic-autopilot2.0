@@ -4,22 +4,26 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AudioLines,
+  BookOpen,
   Check,
   Download,
   FileSpreadsheet,
+  FileText,
   LayoutTemplate,
   Loader2,
   NotebookPen,
   Plus,
   Share2,
+  Sparkles,
   Trash2,
   Users,
   X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/components/auth-provider";
 import { api, ApiError } from "@/lib/api";
-import type { Notebook, SharedClass } from "@/lib/types";
+import type { Book, DocumentFile, Notebook, NotebookSource, SharedClass } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const COLORS = [
@@ -93,6 +97,12 @@ function errorMessage(error: unknown): string {
   return "Error inesperado";
 }
 
+function formatBytes(bytes: number): string {
+  if (!bytes) return "0 B";
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default function NotebooksPage() {
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -107,6 +117,20 @@ export default function NotebooksPage() {
   const [shareClassId, setShareClassId] = useState("");
   const [sharePermission, setSharePermission] = useState<"read" | "edit">("read");
   const [sharing, setSharing] = useState(false);
+  const [sources, setSources] = useState<NotebookSource[]>([]);
+  const [sourcesLoading, setSourcesLoading] = useState(false);
+  const [showSourcePicker, setShowSourcePicker] = useState(false);
+  const [sourceTab, setSourceTab] = useState<"book" | "file">("book");
+  const [sourceBooks, setSourceBooks] = useState<Book[]>([]);
+  const [sourceFiles, setSourceFiles] = useState<DocumentFile[]>([]);
+  const [sourceBooksLoading, setSourceBooksLoading] = useState(false);
+  const [sourceFilesLoading, setSourceFilesLoading] = useState(false);
+  const [sourceSearch, setSourceSearch] = useState("");
+  const [pickedBook, setPickedBook] = useState("");
+  const [pickedDocument, setPickedDocument] = useState("");
+  const [addingSource, setAddingSource] = useState(false);
+  const [sourceActionId, setSourceActionId] = useState<string | null>(null);
+  const { user } = useAuth();
 
   const draftRef = useRef<Draft>(draft);
   draftRef.current = draft;
@@ -142,6 +166,64 @@ export default function NotebooksPage() {
       setSharePermission(selected.share_permission === "edit" ? "edit" : "read");
     }
   }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!selectedId) {
+      setSources([]);
+      return;
+    }
+    let cancelled = false;
+    setSourcesLoading(true);
+    api
+      .notebookSources(selectedId)
+      .then((data) => {
+        if (!cancelled) setSources(data);
+      })
+      .catch((error) => {
+        if (!cancelled) setNotice(errorMessage(error));
+      })
+      .finally(() => {
+        if (!cancelled) setSourcesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId]);
+
+  useEffect(() => {
+    if (!showSourcePicker) return;
+    setSourceBooksLoading(true);
+    setSourceFilesLoading(true);
+    setPickedBook("");
+    setPickedDocument("");
+    setSourceSearch("");
+    api
+      .books()
+      .then(setSourceBooks)
+      .catch((error) => setNotice(errorMessage(error)))
+      .finally(() => setSourceBooksLoading(false));
+    api
+      .files()
+      .then(setSourceFiles)
+      .catch((error) => setNotice(errorMessage(error)))
+      .finally(() => setSourceFilesLoading(false));
+  }, [showSourcePicker]);
+
+  const canManageSources = Boolean(selected && user && selected.user_id === user.id);
+
+  const filteredSourceBooks = useMemo(() => {
+    const term = sourceSearch.trim().toLowerCase();
+    if (!term) return sourceBooks;
+    return sourceBooks.filter((book) =>
+      `${book.title} ${book.author ?? ""}`.toLowerCase().includes(term),
+    );
+  }, [sourceBooks, sourceSearch]);
+
+  const filteredSourceFiles = useMemo(() => {
+    const term = sourceSearch.trim().toLowerCase();
+    if (!term) return sourceFiles;
+    return sourceFiles.filter((file) => file.filename.toLowerCase().includes(term));
+  }, [sourceFiles, sourceSearch]);
 
   const save = useCallback(
     async (id: string, payload: Draft) => {
@@ -284,6 +366,80 @@ export default function NotebooksPage() {
     }
   }
 
+  async function addSource() {
+    if (!selected) return;
+    if (sourceTab === "book" && !pickedBook) {
+      setNotice("Elige un libro de tu biblioteca.");
+      return;
+    }
+    if (sourceTab === "file" && !pickedDocument) {
+      setNotice("Elige un archivo ya subido.");
+      return;
+    }
+    setAddingSource(true);
+    setNotice(null);
+    try {
+      const created = await api.addNotebookSource(
+        selected.id,
+        sourceTab === "book" ? { book_id: pickedBook } : { document_id: pickedDocument },
+      );
+      setSources((current) => [...current, created]);
+      setShowSourcePicker(false);
+      setNotice(`"${created.title}" se añadió como fuente del cuaderno.`);
+    } catch (error) {
+      setNotice(errorMessage(error));
+    } finally {
+      setAddingSource(false);
+    }
+  }
+
+  async function removeSource(source: NotebookSource) {
+    if (!selected) return;
+    try {
+      await api.removeNotebookSource(selected.id, source.id);
+      setSources((current) => current.filter((item) => item.id !== source.id));
+      setNotice(`"${source.title}" se quitó del cuaderno. El libro o archivo sigue guardado.`);
+    } catch (error) {
+      setNotice(errorMessage(error));
+    }
+  }
+
+  async function insertSummary(source: NotebookSource) {
+    if (!selected || !source.book_id) return;
+    setSourceActionId(source.id);
+    setNotice(null);
+    try {
+      const summary = await api.bookSummary(source.book_id, { scope: "book" });
+      const points = summary.key_points.map((point) => `- ${point}`).join("\n");
+      const block = [
+        "",
+        "",
+        `## Resumen de ${source.title}`,
+        "",
+        summary.summary,
+        "",
+        points,
+        "",
+        `> Fuente: ${source.title}${summary.citations.length ? ` · ${summary.citations.length} referencias del libro` : ""}`,
+      ].join("\n");
+      updateDraft({ content: `${draftRef.current.content.trimEnd()}${block}` });
+      setNotice("Resumen insertado al final del cuaderno. Se guardará automáticamente.");
+    } catch (error) {
+      setNotice(errorMessage(error));
+    } finally {
+      setSourceActionId(null);
+    }
+  }
+
+  async function downloadSourceFile(source: NotebookSource) {
+    if (!source.document_id) return;
+    try {
+      await api.downloadFile(source.document_id, source.title);
+    } catch (error) {
+      setNotice(errorMessage(error));
+    }
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6 animate-fade-up">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -387,6 +543,115 @@ export default function NotebooksPage() {
                       />
                     ))}
                   </div>
+                </div>
+
+                <div className="rounded-2xl border border-indigo-100 bg-indigo-50/30 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="flex items-center gap-1.5 text-xs font-bold text-indigo-800">
+                        <BookOpen className="h-3.5 w-3.5" /> Fuentes del cuaderno
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-indigo-700/70">
+                        Libros y archivos que quieres tener a mano mientras estudias.
+                      </p>
+                    </div>
+                    {canManageSources && (
+                      <Button size="sm" variant="secondary" onClick={() => setShowSourcePicker(true)}>
+                        <Plus className="h-3.5 w-3.5" /> Añadir fuente
+                      </Button>
+                    )}
+                  </div>
+
+                  {sourcesLoading ? (
+                    <div className="flex items-center gap-2 py-3 text-xs text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Cargando fuentes...
+                    </div>
+                  ) : sources.length === 0 ? (
+                    <p className="mt-3 rounded-xl border border-dashed border-indigo-200 bg-white/70 px-3 py-3 text-xs text-muted-foreground">
+                      Aún no hay fuentes. {canManageSources
+                        ? "Añade un libro de la Biblioteca o un archivo de Archivos para tenerlo junto a tus apuntes."
+                        : "El propietario del cuaderno todavía no ha añadido libros ni archivos."}
+                    </p>
+                  ) : (
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      {sources.map((source) => (
+                        <div
+                          key={source.id}
+                          className="rounded-xl border border-indigo-100 bg-white p-3 shadow-sm"
+                        >
+                          <div className="flex items-start gap-2">
+                            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                              {source.kind === "book" ? (
+                                <BookOpen className="h-3.5 w-3.5" />
+                              ) : (
+                                <FileText className="h-3.5 w-3.5" />
+                              )}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-xs font-semibold" title={source.title}>
+                                {source.title}
+                              </p>
+                              <p className="truncate text-[10px] text-muted-foreground">
+                                {source.format ? `${source.format} · ` : ""}
+                                {source.subtitle || (source.kind === "book" ? "Libro" : "Archivo")}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="mt-2 flex flex-wrap items-center gap-1">
+                            {source.kind === "book" && source.book_id ? (
+                              canManageSources ? (
+                                <>
+                                  <Link href={`/library/${source.book_id}`}>
+                                    <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px]">
+                                      Abrir libro
+                                    </Button>
+                                  </Link>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 px-2 text-[10px]"
+                                    onClick={() => void insertSummary(source)}
+                                    disabled={sourceActionId === source.id}
+                                  >
+                                    {sourceActionId === source.id ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <Sparkles className="h-3 w-3" />
+                                    )}
+                                    Insertar resumen
+                                  </Button>
+                                </>
+                              ) : (
+                                <span className="px-1 text-[10px] text-muted-foreground">
+                                  Fuente compartida
+                                </span>
+                              )
+                            ) : source.document_id ? (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-[10px]"
+                                onClick={() => void downloadSourceFile(source)}
+                              >
+                                <Download className="h-3 w-3" /> Abrir archivo
+                              </Button>
+                            ) : null}
+                            {canManageSources && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="ml-auto h-7 px-2 text-[10px] text-rose-500 hover:text-rose-700"
+                                onClick={() => void removeSource(source)}
+                                aria-label={`Quitar ${source.title}`}
+                              >
+                                <X className="h-3 w-3" /> Quitar
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <textarea
@@ -502,6 +767,205 @@ export default function NotebooksPage() {
               </p>
             )}
           </section>
+        </div>
+      )}
+
+      {showSourcePicker && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
+          onClick={() => setShowSourcePicker(false)}
+        >
+          <div
+            className="animate-pop max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="flex items-center gap-2 text-lg font-bold">
+                  <BookOpen className="h-5 w-5 text-indigo-600" /> Añadir una fuente
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Elige un libro de tu Biblioteca o un archivo ya subido. No se copia nada: queda
+                  enlazado al cuaderno.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSourcePicker(false)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
+                aria-label="Cerrar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-4 flex rounded-xl bg-slate-100 p-1 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setSourceTab("book")}
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2",
+                  sourceTab === "book" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500",
+                )}
+              >
+                <BookOpen className="h-3.5 w-3.5" /> Libros ({sourceBooks.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSourceTab("file")}
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2",
+                  sourceTab === "file" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500",
+                )}
+              >
+                <FileText className="h-3.5 w-3.5" /> Archivos ({sourceFiles.length})
+              </button>
+            </div>
+
+            <input
+              value={sourceSearch}
+              onChange={(event) => setSourceSearch(event.target.value)}
+              placeholder={sourceTab === "book" ? "Buscar un libro..." : "Buscar un archivo..."}
+              className="mt-3 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400"
+            />
+
+            <div className="mt-3 max-h-72 space-y-1.5 overflow-y-auto pr-1">
+              {sourceTab === "book" ? (
+                sourceBooksLoading ? (
+                  <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Cargando libros...
+                  </p>
+                ) : filteredSourceBooks.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-muted-foreground">
+                    {sourceBooks.length === 0 ? (
+                      <>
+                        Todavía no tienes libros.{" "}
+                        <Link href="/library" className="font-semibold text-indigo-600 underline">
+                          Sube uno en la Biblioteca
+                        </Link>
+                        .
+                      </>
+                    ) : (
+                      "Ningún libro coincide con la búsqueda."
+                    )}
+                  </div>
+                ) : (
+                  filteredSourceBooks.map((book) => {
+                    const selectedBook = pickedBook === book.id;
+                    return (
+                      <button
+                        key={book.id}
+                        type="button"
+                        disabled={book.status !== "ready"}
+                        onClick={() => setPickedBook(book.id)}
+                        className={cn(
+                          "flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors disabled:opacity-55",
+                          selectedBook
+                            ? "border-indigo-400 bg-indigo-50/70 ring-1 ring-indigo-200"
+                            : "border-slate-200 bg-white hover:border-indigo-200 hover:bg-slate-50",
+                        )}
+                      >
+                        <span
+                          className="flex h-9 w-7 shrink-0 items-center justify-center rounded-md text-white"
+                          style={{ background: `linear-gradient(145deg, ${book.cover_color}, #0f172a)` }}
+                        >
+                          <BookOpen className="h-3.5 w-3.5" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold">{book.title}</span>
+                          <span className="block truncate text-[11px] text-muted-foreground">
+                            {book.author || "Sin autor"} · {book.total_sections} secciones
+                            {book.status === "processing" ? " · Preparando..." : ""}
+                            {book.status === "error" ? " · No se pudo abrir" : ""}
+                          </span>
+                        </span>
+                        {selectedBook && <Check className="h-4 w-4 shrink-0 text-indigo-600" />}
+                      </button>
+                    );
+                  })
+                )
+              ) : sourceFilesLoading ? (
+                <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Cargando archivos...
+                </p>
+              ) : filteredSourceFiles.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-muted-foreground">
+                  {sourceFiles.length === 0 ? (
+                    <>
+                      Todavía no tienes archivos.{" "}
+                      <Link href="/files" className="font-semibold text-indigo-600 underline">
+                        Sube uno en Archivos
+                      </Link>
+                      .
+                    </>
+                  ) : (
+                    "Ningún archivo coincide con la búsqueda."
+                  )}
+                </div>
+              ) : (
+                filteredSourceFiles.map((file) => {
+                  const selectedFile = pickedDocument === file.id;
+                  return (
+                    <button
+                      key={file.id}
+                      type="button"
+                      onClick={() => setPickedDocument(file.id)}
+                      className={cn(
+                        "flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors",
+                        selectedFile
+                          ? "border-indigo-400 bg-indigo-50/70 ring-1 ring-indigo-200"
+                          : "border-slate-200 bg-white hover:border-indigo-200 hover:bg-slate-50",
+                      )}
+                    >
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+                        <FileText className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold">{file.filename}</span>
+                        <span className="block text-[11px] text-muted-foreground">
+                          {formatBytes(file.size_bytes)} ·{" "}
+                          {file.created_at
+                            ? new Date(file.created_at).toLocaleDateString("es-ES", {
+                                day: "2-digit",
+                                month: "short",
+                              })
+                            : "Archivo"}
+                        </span>
+                      </span>
+                      {selectedFile && <Check className="h-4 w-4 shrink-0 text-indigo-600" />}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[11px] text-muted-foreground">
+                {sourceTab === "book"
+                  ? "Los libros deben terminar de prepararse para poder insertar su resumen."
+                  : "Puedes adjuntar cualquier archivo que ya esté en Archivos."}
+              </p>
+              <div className="flex gap-2">
+                <Button variant="ghost" onClick={() => setShowSourcePicker(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={() => void addSource()}
+                  disabled={
+                    addingSource ||
+                    (sourceTab === "book" ? !pickedBook : !pickedDocument)
+                  }
+                >
+                  {addingSource ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="h-4 w-4" />
+                  )}
+                  Añadir al cuaderno
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

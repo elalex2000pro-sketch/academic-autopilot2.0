@@ -1,6 +1,11 @@
 """Exporta todos los modelos para que Alembic los descubra via metadata."""
 from app.db.base import Base
+from app.models.ai_output import AiOutput
+from app.models.assistant_message import AssistantMessage
+from app.models.book import Book, BookMessage, BookSection
+from app.models.classwork import ClassAssignment, ClassAssignmentCompletion
 from app.models.course import Course
+from app.models.document import Document
 from app.models.enums import (
     IntegrationStatus,
     Provider,
@@ -9,14 +14,11 @@ from app.models.enums import (
     TaskPriority,
     TaskStatus,
 )
-from app.models.ai_output import AiOutput
-from app.models.assistant_message import AssistantMessage
-from app.models.document import Document
 from app.models.flashcard import Flashcard
 from app.models.focus_session import FocusSession
 from app.models.grade import Grade
 from app.models.integration import Integration
-from app.models.notebook import Notebook
+from app.models.notebook import Notebook, NotebookSource
 from app.models.quiz import Quiz
 from app.models.reminder_settings import ReminderSettings
 from app.models.schedule_block import ScheduleBlock
@@ -36,6 +38,11 @@ __all__ = [
     "AiOutput",
     "AssistantMessage",
     "Base",
+    "Book",
+    "BookMessage",
+    "BookSection",
+    "ClassAssignment",
+    "ClassAssignmentCompletion",
     "ClassEvent",
     "ClassMembership",
     "ClassMessage",
@@ -46,6 +53,7 @@ __all__ = [
     "Grade",
     "Integration",
     "Notebook",
+    "NotebookSource",
     "Quiz",
     "ReminderSettings",
     "ScheduleBlock",
