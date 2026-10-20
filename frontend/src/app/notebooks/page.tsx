@@ -1,19 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
+  AudioLines,
   Check,
   Download,
   FileSpreadsheet,
+  LayoutTemplate,
   Loader2,
   NotebookPen,
   Plus,
+  Share2,
   Trash2,
+  Users,
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api";
-import type { Notebook } from "@/lib/types";
+import type { Notebook, SharedClass } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const COLORS = [
@@ -25,6 +31,50 @@ const COLORS = [
   "#ef4444",
   "#ec4899",
   "#14b8a6",
+];
+
+const TEMPLATES: { name: string; description: string; title: string; content: string }[] = [
+  {
+    name: "Cuaderno en blanco",
+    description: "Empieza desde cero.",
+    title: "Cuaderno sin título",
+    content: "",
+  },
+  {
+    name: "Método Cornell",
+    description: "Preguntas, notas y resumen en columnas.",
+    title: "Apuntes Cornell",
+    content:
+      "# Tema\n\n## Preguntas clave\n- \n- \n\n## Notas\n\n\n## Resumen\n\n",
+  },
+  {
+    name: "Apuntes de clase",
+    description: "Ideal para tomar notas en directo.",
+    title: "Apuntes de clase",
+    content:
+      "# Título de la clase\n\n**Fecha:** \n**Profesor/a:** \n\n## Ideas clave\n- \n- \n\n## Desarrollo\n\n\n## Dudas para preguntar\n- \n",
+  },
+  {
+    name: "Práctica de laboratorio",
+    description: "Objetivo, materiales, pasos y conclusiones.",
+    title: "Práctica de laboratorio",
+    content:
+      "# Práctica: título\n\n## Objetivo\n\n## Materiales\n- \n- \n\n## Procedimiento\n1. \n2. \n\n## Resultados\n\n## Conclusiones\n\n",
+  },
+  {
+    name: "Preparar un examen",
+    description: "Temario, preguntas y puntos débiles.",
+    title: "Preparación de examen",
+    content:
+      "# Examen de ...\n\n**Fecha:** \n\n## Temario\n- \n- \n\n## Preguntas clave\n1. \n2. \n\n## Resumen\n\n## Puntos débiles\n- \n",
+  },
+  {
+    name: "Proyecto",
+    description: "Planificación, tareas y entregables.",
+    title: "Proyecto",
+    content:
+      "# Nombre del proyecto\n\n## Objetivo\n\n## Tareas\n- [ ] \n- [ ] \n\n## Entregables\n- \n\n## Notas\n\n",
+  },
 ];
 
 type Draft = { title: string; color: string; content: string };
@@ -52,6 +102,11 @@ export default function NotebooksPage() {
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [classes, setClasses] = useState<SharedClass[]>([]);
+  const [shareClassId, setShareClassId] = useState("");
+  const [sharePermission, setSharePermission] = useState<"read" | "edit">("read");
+  const [sharing, setSharing] = useState(false);
 
   const draftRef = useRef<Draft>(draft);
   draftRef.current = draft;
@@ -71,6 +126,10 @@ export default function NotebooksPage() {
 
   useEffect(() => {
     load().catch((error) => setNotice(errorMessage(error)));
+    api
+      .classes()
+      .then(setClasses)
+      .catch(() => setClasses([]));
   }, [load]);
 
   // Al cambiar de cuaderno, se carga su contenido en el editor.
@@ -79,6 +138,8 @@ export default function NotebooksPage() {
       setDraft(toDraft(selected));
       setDirty(false);
       setSavedAt(null);
+      setShareClassId(selected.shared_class_id ?? "");
+      setSharePermission(selected.share_permission === "edit" ? "edit" : "read");
     }
   }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -129,20 +190,66 @@ export default function NotebooksPage() {
     setSelectedId(id);
   }
 
-  async function createNotebook() {
+  async function createNotebook(templateIndex = 0) {
     setCreating(true);
     setNotice(null);
+    const template = TEMPLATES[templateIndex] ?? TEMPLATES[0];
     try {
       const created = await api.createNotebook({
-        title: "Cuaderno sin titulo",
+        title: template.title,
         color: COLORS[notebooks.length % COLORS.length],
+        content: template.content,
       });
       setNotebooks((prev) => [created, ...prev]);
       setSelectedId(created.id);
+      setShowTemplates(false);
     } catch (error) {
       setNotice(errorMessage(error));
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function shareWithClass() {
+    if (!selected || !shareClassId) {
+      setNotice("Selecciona una clase para compartir el cuaderno.");
+      return;
+    }
+    setSharing(true);
+    try {
+      const updated = await api.shareNotebook(selected.id, {
+        class_id: shareClassId,
+        permission: sharePermission,
+      });
+      setNotebooks((prev) =>
+        prev.map((notebook) => (notebook.id === updated.id ? updated : notebook)),
+      );
+      setNotice(
+        `Compartido con la clase en modo ${
+          sharePermission === "edit" ? "edición" : "solo lectura"
+        }. Tus compañeros lo verán en la pestaña Cuadernos de la clase.`,
+      );
+    } catch (error) {
+      setNotice(errorMessage(error));
+    } finally {
+      setSharing(false);
+    }
+  }
+
+  async function stopSharing() {
+    if (!selected) return;
+    setSharing(true);
+    try {
+      const updated = await api.unshareNotebook(selected.id);
+      setNotebooks((prev) =>
+        prev.map((notebook) => (notebook.id === updated.id ? updated : notebook)),
+      );
+      setShareClassId("");
+      setNotice("El cuaderno ha dejado de estar compartido.");
+    } catch (error) {
+      setNotice(errorMessage(error));
+    } finally {
+      setSharing(false);
     }
   }
 
@@ -191,10 +298,15 @@ export default function NotebooksPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link href="/transcribe">
+            <Button variant="secondary">
+              <AudioLines className="h-4 w-4" /> Transcribir audio
+            </Button>
+          </Link>
           <Button variant="secondary" onClick={downloadExcel} disabled={notebooks.length === 0}>
             <FileSpreadsheet className="h-4 w-4" /> Excel
           </Button>
-          <Button onClick={createNotebook} disabled={creating}>
+          <Button onClick={() => setShowTemplates(true)} disabled={creating}>
             {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             Nuevo cuaderno
           </Button>
@@ -215,7 +327,7 @@ export default function NotebooksPage() {
             Crea tu primer cuaderno para organizar apuntes, pegar resúmenes del Asistente IA o
             preparar un examen.
           </p>
-          <Button className="mt-4" onClick={createNotebook}>
+          <Button className="mt-4" onClick={() => setShowTemplates(true)}>
             <Plus className="h-4 w-4" /> Crear mi primer cuaderno
           </Button>
         </div>
@@ -286,6 +398,65 @@ export default function NotebooksPage() {
                   className="min-h-[430px] w-full resize-y rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-sm leading-6 outline-none transition-colors focus:border-indigo-300 focus:bg-white"
                 />
 
+                <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-indigo-700">
+                      <Users className="h-3.5 w-3.5" /> Compartir con una clase
+                    </span>
+                    {selected.shared_class_id && (
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                        {selected.share_permission === "edit" ? "Edición" : "Solo lectura"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <select
+                      value={shareClassId}
+                      onChange={(event) => setShareClassId(event.target.value)}
+                      className="min-w-[180px] flex-1 rounded-xl border border-indigo-200 bg-white px-3 py-1.5 text-xs outline-none focus:border-indigo-400"
+                    >
+                      <option value="">Selecciona una clase</option>
+                      {classes.map((sharedClass) => (
+                        <option key={sharedClass.id} value={sharedClass.id}>
+                          {sharedClass.name}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={sharePermission}
+                      onChange={(event) =>
+                        setSharePermission(event.target.value === "edit" ? "edit" : "read")
+                      }
+                      className="rounded-xl border border-indigo-200 bg-white px-3 py-1.5 text-xs outline-none"
+                    >
+                      <option value="read">Solo lectura</option>
+                      <option value="edit">Pueden editar</option>
+                    </select>
+                    <Button size="sm" onClick={shareWithClass} disabled={sharing || !shareClassId}>
+                      {sharing ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Share2 className="h-3.5 w-3.5" />
+                      )}
+                      Compartir
+                    </Button>
+                    {selected.shared_class_id && (
+                      <Button size="sm" variant="ghost" onClick={stopSharing} disabled={sharing}>
+                        Dejar de compartir
+                      </Button>
+                    )}
+                  </div>
+                  {classes.length === 0 && (
+                    <p className="mt-2 text-[11px] text-indigo-700/80">
+                      Aún no perteneces a ninguna clase.{" "}
+                      <Link href="/classes" className="font-semibold underline">
+                        Crea o únete a una clase
+                      </Link>{" "}
+                      para compartir apuntes.
+                    </p>
+                  )}
+                </div>
+
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span className="flex items-center gap-2 text-xs text-muted-foreground">
                     {saving ? (
@@ -331,6 +502,63 @@ export default function NotebooksPage() {
               </p>
             )}
           </section>
+        </div>
+      )}
+
+      {showTemplates && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
+          onClick={() => setShowTemplates(false)}
+        >
+          <div
+            className="animate-pop max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="flex items-center gap-2 text-lg font-bold">
+                  <LayoutTemplate className="h-5 w-5 text-indigo-600" /> Elige una plantilla
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Empieza con una estructura lista para rellenar.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTemplates(false)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
+                aria-label="Cerrar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {TEMPLATES.map((template, index) => (
+                <button
+                  key={template.name}
+                  type="button"
+                  disabled={creating}
+                  onClick={() => void createNotebook(index)}
+                  className="group rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-indigo-300 hover:bg-white hover:shadow-md disabled:opacity-60"
+                >
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-slate-800">{template.name}</span>
+                    {creating ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
+                    ) : (
+                      <Plus className="h-4 w-4 text-slate-300 group-hover:text-indigo-500" />
+                    )}
+                  </span>
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    {template.description}
+                  </span>
+                  <span className="mt-2 block truncate rounded-lg bg-white px-2 py-1 font-mono text-[10px] text-slate-400 ring-1 ring-slate-100">
+                    {template.content.split("\n")[0] || "Página en blanco"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>

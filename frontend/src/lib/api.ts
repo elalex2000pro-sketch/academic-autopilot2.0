@@ -10,6 +10,11 @@ import type {
   Course,
   DailyAgenda,
   DocumentFile,
+  Flashcard,
+  FlashcardStats,
+  FlashcardsGenerated,
+  FocusSession,
+  FocusStats,
   Grade,
   GradeSummary,
   Integration,
@@ -17,12 +22,16 @@ import type {
   OptimizedPlan,
   PendingAction,
   Provider,
+  Quiz,
+  QuizResult,
+  ReminderSettings,
   ScheduleBlock,
   SharedClass,
   SyncLog,
   SyncResult,
   Task,
   TimetableEntry,
+  TimetableImportResult,
   UploadSession,
   User,
 } from "@/lib/types";
@@ -395,6 +404,99 @@ export const api = {
       "cuadernos-academic-autopilot.xlsx",
       "No se pudo exportar los cuadernos a Excel",
     ),
+  shareNotebook: (id: string, body: { class_id: string; permission: "read" | "edit" }) =>
+    request<Notebook>(`/api/v1/notebooks/${id}/share`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  unshareNotebook: (id: string) =>
+    request<Notebook>(`/api/v1/notebooks/${id}/share`, { method: "DELETE" }),
+  classNotebooks: (id: string) =>
+    request<Notebook[]>(`/api/v1/classes/${id}/notebooks`),
+
+  // --- Repaso: flashcards y examenes ---
+  flashcards: (params?: { due_only?: boolean; notebook_id?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.due_only) query.set("due_only", "true");
+    if (params?.notebook_id) query.set("notebook_id", params.notebook_id);
+    return request<Flashcard[]>(`/api/v1/flashcards${query.size ? `?${query}` : ""}`);
+  },
+  createFlashcard: (body: { front: string; back: string; notebook_id?: string | null }) =>
+    request<Flashcard>("/api/v1/flashcards", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateFlashcard: (id: string, body: { front?: string; back?: string }) =>
+    request<Flashcard>(`/api/v1/flashcards/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteFlashcard: (id: string) =>
+    request<void>(`/api/v1/flashcards/${id}`, { method: "DELETE" }),
+  generateFlashcards: (notebookId: string) =>
+    request<FlashcardsGenerated>("/api/v1/flashcards/generate", {
+      method: "POST",
+      body: JSON.stringify({ notebook_id: notebookId }),
+    }),
+  reviewFlashcard: (id: string, quality: number) =>
+    request<{ card: Flashcard; next_due: string; interval_days: number }>(
+      `/api/v1/flashcards/${id}/review`,
+      { method: "POST", body: JSON.stringify({ quality }) },
+    ),
+  flashcardStats: () => request<FlashcardStats>("/api/v1/flashcards/stats"),
+  quizzes: () => request<Quiz[]>("/api/v1/quizzes"),
+  generateQuiz: (notebookId: string) =>
+    request<Quiz>("/api/v1/quizzes/generate", {
+      method: "POST",
+      body: JSON.stringify({ notebook_id: notebookId }),
+    }),
+  submitQuiz: (id: string, answers: number[]) =>
+    request<QuizResult>(`/api/v1/quizzes/${id}/submit`, {
+      method: "POST",
+      body: JSON.stringify({ answers }),
+    }),
+  deleteQuiz: (id: string) =>
+    request<void>(`/api/v1/quizzes/${id}`, { method: "DELETE" }),
+
+  // --- Enfoque (Pomodoro) ---
+  focusStats: () => request<FocusStats>("/api/v1/focus/stats"),
+  focusSessions: (limit = 20) =>
+    request<FocusSession[]>(`/api/v1/focus/sessions?limit=${limit}`),
+  logFocusSession: (minutes: number, kind: "focus" | "break" = "focus") =>
+    request<FocusSession>("/api/v1/focus/sessions", {
+      method: "POST",
+      body: JSON.stringify({ minutes, kind }),
+    }),
+
+  // --- Recordatorios ---
+  getReminders: () => request<ReminderSettings>("/api/v1/reminders"),
+  updateReminders: (body: {
+    enabled?: boolean;
+    reminder_hour?: number;
+    telegram_chat_id?: string | null;
+    telegram_bot_token?: string | null;
+  }) =>
+    request<ReminderSettings>("/api/v1/reminders", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  testReminder: () =>
+    request<{ ok: boolean; message: string }>("/api/v1/reminders/test", { method: "POST" }),
+
+  // --- Importar horario y transcribir ---
+  importTimetable: (documentId: string, replace = false) =>
+    request<TimetableImportResult>("/api/v1/timetable/import", {
+      method: "POST",
+      body: JSON.stringify({ document_id: documentId, replace }),
+    }),
+  transcribe: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<{ text: string; filename: string }>("/api/v1/transcribe", {
+      method: "POST",
+      body: form,
+    });
+  },
 
   // --- Subidas por trozos (archivos grandes, reanudables) ---
   createUpload: (body: {

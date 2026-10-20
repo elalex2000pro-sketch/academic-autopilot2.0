@@ -12,9 +12,13 @@ from app.models.enums import (
 from app.models.ai_output import AiOutput
 from app.models.assistant_message import AssistantMessage
 from app.models.document import Document
+from app.models.flashcard import Flashcard
+from app.models.focus_session import FocusSession
 from app.models.grade import Grade
 from app.models.integration import Integration
 from app.models.notebook import Notebook
+from app.models.quiz import Quiz
+from app.models.reminder_settings import ReminderSettings
 from app.models.schedule_block import ScheduleBlock
 from app.models.shared_class import (
     ClassEvent,
@@ -37,9 +41,13 @@ __all__ = [
     "ClassMessage",
     "Course",
     "Document",
+    "Flashcard",
+    "FocusSession",
     "Grade",
     "Integration",
     "Notebook",
+    "Quiz",
+    "ReminderSettings",
     "ScheduleBlock",
     "SharedClass",
     "SyncLog",

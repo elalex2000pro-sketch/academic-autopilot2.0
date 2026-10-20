@@ -23,8 +23,11 @@ class NotebookRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    user_id: uuid.UUID
     title: str
     color: str
     content: str
+    shared_class_id: uuid.UUID | None = None
+    share_permission: str = "read"
     created_at: datetime
     updated_at: datetime

@@ -281,9 +281,98 @@ export interface SyncResult {
 
 export interface Notebook {
   id: string;
+  user_id: string;
   title: string;
   color: string;
   content: string;
+  shared_class_id: string | null;
+  share_permission: "read" | "edit" | string;
   created_at: string;
   updated_at: string;
+}
+
+// --- Repaso: flashcards y examenes ---
+export interface Flashcard {
+  id: string;
+  notebook_id: string | null;
+  front: string;
+  back: string;
+  source: string;
+  ease: number;
+  interval_days: number;
+  repetitions: number;
+  due_at: string;
+  created_at: string;
+}
+
+export interface FlashcardStats {
+  total: number;
+  due: number;
+}
+
+export interface FlashcardsGenerated {
+  created: number;
+  source: string;
+  flashcards: Flashcard[];
+}
+
+export interface QuizQuestion {
+  question: string;
+  options: string[];
+  answer: number;
+  explanation: string | null;
+}
+
+export interface Quiz {
+  id: string;
+  notebook_id: string | null;
+  title: string;
+  source: string;
+  questions: QuizQuestion[];
+  score: number | null;
+  total: number;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface QuizResult {
+  quiz: Quiz;
+  score: number;
+  total: number;
+  details: boolean[];
+}
+
+// --- Enfoque (Pomodoro) ---
+export interface FocusSession {
+  id: string;
+  minutes: number;
+  kind: "focus" | "break" | string;
+  finished_at: string;
+}
+
+export interface FocusDay {
+  date: string;
+  minutes: number;
+}
+
+export interface FocusStats {
+  today_minutes: number;
+  week_minutes: number;
+  streak_days: number;
+  total_sessions: number;
+  days: FocusDay[];
+}
+
+// --- Recordatorios ---
+export interface ReminderSettings {
+  enabled: boolean;
+  reminder_hour: number;
+  telegram_chat_id: string | null;
+  has_token: boolean;
+}
+
+export interface TimetableImportResult {
+  created: number;
+  source: string;
+  entries: TimetableEntry[];
 }

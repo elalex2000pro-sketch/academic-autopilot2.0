@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
+  BellRing,
   BookOpen,
   Cpu,
   ExternalLink,
@@ -11,6 +12,7 @@ import {
   Link2,
   Palette,
   Plus,
+  Send,
   Trash2,
 } from "lucide-react";
 
@@ -20,7 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api, ApiError } from "@/lib/api";
-import type { AssistantStatus, Integration, ScheduleBlock } from "@/lib/types";
+import type { AssistantStatus, Integration, ReminderSettings, ScheduleBlock } from "@/lib/types";
 
 const DAYS = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"];
 
@@ -93,16 +95,34 @@ function SettingsInner() {
   const [aiBaseUrl, setAiBaseUrl] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
 
+  // Recordatorios
+  const [reminders, setReminders] = useState<ReminderSettings | null>(null);
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderHour, setReminderHour] = useState(19);
+  const [telegramChat, setTelegramChat] = useState("");
+  const [telegramToken, setTelegramToken] = useState("");
+  const [reminderBusy, setReminderBusy] = useState(false);
+
   const loadData = useCallback(async () => {
-    const [ints, sbs, prof] = await Promise.all([
+    const [ints, sbs, prof, rem] = await Promise.all([
       api.integrations(),
       api.scheduleBlocks(),
       api.getAiProfile(),
+      api.getReminders(),
     ]);
     setIntegrations(ints);
     setBlocks(sbs);
     setAiProfile(prof);
+    setReminders(rem);
   }, []);
+
+  // Sincroniza el formulario de recordatorios.
+  useEffect(() => {
+    if (!reminders) return;
+    setReminderEnabled(reminders.enabled);
+    setReminderHour(reminders.reminder_hour);
+    setTelegramChat(reminders.telegram_chat_id ?? "");
+  }, [reminders]);
 
   // Sincroniza el formulario de IA cuando carga (o cambia) el perfil.
   useEffect(() => {
@@ -211,6 +231,40 @@ function SettingsInner() {
       setNotice(e instanceof ApiError ? e.message : "Error al guardar la IA");
     } finally {
       setAiBusy(false);
+    }
+  }
+
+  async function saveReminders(event: React.FormEvent) {
+    event.preventDefault();
+    setReminderBusy(true);
+    setNotice(null);
+    try {
+      const updated = await api.updateReminders({
+        enabled: reminderEnabled,
+        reminder_hour: reminderHour,
+        telegram_chat_id: telegramChat.trim(),
+        ...(telegramToken.trim() ? { telegram_bot_token: telegramToken.trim() } : {}),
+      });
+      setReminders(updated);
+      setTelegramToken("");
+      setNotice("Recordatorios guardados. Te avisaré por Telegram a la hora indicada (UTC).");
+    } catch (e) {
+      setNotice(e instanceof ApiError ? e.message : "Error al guardar los recordatorios");
+    } finally {
+      setReminderBusy(false);
+    }
+  }
+
+  async function testReminder() {
+    setReminderBusy(true);
+    setNotice(null);
+    try {
+      const result = await api.testReminder();
+      setNotice(result.message);
+    } catch (e) {
+      setNotice(e instanceof ApiError ? e.message : "Error al enviar la prueba");
+    } finally {
+      setReminderBusy(false);
     }
   }
 
@@ -526,6 +580,106 @@ function SettingsInner() {
           <p className="text-xs text-muted-foreground">
             Cada cuaderno se descarga en Word con un clic desde la sección Cuadernos.
           </p>
+        </CardContent>
+      </Card>
+
+      {/* ---- Recordatorios por Telegram ---- */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <BellRing className="h-4 w-4" /> Recordatorios por Telegram
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Recibe cada día un mensaje con las tareas que vencen y los exámenes de tus clases. Usa
+            tu propio bot de Telegram: es gratis y no necesitas servidor de correo.
+          </p>
+          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-xs text-slate-600">
+            <p className="font-semibold text-slate-700">Cómo conseguir los datos (2 minutos):</p>
+            <ol className="mt-1 list-decimal space-y-0.5 pl-4">
+              <li>
+                Abre Telegram y habla con <strong>@BotFather</strong>; envía{" "}
+                <code className="rounded bg-white px-1">/newbot</code> y copia el token.
+              </li>
+              <li>
+                Habla con tu bot nuevo y envíale cualquier mensaje (así puede responder).
+              </li>
+              <li>
+                Abre <strong>@userinfobot</strong> y copia tu <em>chat ID</em>.
+              </li>
+            </ol>
+          </div>
+          <form onSubmit={saveReminders} className="space-y-3">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={reminderEnabled}
+                onChange={(event) => setReminderEnabled(event.target.checked)}
+                className="h-4 w-4 rounded border-slate-300"
+              />
+              Activar recordatorio diario
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="reminderHour">Hora del aviso (UTC)</Label>
+                <Input
+                  id="reminderHour"
+                  type="number"
+                  min={0}
+                  max={23}
+                  value={reminderHour}
+                  onChange={(event) => setReminderHour(Number(event.target.value))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  En España peninsular suma 1 o 2 horas (19 UTC ≈ 21:00 en verano).
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="telegramChat">Chat ID de Telegram</Label>
+                <Input
+                  id="telegramChat"
+                  value={telegramChat}
+                  onChange={(event) => setTelegramChat(event.target.value)}
+                  placeholder="123456789"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="telegramToken">Token del bot</Label>
+              <Input
+                id="telegramToken"
+                type="password"
+                value={telegramToken}
+                onChange={(event) => setTelegramToken(event.target.value)}
+                placeholder={
+                  reminders?.has_token ? "••••••••  (guardado)" : "123456:ABC-DEF..."
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Se guarda cifrado en tu cuenta. Déjalo vacío para conservar el token actual.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" size="sm" disabled={reminderBusy}>
+                {reminderBusy && <Loader2 className="h-4 w-4 animate-spin" />} Guardar recordatorios
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={testReminder}
+                disabled={reminderBusy}
+              >
+                <Send className="h-4 w-4" /> Enviar prueba
+              </Button>
+              <a href="https://t.me/BotFather" target="_blank" rel="noreferrer">
+                <Button type="button" size="sm" variant="ghost">
+                  <ExternalLink className="h-4 w-4" /> Abrir BotFather
+                </Button>
+              </a>
+            </div>
+          </form>
         </CardContent>
       </Card>
 

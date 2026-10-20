@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { CircleHelp, X } from "lucide-react";
 
@@ -18,7 +18,8 @@ const DEFAULT_TUTORIAL: Tutorial = {
   ],
 };
 
-// Tutorial flotante por sección: se abre solo la primera vez que se visita cada una.
+// Tutorial flotante por sección: solo se abre al pulsar el botón «?» (nunca
+// aparece automáticamente encima del contenido).
 const TUTORIALS: { match: RegExp; tutorial: Tutorial }[] = [
   {
     match: /^\/classes\/.+/,
@@ -83,6 +84,7 @@ const TUTORIALS: { match: RegExp; tutorial: Tutorial }[] = [
       title: "Horario",
       steps: [
         "Añade tus clases de la semana: día, hora, asignatura y aula.",
+        "Pulsa «Importar» y sube una foto o un PDF del horario para rellenarlo de golpe.",
         "El asistente IA usa tu horario para decirte cuándo estudiar.",
         "Define también tu disponibilidad (tardes, fines de semana) en «Ajustes».",
       ],
@@ -126,9 +128,34 @@ const TUTORIALS: { match: RegExp; tutorial: Tutorial }[] = [
     tutorial: {
       title: "Cuadernos",
       steps: [
-        "Pulsa «Nuevo cuaderno» y ponle un título y un color.",
+        "Pulsa «Nuevo cuaderno» y elige una plantilla (Cornell, laboratorio, examen...).",
         "Escribe tus apuntes: se guardan solos mientras escribes.",
+        "Comparte el cuaderno con una clase en solo lectura o para editar entre todos.",
         "Descarga el cuaderno en Word, o todos juntos en Excel, con un clic.",
+      ],
+    },
+  },
+  {
+    match: /^\/review/,
+    tutorial: {
+      title: "Repaso inteligente",
+      steps: [
+        "Elige un cuaderno y pulsa «Generar tarjetas»: la IA crea preguntas y respuestas.",
+        "Repasa: pulsa la tarjeta para ver la respuesta y valora del 1 al 5. El sistema la programará cuando estés a punto de olvidarla.",
+        "En «Modo examen», genera un test de 4 opciones desde un cuaderno y se corrige al instante con explicaciones.",
+        "Cuanto más repases, más sube tu racha y menos tarjetas tendrás pendientes.",
+      ],
+    },
+  },
+  {
+    match: /^\/transcribe/,
+    tutorial: {
+      title: "Transcribir una clase",
+      steps: [
+        "Sube la grabación (MP3, M4A, WAV...) de hasta 24 MB.",
+        "Pulsa «Transcribir audio»: se usa Whisper de OpenAI (configura tu clave en Ajustes).",
+        "Revisa el texto, ponle un título y guárdalo como cuaderno.",
+        "Después puedes resumirlo en IA Studio o generar flashcards en Repaso.",
       ],
     },
   },
@@ -160,8 +187,10 @@ const TUTORIALS: { match: RegExp; tutorial: Tutorial }[] = [
     tutorial: {
       title: "Modo Enfoque",
       steps: [
-        "Temporizador de estudio tipo Pomodoro: elige los minutos y dale a empezar.",
-        "Al terminar, la sesión queda registrada en tu progreso.",
+        "Temporizador Pomodoro: 25 minutos de enfoque y 5 de descanso.",
+        "Cada sesión completada suma minutos y mantiene tu racha diaria.",
+        "Activa las notificaciones (campana) para que te avise al terminar.",
+        "Debajo tienes el plan del día: una cosa después de otra.",
       ],
     },
   },
@@ -182,6 +211,7 @@ const TUTORIALS: { match: RegExp; tutorial: Tutorial }[] = [
       steps: [
         "Conecta Moodle o Google Classroom para importar tareas automáticamente.",
         "Elige tu IA: Gemini, ChatGPT, Claude, OpenRouter o cualquier otra compatible con OpenAI.",
+        "Activa los recordatorios de Telegram: recibirás cada día tus tareas y exámenes.",
         "En Canva y Word/Excel tienes los botones para descargar tus tareas y cuadernos.",
         "Define tu disponibilidad semanal: el asistente planifica usándola.",
       ],
@@ -193,32 +223,13 @@ export function HelpWidget() {
   const pathname = usePathname() ?? "/";
   const [open, setOpen] = useState(false);
 
-  // Se abre automáticamente la primera vez que se visita cada sección.
-  useEffect(() => {
-    const key = `autopilot_tutorial_${pathname}`;
-    let seen = true;
-    try {
-      seen = window.localStorage.getItem(key) === "1";
-    } catch {
-      seen = true;
-    }
-    if (!seen) {
-      setOpen(true);
-      try {
-        window.localStorage.setItem(key, "1");
-      } catch {
-        /* sin almacenamiento disponible */
-      }
-    }
-  }, [pathname]);
-
   const tutorial =
     TUTORIALS.find((entry) => entry.match.test(pathname))?.tutorial ?? DEFAULT_TUTORIAL;
 
   return (
     <div className="fixed bottom-5 right-24 z-50 flex flex-col items-end gap-3">
       {open && (
-        <div className="animate-pop w-80 max-w-[calc(100vw-2.5rem)] rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-2xl shadow-indigo-500/10 backdrop-blur">
+        <div className="animate-pop w-72 max-w-[calc(100vw-2.5rem)] rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl shadow-indigo-500/10 backdrop-blur">
           <div className="flex items-start justify-between gap-2">
             <p className="text-sm font-semibold">💡 {tutorial.title}</p>
             <button

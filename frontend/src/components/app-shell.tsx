@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import {
+  AudioLines,
+  Brain,
   CalendarCheck,
   CalendarDays,
   CalendarRange,
@@ -43,6 +45,8 @@ const NAV_GROUPS = [
       { href: "/subjects", label: "Asignaturas", icon: Library },
       { href: "/exams", label: "Exámenes", icon: ClipboardList },
       { href: "/notebooks", label: "Cuadernos", icon: NotebookPen },
+      { href: "/review", label: "Repaso", icon: Brain },
+      { href: "/transcribe", label: "Transcribir", icon: AudioLines },
     ],
   },
   {

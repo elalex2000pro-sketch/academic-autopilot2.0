@@ -7,6 +7,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.db.session import AsyncSessionLocal
+from app.services.reminders_service import send_pending_reminders
 from app.services.sync_service import sync_all_users
 from app.services.upload_service import purge_stale_sessions
 
@@ -35,6 +36,14 @@ async def _run_cleanup_job() -> None:
             logger.exception("Fallo la limpieza de subidas: %s", exc)
 
 
+async def _run_reminders_job() -> None:
+    """Job horario: envia recordatorios por Telegram a quien toque."""
+    try:
+        await send_pending_reminders()
+    except Exception as exc:  # noqa: BLE001 - el worker nunca debe caer
+        logger.exception("Fallo el job de recordatorios: %s", exc)
+
+
 def start_scheduler() -> AsyncIOScheduler | None:
     """Arranca el scheduler si esta habilitado. Idempotente."""
     global _scheduler
@@ -57,6 +66,14 @@ def start_scheduler() -> AsyncIOScheduler | None:
         _run_cleanup_job,
         trigger=IntervalTrigger(hours=6),
         id="cleanup_uploads",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    _scheduler.add_job(
+        _run_reminders_job,
+        trigger=IntervalTrigger(hours=1),
+        id="daily_reminders",
         replace_existing=True,
         max_instances=1,
         coalesce=True,

@@ -7,6 +7,17 @@ from datetime import time
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
+class TimetableImportRequest(BaseModel):
+    document_id: uuid.UUID
+    replace: bool = False
+
+
+class TimetableImportResult(BaseModel):
+    created: int
+    source: str
+    entries: list["TimetableEntryRead"]
+
+
 class TimetableEntryBase(BaseModel):
     day_of_week: int = Field(ge=0, le=6, description="0=Lunes .. 6=Domingo")
     start_time: time
@@ -39,3 +50,6 @@ class TimetableEntryRead(TimetableEntryBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+
+
+TimetableImportResult.model_rebuild()

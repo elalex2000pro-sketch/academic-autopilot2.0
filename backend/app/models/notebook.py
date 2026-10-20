@@ -24,4 +24,10 @@ class Notebook(UUIDPkMixin, TimestampMixin, Base):
     color: Mapped[str] = mapped_column(String(20), default="#6366f1", nullable=False)
     content: Mapped[str] = mapped_column(Text, default="", nullable=False)
 
+    # Comparticion con una clase (una clase por cuaderno; lectura o edicion).
+    shared_class_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("shared_classes.id", ondelete="SET NULL"), index=True
+    )
+    share_permission: Mapped[str] = mapped_column(String(10), default="read", nullable=False)
+
     user: Mapped["User"] = relationship()

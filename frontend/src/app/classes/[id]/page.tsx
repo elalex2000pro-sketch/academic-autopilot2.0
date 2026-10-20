@@ -18,6 +18,7 @@ import {
   LogOut,
   Megaphone,
   MessageSquare,
+  NotebookPen,
   Pin,
   PinOff,
   Send,
@@ -35,13 +36,14 @@ import { useAuth } from "@/components/auth-provider";
 import { useRealtime } from "@/components/realtime-provider";
 import { api, ApiError } from "@/lib/api";
 import { uploadFileInChunks, type UploadProgress } from "@/lib/upload";
-import type { ClassDetail, ClassEvent, ClassMessage, DocumentFile } from "@/lib/types";
+import type { ClassDetail, ClassEvent, ClassMessage, DocumentFile, Notebook } from "@/lib/types";
 
-type Tab = "chat" | "calendar" | "files" | "members";
+type Tab = "chat" | "calendar" | "notebooks" | "files" | "members";
 
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "chat", label: "Chat", icon: MessageSquare },
   { id: "calendar", label: "Calendario", icon: CalendarDays },
+  { id: "notebooks", label: "Cuadernos", icon: NotebookPen },
   { id: "files", label: "Archivos", icon: FolderOpen },
   { id: "members", label: "Miembros", icon: Users },
 ];
@@ -114,6 +116,7 @@ export default function ClassDetailPage() {
   const [messages, setMessages] = useState<ClassMessage[]>([]);
   const [events, setEvents] = useState<ClassEvent[]>([]);
   const [files, setFiles] = useState<DocumentFile[]>([]);
+  const [notebooks, setNotebooks] = useState<Notebook[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("chat");
@@ -123,16 +126,18 @@ export default function ClassDetailPage() {
 
   const loadAll = useCallback(async () => {
     if (!classId) return;
-    const [info, msgs, evs, fls] = await Promise.all([
+    const [info, msgs, evs, fls, nbs] = await Promise.all([
       api.classDetail(classId),
       api.classMessages(classId),
       api.classEvents(classId),
       api.classFiles(classId),
+      api.classNotebooks(classId),
     ]);
     setDetail(info);
     setMessages(msgs);
     setEvents(evs);
     setFiles(fls);
+    setNotebooks(nbs);
   }, [classId]);
 
   useEffect(() => {
@@ -435,6 +440,36 @@ export default function ClassDetailPage() {
   }
 
   const canDeleteFile = (file: DocumentFile) => file.user_id === user?.id || isOwner;
+
+  // -------------------------------------------------------------- cuadernos
+  const [openNotebook, setOpenNotebook] = useState<Notebook | null>(null);
+  const [notebookDraft, setNotebookDraft] = useState("");
+  const [savingNotebook, setSavingNotebook] = useState(false);
+
+  function openSharedNotebook(notebook: Notebook) {
+    setOpenNotebook(notebook);
+    setNotebookDraft(notebook.content ?? "");
+  }
+
+  const canEditNotebook =
+    openNotebook !== null &&
+    (openNotebook.user_id === user?.id || openNotebook.share_permission === "edit");
+
+  async function saveSharedNotebook() {
+    if (!openNotebook) return;
+    setSavingNotebook(true);
+    try {
+      const updated = await api.updateNotebook(openNotebook.id, { content: notebookDraft });
+      setNotebooks((prev) =>
+        prev.map((notebook) => (notebook.id === updated.id ? updated : notebook)),
+      );
+      setOpenNotebook(updated);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSavingNotebook(false);
+    }
+  }
 
   // ------------------------------------------------------------------ render
   if (loading) {
@@ -909,6 +944,55 @@ export default function ClassDetailPage() {
         </div>
       )}
 
+      {/* -------------------------------------------------------------- Cuadernos */}
+      {tab === "notebooks" && (
+        <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
+            <div>
+              <CardTitle className="text-base">Cuadernos compartidos</CardTitle>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Apuntes que los miembros han compartido con la clase.
+              </p>
+            </div>
+            <Link href="/notebooks">
+              <Button size="sm" variant="secondary">
+                <NotebookPen className="h-4 w-4" /> Mis cuadernos
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {notebooks.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Nadie ha compartido cuadernos todavía. En Cuadernos, elige uno y pulsa «Compartir
+                con una clase».
+              </p>
+            )}
+            {notebooks.map((notebook) => (
+              <div
+                key={notebook.id}
+                className="flex items-center gap-3 rounded-xl border border-border/60 px-3 py-2.5 text-sm"
+              >
+                <span
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: notebook.color }}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{notebook.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {notebook.user_id === user?.id ? "Tu cuaderno" : "Compartido por un compañero"} ·{" "}
+                    {notebook.share_permission === "edit" ? "Se puede editar" : "Solo lectura"} ·
+                    Actualizado {new Date(notebook.updated_at).toLocaleDateString("es-ES")}
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => openSharedNotebook(notebook)}>
+                  Abrir
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {/* -------------------------------------------------------------- Archivos */}
       {tab === "files" && (
         <Card>
@@ -1011,6 +1095,61 @@ export default function ClassDetailPage() {
             ))}
           </CardContent>
         </Card>
+      )}
+
+      {openNotebook && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
+          onClick={() => setOpenNotebook(null)}
+        >
+          <div
+            className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <h2 className="text-lg font-bold">{openNotebook.title}</h2>
+                <p className="text-xs text-muted-foreground">
+                  {openNotebook.share_permission === "edit"
+                    ? "Puedes editar este cuaderno"
+                    : "Solo lectura"}
+                  {openNotebook.user_id === user?.id ? " · Es tuyo" : ""}
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setOpenNotebook(null)}>
+                Cerrar
+              </Button>
+            </div>
+            <textarea
+              value={notebookDraft}
+              readOnly={!canEditNotebook}
+              onChange={(event) => setNotebookDraft(event.target.value)}
+              className="mt-3 min-h-[360px] w-full resize-y rounded-xl border border-border bg-background p-3 text-sm leading-6 outline-none focus:border-primary/40 read-only:bg-muted/40"
+            />
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs text-muted-foreground">
+                Última actualización:{" "}
+                {new Date(openNotebook.updated_at).toLocaleString("es-ES", {
+                  day: "2-digit",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+              <div className="flex gap-2">
+                <Button variant="secondary" size="sm" onClick={() => setOpenNotebook(null)}>
+                  Volver
+                </Button>
+                {canEditNotebook && (
+                  <Button size="sm" onClick={saveSharedNotebook} disabled={savingNotebook}>
+                    {savingNotebook && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Guardar cambios
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { CalendarDays, Plus, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { CalendarDays, FileUp, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +30,11 @@ export default function SchedulePage() {
   const [start, setStart] = useState("08:00");
   const [end, setEnd] = useState("10:00");
   const [location, setLocation] = useState("");
+
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [replace, setReplace] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     const [c, t] = await Promise.all([api.courses(), api.timetable()]);
@@ -85,6 +90,29 @@ export default function SchedulePage() {
       .catch((e) => setNotice(errorMessage(e)));
   }
 
+  async function importSchedule() {
+    if (!importFile) {
+      setNotice("Selecciona una foto, PDF o documento con tu horario.");
+      return;
+    }
+    setImporting(true);
+    setNotice(null);
+    try {
+      const document = await api.uploadFile(importFile);
+      const result = await api.importTimetable(document.id, replace);
+      setNotice(
+        `${result.created} clases importadas (${result.source === "heuristic" ? "lectura local" : "con IA"}). Revisa que las horas sean correctas.`,
+      );
+      setImportFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      await load();
+    } catch (error) {
+      setNotice(errorMessage(error));
+    } finally {
+      setImporting(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-6">
       <header>
@@ -95,6 +123,46 @@ export default function SchedulePage() {
       </header>
 
       {notice && <p className="text-sm text-muted-foreground">{notice}</p>}
+
+      <Card className="border-indigo-100 bg-gradient-to-br from-indigo-50/60 to-white">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Sparkles className="h-4 w-4 text-indigo-600" /> Importar horario desde foto o PDF
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Sube una foto del horario, un PDF o un Word. La IA detecta los días, las horas y las
+            asignaturas; si no tienes IA configurada, se intenta con un lector de líneas.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,.xlsx"
+              onChange={(event) => setImportFile(event.target.files?.[0] ?? null)}
+              className="block w-full max-w-sm text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-indigo-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-indigo-700 hover:file:bg-indigo-200"
+            />
+            <Button onClick={importSchedule} disabled={importing || !importFile}>
+              {importing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileUp className="h-4 w-4" />
+              )}
+              {importing ? "Leyendo horario..." : "Importar"}
+            </Button>
+            <label className="flex items-center gap-2 text-xs text-slate-600">
+              <input
+                type="checkbox"
+                checked={replace}
+                onChange={(event) => setReplace(event.target.checked)}
+                className="h-4 w-4 rounded border-slate-300"
+              />
+              Reemplazar el horario actual
+            </label>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

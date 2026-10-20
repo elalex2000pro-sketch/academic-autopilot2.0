@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     ai_api_key: str = ""  # Ollama no requiere clave
     ai_model: str = "llama3.1"
     ai_timeout_seconds: int = 60
+    ai_transcribe_model: str = "whisper-1"
     ai_temperature: float = 0.3
     ai_history_limit: int = 12
 

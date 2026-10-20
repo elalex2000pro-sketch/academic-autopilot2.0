@@ -26,6 +26,7 @@ from app.models.shared_class import (
     ClassMessage,
     SharedClass,
 )
+from app.models.notebook import Notebook
 from app.models.user import User
 from app.schemas.classroom import (
     ClassCreate,
@@ -41,6 +42,7 @@ from app.schemas.classroom import (
     MessageRead,
     MessageUpdate,
 )
+from app.schemas.notebook import NotebookRead
 from app.schemas.file import DocumentRead
 from app.models.document import Document
 from app.services import class_service
@@ -641,6 +643,20 @@ async def delete_event(
 # --------------------------------------------------------------------------- #
 # Archivos de la clase
 # --------------------------------------------------------------------------- #
+@router.get("/{class_id}/notebooks", response_model=list[NotebookRead])
+async def class_notebooks(
+    class_id: uuid.UUID, current_user: CurrentUser, db: DbSession
+) -> list[Notebook]:
+    """Cuadernos que los miembros han compartido con esta clase."""
+    await _require_member(db, class_id, current_user.id)
+    result = await db.execute(
+        select(Notebook)
+        .where(Notebook.shared_class_id == class_id)
+        .order_by(Notebook.updated_at.desc())
+    )
+    return list(result.scalars().all())
+
+
 @router.get("/{class_id}/files", response_model=list[DocumentRead])
 async def list_class_files(
     class_id: uuid.UUID, current_user: CurrentUser, db: DbSession

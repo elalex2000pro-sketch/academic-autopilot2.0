@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   ArrowRight,
+  AudioLines,
+  Brain,
   CalendarRange,
+  BellRing,
   NotebookPen,
   Sparkles,
   Target,
@@ -35,7 +38,7 @@ const FEATURES = [
     icon: NotebookPen,
     title: "Cuadernos con autoguardado",
     description:
-      "Crea cuadernos por materia, escribe apuntes o pega resúmenes de la IA y descárgalos en Word o Excel.",
+      "Elige plantilla, escribe apuntes y comparte el cuaderno con tu clase en solo lectura o para editar entre todos.",
     tint: "from-sky-500 to-cyan-500",
   },
   {
@@ -67,8 +70,32 @@ const FEATURES = [
     icon: Target,
     title: "Modo Enfoque",
     description:
-      "Sesiones de concentración con temporizador, descansos y preguntas de repaso para no perder el ritmo.",
+      "Pomodoro de 25/5 con estadísticas, rachas de estudio y el plan del día en una sola pantalla.",
     tint: "from-rose-500 to-red-500",
+  },
+  {
+    href: "/review",
+    icon: Brain,
+    title: "Flashcards y exámenes",
+    description:
+      "Genera tarjetas desde tus cuadernos con repaso espaciado SM-2 y exámenes tipo test corregidos al instante.",
+    tint: "from-violet-500 to-purple-500",
+  },
+  {
+    href: "/transcribe",
+    icon: AudioLines,
+    title: "Transcribir clases",
+    description:
+      "Sube la grabación de una clase y guarda el texto como cuaderno para resumirlo o repasarlo.",
+    tint: "from-cyan-500 to-blue-500",
+  },
+  {
+    href: "/settings",
+    icon: BellRing,
+    title: "Recordatorios por Telegram",
+    description:
+      "Recibe cada día tus tareas próximas y los exámenes de tus clases directamente en el móvil.",
+    tint: "from-teal-500 to-emerald-500",
   },
 ];
 
