@@ -14,6 +14,7 @@ from app.models.assistant_message import AssistantMessage
 from app.models.document import Document
 from app.models.grade import Grade
 from app.models.integration import Integration
+from app.models.notebook import Notebook
 from app.models.schedule_block import ScheduleBlock
 from app.models.shared_class import (
     ClassEvent,
@@ -38,6 +39,7 @@ __all__ = [
     "Document",
     "Grade",
     "Integration",
+    "Notebook",
     "ScheduleBlock",
     "SharedClass",
     "SyncLog",

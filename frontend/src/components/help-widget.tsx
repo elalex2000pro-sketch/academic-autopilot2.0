@@ -115,9 +115,20 @@ const TUTORIALS: { match: RegExp; tutorial: Tutorial }[] = [
     tutorial: {
       title: "IA Studio",
       steps: [
-        "Sube tus apuntes (PDF, Word, PowerPoint, fotos) y genera un resumen o una infografía en PDF.",
-        "Elige el documento y pulsa «Generar»: tarda unos segundos.",
-        "Descarga el resultado o llévalo a NotebookLM para estudiar con él.",
+        "Sube tus apuntes (PDF, Word, Excel, PowerPoint o fotos) y elige el documento.",
+        "Pulsa «Resumen», «Infografía» o «Mapa mental»: se genera un PDF en segundos.",
+        "Descarga el PDF, pásalo a Word o pulsa «Canva» para editarlo con tus colores.",
+      ],
+    },
+  },
+  {
+    match: /^\/notebooks/,
+    tutorial: {
+      title: "Cuadernos",
+      steps: [
+        "Pulsa «Nuevo cuaderno» y ponle un título y un color.",
+        "Escribe tus apuntes: se guardan solos mientras escribes.",
+        "Descarga el cuaderno en Word, o todos juntos en Excel, con un clic.",
       ],
     },
   },
@@ -138,9 +149,9 @@ const TUTORIALS: { match: RegExp; tutorial: Tutorial }[] = [
     tutorial: {
       title: "Archivos",
       steps: [
-        "Sube tus apuntes y organízalos por asignatura.",
+        "Sube tus apuntes (PDF, Word, Excel, PowerPoint o imágenes) y organízalos por asignatura.",
         "Los archivos grandes se suben por trozos y se reanudan solos si se corta la conexión.",
-        "Usa tus apuntes en «IA Studio» para generar resúmenes.",
+        "Usa tus apuntes en «IA Studio» para generar resúmenes, infografías y mapas mentales.",
       ],
     },
   },
@@ -171,6 +182,7 @@ const TUTORIALS: { match: RegExp; tutorial: Tutorial }[] = [
       steps: [
         "Conecta Moodle o Google Classroom para importar tareas automáticamente.",
         "Elige tu IA: Gemini, ChatGPT, Claude, OpenRouter o cualquier otra compatible con OpenAI.",
+        "En Canva y Word/Excel tienes los botones para descargar tus tareas y cuadernos.",
         "Define tu disponibilidad semanal: el asistente planifica usándola.",
       ],
     },
@@ -206,7 +218,7 @@ export function HelpWidget() {
   return (
     <div className="fixed bottom-5 right-24 z-50 flex flex-col items-end gap-3">
       {open && (
-        <div className="w-80 max-w-[calc(100vw-2.5rem)] rounded-xl border border-border bg-background p-4 shadow-2xl">
+        <div className="animate-pop w-80 max-w-[calc(100vw-2.5rem)] rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-2xl shadow-indigo-500/10 backdrop-blur">
           <div className="flex items-start justify-between gap-2">
             <p className="text-sm font-semibold">💡 {tutorial.title}</p>
             <button
@@ -233,7 +245,7 @@ export function HelpWidget() {
         onClick={() => setOpen((value) => !value)}
         title="Ayuda y tutoriales"
         aria-label="Ayuda y tutoriales"
-        className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background text-primary shadow-lg transition-transform hover:scale-105"
+        className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-500/30 transition-transform hover:scale-110"
       >
         <CircleHelp className="h-5 w-5" />
       </button>

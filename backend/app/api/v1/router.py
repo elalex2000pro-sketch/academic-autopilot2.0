@@ -6,9 +6,11 @@ from app.api.v1 import (
     auth,
     classes,
     courses,
+    exports,
     files,
     grades,
     integrations,
+    notebooks,
     realtime,
     schedule,
     studio,
@@ -32,6 +34,8 @@ api_router.include_router(files.router)
 api_router.include_router(assistant.router)
 api_router.include_router(schedule.router)
 api_router.include_router(studio.router)
+api_router.include_router(notebooks.router)
+api_router.include_router(exports.router)
 api_router.include_router(realtime.router)
 
 __all__ = ["api_router"]

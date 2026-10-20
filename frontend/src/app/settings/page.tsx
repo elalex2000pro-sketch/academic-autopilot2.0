@@ -2,7 +2,17 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { BookOpen, Cpu, Loader2, Link2, Plus, Trash2 } from "lucide-react";
+import {
+  BookOpen,
+  Cpu,
+  ExternalLink,
+  FileSpreadsheet,
+  Loader2,
+  Link2,
+  Palette,
+  Plus,
+  Trash2,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -435,6 +445,87 @@ function SettingsInner() {
               </Button>
             </a>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* ---- Canva (edicion manual de PDF) ---- */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Palette className="h-4 w-4" /> Canva
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Canva no permite conectar una cuenta sin crear antes una aplicación OAuth propia, así
+            que la integración es directa y sin claves: genera tu <strong>infografía</strong> o{" "}
+            <strong>mapa mental</strong> en IA Studio, pulsa <strong>PDF</strong> para descargarlo y
+            súbelo a Canva como diseño editable. También puedes exportar el contenido a{" "}
+            <strong>Word</strong> y pegarlo en una plantilla.
+          </p>
+          <ol className="list-decimal space-y-1 pl-5 text-xs text-muted-foreground">
+            <li>Genera el diseño en IA Studio (Resumen, Infografía o Mapa mental).</li>
+            <li>Descárgalo en PDF o Word.</li>
+            <li>En Canva elige «Crear diseño» → «Importar» y edita colores, fuentes e imágenes.</li>
+          </ol>
+          <div className="flex flex-wrap gap-2">
+            <a href="https://www.canva.com/create/" target="_blank" rel="noreferrer">
+              <Button type="button" size="sm" variant="outline">
+                <ExternalLink className="h-4 w-4" /> Abrir Canva
+              </Button>
+            </a>
+            <a href="/studio">
+              <Button type="button" size="sm" variant="ghost">
+                Ir a IA Studio
+              </Button>
+            </a>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ---- Word y Excel ---- */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileSpreadsheet className="h-4 w-4" /> Word y Excel
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Puedes <strong>subir</strong> tus apuntes en Word (.docx) o Excel (.xlsx) desde{" "}
+            <strong>Archivos</strong> y usarlos para resúmenes, infografías y mapas mentales. También
+            puedes <strong>descargar</strong> tu información para abrirla en Word o Excel.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() =>
+                api.exportTasksExcel().catch((error: unknown) => setNotice(String(error)))
+              }
+            >
+              <FileSpreadsheet className="h-4 w-4" /> Tareas en Excel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() =>
+                api.exportNotebooksExcel().catch((error: unknown) => setNotice(String(error)))
+              }
+            >
+              <FileSpreadsheet className="h-4 w-4" /> Cuadernos en Excel
+            </Button>
+            <a href="/notebooks">
+              <Button type="button" size="sm" variant="ghost">
+                Ir a Cuadernos (Word)
+              </Button>
+            </a>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Cada cuaderno se descarga en Word con un clic desde la sección Cuadernos.
+          </p>
         </CardContent>
       </Card>
 

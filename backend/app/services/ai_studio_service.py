@@ -18,12 +18,17 @@ from app.db.base import utcnow
 from app.models.ai_output import AiOutput
 from app.models.document import Document
 from app.models.user import User
-from app.services.pdf_service import build_infographic_pdf, build_summary_pdf
+from app.services.pdf_service import build_infographic_pdf, build_mindmap_pdf, build_summary_pdf
 
 try:
     from docx import Document as DocxDocument
 except Exception:  # pragma: no cover
     DocxDocument = None
+
+try:
+    from openpyxl import load_workbook
+except Exception:  # pragma: no cover
+    load_workbook = None
 
 logger = get_logger(__name__)
 
@@ -58,6 +63,24 @@ def extract_text(document: Document) -> str:
             raise ValueError("No se pudo leer el archivo DOCX") from exc
         return _sanitize(text)
 
+    if ext in (".xlsx", ".xlsm") and load_workbook is not None:
+        try:
+            workbook = load_workbook(abs_path, read_only=True, data_only=True)
+            parts: list[str] = []
+            for sheet in workbook.worksheets:
+                parts.append(f"# Hoja: {sheet.title}")
+                for row_index, row in enumerate(sheet.iter_rows(values_only=True)):
+                    if row_index > 1500:
+                        parts.append("... (hoja truncada)")
+                        break
+                    cells = [str(value).strip() for value in row if value is not None and str(value).strip()]
+                    if cells:
+                        parts.append(" | ".join(cells))
+            workbook.close()
+        except Exception as exc:
+            raise ValueError("No se pudo leer el archivo de Excel") from exc
+        return _sanitize("\n".join(parts))
+
     raise ValueError(f"Formato no soportado para resumen/infografia: {ext or 'desconocido'}")
 
 
@@ -83,6 +106,11 @@ async def call_llm(user_text: str, kind: str) -> dict[str, Any]:
         "Eres un asistente academico especializado en crear infografias. "
         "Devuelve SIEMPRE un JSON valido con este esquema: {\"title\": \"...\", \"subtitle\": \"...\", \"sections\": [{\"title\": \"...\", \"items\": [\"...\", \"...\"]}], \"stats\": [{\"label\": \"...\", \"value\": \"...\"]}, \"keywords\": [\"...\"]}"
     )
+    system_mindmap = (
+        "Eres un asistente academico especializado en mapas mentales. "
+        "Devuelve SIEMPRE un JSON valido con este esquema: {\"title\": \"...\", \"center\": \"idea central en pocas palabras\", \"branches\": [{\"title\": \"rama principal\", \"children\": [\"detalle corto\", \"detalle corto\"]}]}. "
+        "Incluye entre 4 y 8 ramas y entre 2 y 5 detalles por rama, todos cortos."
+    )
 
     prompt = (
         "Este es el contenido del documento (posiblemente truncado):\n\n"
@@ -93,7 +121,14 @@ async def call_llm(user_text: str, kind: str) -> dict[str, Any]:
     payload = {
         "model": settings.ai_model,
         "messages": [
-            {"role": "system", "content": system_infog if kind == "infographic" else system_summary},
+            {
+                "role": "system",
+                "content": (
+                    system_mindmap
+                    if kind == "mindmap"
+                    else (system_infog if kind == "infographic" else system_summary)
+                ),
+            },
             {"role": "user", "content": prompt},
         ],
         "temperature": settings.ai_temperature,
@@ -160,6 +195,15 @@ def _heuristic_infographic(doc_title: str, text: str) -> dict[str, Any]:
     }
 
 
+def _heuristic_mindmap(doc_title: str, text: str) -> dict[str, Any]:
+    lines = [x.strip() for x in text.split("\n") if x.strip()][:6]
+    return {
+        "title": f"Mapa mental - {doc_title}",
+        "center": doc_title[:80],
+        "branches": [{"title": line[:60], "children": []} for line in lines],
+    }
+
+
 async def generate(
     db: AsyncSession,
     user: User,
@@ -173,7 +217,12 @@ async def generate(
     except Exception as exc:  # noqa: BLE001
         logger.warning("AI Studio usando heuristico: %s", exc)
         source = "heuristic"
-        data = _heuristic_summary(document.filename, text) if kind == "summary" else _heuristic_infographic(document.filename, text)
+        if kind == "summary":
+            data = _heuristic_summary(document.filename, text)
+        elif kind == "mindmap":
+            data = _heuristic_mindmap(document.filename, text)
+        else:
+            data = _heuristic_infographic(document.filename, text)
 
     if kind == "summary":
         pdf_bytes = build_summary_pdf(
@@ -181,6 +230,12 @@ async def generate(
             {"filename": document.filename, "created_at": utcnow().strftime("%Y-%m-%d %H:%M")},
             data.get("summary", ""),
             data.get("key_points", []) or [],
+        )
+    elif kind == "mindmap":
+        pdf_bytes = build_mindmap_pdf(
+            data.get("title", "Mapa mental"),
+            data.get("center", ""),
+            data.get("branches", []) or [],
         )
     else:
         pdf_bytes = build_infographic_pdf(

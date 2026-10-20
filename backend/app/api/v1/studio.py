@@ -1,10 +1,15 @@
-"""Endpoints del IA Studio: generar resumenes e infografias (PDF) de documentos."""
+"""Endpoints del IA Studio: generar resumenes, infografias y mapas mentales (PDF)."""
 from __future__ import annotations
 
+import io
+import json
 import os
 import uuid
+from urllib.parse import quote
 
-from fastapi import APIRouter, HTTPException, status
+from docx import Document as DocxDocument
+from docx.shared import Pt, RGBColor
+from fastapi import APIRouter, HTTPException, Response, status
 from sqlalchemy import delete, select
 
 from app.api.deps import CurrentUser, DbSession
@@ -87,6 +92,76 @@ async def delete_output(
     await db.delete(output)
     await db.commit()
     notify(current_user.id, "studio", {"action": "deleted", "id": str(output_id)})
+
+
+@router.get("/outputs/{output_id}/word")
+async def export_output_word(
+    output_id: uuid.UUID, current_user: CurrentUser, db: DbSession
+) -> Response:
+    result = await db.execute(
+        select(AiOutput).where(AiOutput.id == output_id, AiOutput.user_id == current_user.id)
+    )
+    output = result.scalar_one_or_none()
+    if output is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Salida no encontrada")
+
+    kind_label = {"summary": "Resumen", "infographic": "Infografia", "mindmap": "Mapa mental"}.get(
+        output.kind, output.kind
+    )
+    document = DocxDocument()
+    title = document.add_heading(output.title or kind_label, level=0)
+    for run in title.runs:
+        run.font.color.rgb = RGBColor(0x31, 0x2E, 0x81)
+
+    meta = document.add_paragraph()
+    run = meta.add_run(
+        f"Academic Autopilot · {kind_label} · {output.created_at.strftime('%d/%m/%Y %H:%M')}"
+    )
+    run.font.size = Pt(9)
+    run.font.color.rgb = RGBColor(0x64, 0x74, 0x8B)
+
+    payload = _parse_json(output.content)
+    if output.kind == "summary" or payload is None:
+        for block in (output.content or "").split("\n"):
+            if block.strip():
+                document.add_paragraph(block.strip())
+    elif output.kind == "mindmap":
+        center = payload.get("center") or payload.get("title") or ""
+        if center:
+            paragraph = document.add_paragraph()
+            run = paragraph.add_run(str(center))
+            run.bold = True
+        for branch in payload.get("branches", []) or []:
+            document.add_heading(str(branch.get("title", "")), level=2)
+            for child in branch.get("children", []) or []:
+                document.add_paragraph(str(child), style="List Bullet")
+    else:
+        subtitle = payload.get("subtitle")
+        if subtitle:
+            document.add_paragraph(str(subtitle))
+        for section in payload.get("sections", []) or []:
+            document.add_heading(str(section.get("title", "")), level=2)
+            for item in section.get("items", []) or []:
+                document.add_paragraph(str(item), style="List Bullet")
+
+    buffer = io.BytesIO()
+    document.save(buffer)
+    encoded = quote(f"{output.title or kind_label}.docx")
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={
+            "Content-Disposition": f"attachment; filename=\"salida.docx\"; filename*=UTF-8''{encoded}"
+        },
+    )
+
+
+def _parse_json(content: str) -> dict | None:
+    try:
+        data = json.loads(content)
+    except Exception:  # noqa: BLE001
+        return None
+    return data if isinstance(data, dict) else None
 
 
 async def _get_owned_document(

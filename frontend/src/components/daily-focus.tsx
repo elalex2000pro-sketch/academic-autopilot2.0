@@ -101,7 +101,7 @@ export function DailyFocus({
                 className="text-muted-foreground transition-colors hover:text-primary"
               >
                 {item.completed ? (
-                  <CheckCircle2 className="h-6 w-6 text-emerald-400" />
+                  <CheckCircle2 className="h-6 w-6 text-emerald-500" />
                 ) : (
                   <Circle className="h-6 w-6" />
                 )}

@@ -5,7 +5,7 @@ import io
 from typing import Any
 
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.lib.utils import simpleSplit
@@ -16,6 +16,16 @@ _ACCENT = colors.HexColor("#4f46e5")
 _ACCENT_DARK = colors.HexColor("#312e81")
 _LIGHT = colors.HexColor("#eef2ff")
 _GREY = colors.HexColor("#334155")
+_PALETTE = [
+    colors.HexColor("#4f46e5"),
+    colors.HexColor("#7c3aed"),
+    colors.HexColor("#0891b2"),
+    colors.HexColor("#e11d48"),
+    colors.HexColor("#d97706"),
+    colors.HexColor("#059669"),
+    colors.HexColor("#db2777"),
+    colors.HexColor("#2563eb"),
+]
 
 
 def _safe(text: str) -> str:
@@ -149,6 +159,120 @@ def build_infographic_pdf(
             c.drawString(26 * mm, ty, line)
             ty -= 5 * mm
         y -= card_h + 8 * mm
+
+    c.showPage()
+    c.save()
+    return buffer.getvalue()
+
+
+def build_mindmap_pdf(
+    title: str,
+    center: str,
+    branches: list[dict[str, Any]],
+) -> bytes:
+    """Mapa mental: nodo central y ramas laterales conectadas con curvas."""
+    buffer = io.BytesIO()
+    page_w, page_h = landscape(A4)
+    c = pdf_canvas.Canvas(buffer, pagesize=landscape(A4))
+
+    # --- Cabecera ---
+    band_h = 18 * mm
+    c.setFillColor(_ACCENT_DARK)
+    c.rect(0, page_h - band_h, page_w, band_h, fill=1, stroke=0)
+    c.setFillColor(colors.white)
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(12 * mm, page_h - 12 * mm, _wrap(title or "Mapa mental", "Helvetica-Bold", 16, page_w - 70 * mm)[0])
+    c.setFont("Helvetica", 10)
+    c.drawRightString(page_w - 12 * mm, page_h - 12 * mm, "Mapa mental · Academic Autopilot")
+
+    branches = [b for b in (branches or []) if isinstance(b, dict)][:8]
+    cx = page_w / 2
+    cy = band_h + (page_h - band_h) / 2
+
+    # --- Nodo central ---
+    center_text = str(center or title or "Tema central")
+    cw, ch = 62 * mm, 26 * mm
+    c.setFillColor(_ACCENT)
+    c.roundRect(cx - cw / 2, cy - ch / 2, cw, ch, 5 * mm, fill=1, stroke=0)
+    c.setFillColor(colors.white)
+    c.setFont("Helvetica-Bold", 12)
+    lines = _wrap(center_text, "Helvetica-Bold", 12, cw - 10 * mm)[:3]
+    ty = cy + (len(lines) - 1) * 4 * mm
+    for line in lines:
+        c.drawCentredString(cx, ty - 3 * mm, line)
+        ty -= 8 * mm
+
+    # --- Reparto de ramas a izquierda y derecha ---
+    half = (len(branches) + 1) // 2
+    sides = [branches[:half], branches[half:]]
+    box_w = 78 * mm
+    top = page_h - band_h - 10 * mm
+    bottom = 10 * mm
+    avail = top - bottom
+
+    for side_index, side in enumerate(sides):
+        n = max(len(side), 1)
+        spacing = avail / n
+        for i, branch in enumerate(side):
+            color = _PALETTE[(i * 2 + side_index) % len(_PALETTE)]
+            b_title = str(branch.get("title", ""))
+            children = [str(x) for x in (branch.get("children") or []) if str(x).strip()]
+            max_h = max(spacing - 6 * mm, 14 * mm)
+            max_children = max(0, int((max_h - 11 * mm) / (4.6 * mm)))
+            children = children[: max(0, min(5, max_children))]
+
+            title_lines = _wrap(b_title, "Helvetica-Bold", 9.5, box_w - 8 * mm)[:2]
+            child_lines: list[str] = []
+            for child in children:
+                wrapped = _wrap(f"· {child}", "Helvetica", 8, box_w - 9 * mm)[:2]
+                child_lines.extend(wrapped)
+
+            h = 6 * mm + len(title_lines) * 4.6 * mm + len(child_lines) * 4.1 * mm + 4 * mm
+            center_y = top - spacing * (i + 0.5)
+            y0 = center_y - h / 2
+            if side_index == 0:
+                x0 = 10 * mm
+                edge_x = x0 + box_w  # borde derecho de la caja (conecta al centro)
+            else:
+                x0 = page_w - 10 * mm - box_w
+                edge_x = x0  # borde izquierdo de la caja
+
+            # Conector curvo desde el nodo central hasta la rama.
+            c.setStrokeColor(color)
+            c.setLineWidth(1.6)
+            start_x = cx - cw / 2 if side_index == 0 else cx + cw / 2
+            c.bezier(
+                start_x,
+                cy,
+                start_x - (10 * mm if side_index == 0 else -10 * mm),
+                center_y,
+                edge_x + (6 * mm if side_index == 0 else -6 * mm),
+                center_y,
+                edge_x,
+                center_y,
+            )
+            c.setFillColor(color)
+            c.circle(edge_x, center_y, 1.6 * mm, fill=1, stroke=0)
+
+            # Caja de la rama.
+            c.setFillColor(colors.white)
+            c.setStrokeColor(color)
+            c.setLineWidth(1.2)
+            c.roundRect(x0, y0, box_w, h, 3 * mm, fill=1, stroke=1)
+            c.setFillColor(color)
+            c.rect(x0, y0, 2.2 * mm, h, fill=1, stroke=0)
+
+            c.setFillColor(_ACCENT_DARK)
+            c.setFont("Helvetica-Bold", 9.5)
+            text_y = y0 + h - 5 * mm
+            for line in title_lines:
+                c.drawString(x0 + 5 * mm, text_y, line)
+                text_y -= 4.6 * mm
+            c.setFillColor(_GREY)
+            c.setFont("Helvetica", 8)
+            for line in child_lines:
+                c.drawString(x0 + 5 * mm, text_y, line)
+                text_y -= 4.1 * mm
 
     c.showPage()
     c.save()

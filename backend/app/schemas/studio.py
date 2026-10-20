@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict
 
 class StudioGenerateRequest(BaseModel):
     document_id: uuid.UUID
-    kind: Literal["summary", "infographic"]
+    kind: Literal["summary", "infographic", "mindmap"]
 
 
 class AiOutputRead(BaseModel):

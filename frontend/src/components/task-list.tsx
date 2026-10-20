@@ -1,11 +1,12 @@
 "use client";
 
-import { CheckCircle2, Circle, ListTodo } from "lucide-react";
+import { CheckCircle2, Circle, FileSpreadsheet, ListTodo } from "lucide-react";
 
 import { PriorityBadge } from "@/components/priority";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { api } from "@/lib/api";
 import type { Task } from "@/lib/types";
 import { formatMinutes } from "@/lib/utils";
 
@@ -39,7 +40,17 @@ export function TaskList({
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base">Tareas pendientes</CardTitle>
-        <span className="text-xs text-muted-foreground">{tasks.length} activas</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">{tasks.length} activas</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            title="Descargar todas las tareas en Excel"
+            onClick={() => api.exportTasksExcel().catch(() => undefined)}
+          >
+            <FileSpreadsheet className="h-4 w-4" /> Excel
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-2">
         {loading && <p className="text-sm text-muted-foreground">Cargando tareas...</p>}
@@ -59,7 +70,7 @@ export function TaskList({
               className="mt-0.5 text-muted-foreground transition-colors hover:text-primary"
             >
               {task.status === "completed" ? (
-                <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
               ) : (
                 <Circle className="h-5 w-5" />
               )}

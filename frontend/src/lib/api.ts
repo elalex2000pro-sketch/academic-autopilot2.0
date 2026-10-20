@@ -13,6 +13,7 @@ import type {
   Grade,
   GradeSummary,
   Integration,
+  Notebook,
   OptimizedPlan,
   PendingAction,
   Provider,
@@ -89,6 +90,24 @@ export class ApiError extends Error {
     super(message);
     this.status = status;
   }
+}
+
+// Descarga autenticada de cualquier archivo generado por el backend.
+async function downloadAuthenticated(path: string, filename: string, errorMessage: string) {
+  const token = tokenStore.get();
+  const response = await fetch(`${resolveApiBase()}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  if (!response.ok) throw new ApiError(response.status, errorMessage);
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = window.document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  window.document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
 }
 
 async function request<T>(
@@ -342,6 +361,41 @@ export const api = {
     URL.revokeObjectURL(url);
   },
 
+  // --- Cuadernos de notas ---
+  notebooks: () => request<Notebook[]>("/api/v1/notebooks"),
+  createNotebook: (body: { title?: string; color?: string; content?: string }) =>
+    request<Notebook>("/api/v1/notebooks", { method: "POST", body: JSON.stringify(body) }),
+  updateNotebook: (
+    id: string,
+    body: { title?: string; color?: string; content?: string },
+  ) => request<Notebook>(`/api/v1/notebooks/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  deleteNotebook: (id: string) =>
+    request<void>(`/api/v1/notebooks/${id}`, { method: "DELETE" }),
+  downloadNotebookWord: (id: string, filename: string) =>
+    downloadAuthenticated(
+      `/api/v1/notebooks/${id}/word`,
+      filename.endsWith(".docx") ? filename : `${filename}.docx`,
+      "No se pudo exportar el cuaderno a Word",
+    ),
+  downloadStudioWord: (id: string, filename: string) =>
+    downloadAuthenticated(
+      `/api/v1/studio/outputs/${id}/word`,
+      filename.endsWith(".docx") ? filename : `${filename}.docx`,
+      "No se pudo exportar a Word",
+    ),
+  exportTasksExcel: () =>
+    downloadAuthenticated(
+      "/api/v1/exports/tasks.xlsx",
+      "tareas-academic-autopilot.xlsx",
+      "No se pudo exportar las tareas a Excel",
+    ),
+  exportNotebooksExcel: () =>
+    downloadAuthenticated(
+      "/api/v1/exports/notebooks.xlsx",
+      "cuadernos-academic-autopilot.xlsx",
+      "No se pudo exportar los cuadernos a Excel",
+    ),
+
   // --- Subidas por trozos (archivos grandes, reanudables) ---
   createUpload: (body: {
     filename: string;
@@ -435,7 +489,7 @@ export const api = {
 
   // --- IA Studio (resumenes e infografias en PDF) ---
   studioOutputs: () => request<AiOutput[]>("/api/v1/studio/outputs"),
-  generateStudio: (documentId: string, kind: "summary" | "infographic") =>
+  generateStudio: (documentId: string, kind: "summary" | "infographic" | "mindmap") =>
     request<AiOutput>("/api/v1/studio/generate", {
       method: "POST",
       body: JSON.stringify({ document_id: documentId, kind }),

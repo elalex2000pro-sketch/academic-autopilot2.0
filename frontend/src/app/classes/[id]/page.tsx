@@ -749,7 +749,7 @@ export default function ClassDetailPage() {
                             key={event.id}
                             className={`truncate rounded px-1 py-0.5 text-[10px] ${
                               event.is_exam
-                                ? "bg-red-500/15 font-semibold text-red-500"
+                                ? "bg-red-50 font-semibold text-red-600"
                                 : "bg-primary/10 text-primary"
                             }`}
                           >
@@ -868,13 +868,13 @@ export default function ClassDetailPage() {
                   <div
                     key={event.id}
                     className={`flex items-start justify-between gap-2 rounded-md border px-3 py-2 text-sm ${
-                      event.is_exam ? "border-red-500/40 bg-red-500/5" : "border-border/60"
+                      event.is_exam ? "border-red-300 bg-red-50/70" : "border-border/60"
                     }`}
                   >
                     <div className="min-w-0">
                       <p className="flex items-center gap-2 truncate font-medium">
                         {event.is_exam && (
-                          <span className="shrink-0 rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-500">
+                          <span className="shrink-0 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-600">
                             Examen
                           </span>
                         )}

@@ -1,16 +1,79 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import {
+  ArrowRight,
+  CalendarRange,
+  NotebookPen,
+  Sparkles,
+  Target,
+  Users,
+  Wand2,
+} from "lucide-react";
 
 import { DailyFocus } from "@/components/daily-focus";
 import { SchedulePlanner } from "@/components/schedule-planner";
 import { SyncStatus } from "@/components/sync-status";
 import { TaskList } from "@/components/task-list";
+import { useAuth } from "@/components/auth-provider";
 import { useRealtime } from "@/components/realtime-provider";
 import { api } from "@/lib/api";
 import type { DailyAgenda, OptimizedPlan, Task } from "@/lib/types";
 
+const FEATURES = [
+  {
+    href: "/studio",
+    icon: Wand2,
+    title: "Resúmenes, infografías y mapas mentales",
+    description:
+      "Sube un PDF, Word o Excel y conviértelo en un resumen, una infografía o un mapa mental listo para estudiar.",
+    tint: "from-indigo-500 to-violet-500",
+  },
+  {
+    href: "/notebooks",
+    icon: NotebookPen,
+    title: "Cuadernos con autoguardado",
+    description:
+      "Crea cuadernos por materia, escribe apuntes o pega resúmenes de la IA y descárgalos en Word o Excel.",
+    tint: "from-sky-500 to-cyan-500",
+  },
+  {
+    href: "/classes",
+    icon: Users,
+    title: "Clases compartidas",
+    description:
+      "Únete con un código permanente: chat, archivos y un calendario común donde los exámenes se ven en rojo para todos.",
+    tint: "from-emerald-500 to-teal-500",
+  },
+  {
+    href: "/calendar",
+    icon: CalendarRange,
+    title: "Calendario y entregas",
+    description:
+      "Ve tus tareas en el calendario, marca exámenes en tus clases y exporta todo a Excel cuando lo necesites.",
+    tint: "from-amber-500 to-orange-500",
+  },
+  {
+    href: "/assistant",
+    icon: Sparkles,
+    title: "Asistente IA multi-modelo",
+    description:
+      "Conecta Gemini, ChatGPT, Claude u OpenRouter, pídele que organice tus tareas y transporta tus chats entre dispositivos.",
+    tint: "from-fuchsia-500 to-pink-500",
+  },
+  {
+    href: "/focus",
+    icon: Target,
+    title: "Modo Enfoque",
+    description:
+      "Sesiones de concentración con temporizador, descansos y preguntas de repaso para no perder el ritmo.",
+    tint: "from-rose-500 to-red-500",
+  },
+];
+
 export default function DashboardPage() {
+  const { user } = useAuth();
   const [plan, setPlan] = useState<OptimizedPlan | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [agenda, setAgenda] = useState<DailyAgenda | null>(null);
@@ -52,31 +115,104 @@ export default function DashboardPage() {
     [load],
   );
 
+  const name = user?.full_name?.trim() || user?.email.split("@")[0] || "";
+  const today = new Date().toLocaleDateString("es-ES", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          Tu plan de estudio priorizado y calendarizado de forma automatica.
+    <div className="mx-auto max-w-6xl space-y-7 p-4 sm:p-6">
+      {/* ---- Bienvenida ---- */}
+      <section className="animate-fade-up relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-500 p-6 text-white shadow-xl shadow-indigo-500/20 sm:p-8">
+        <div className="pointer-events-none absolute -right-10 -top-16 h-52 w-52 rounded-full bg-white/15 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-20 right-24 h-44 w-44 rounded-full bg-cyan-300/20 blur-2xl" />
+        <p className="text-sm capitalize text-white/75">{today}</p>
+        <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
+          Hola, {name} 👋
+        </h1>
+        <p className="mt-2 max-w-2xl text-sm text-white/85 sm:text-base">
+          {tasks.length > 0
+            ? `Tienes ${tasks.length} tarea${tasks.length === 1 ? "" : "s"} pendiente${tasks.length === 1 ? "" : "s"}. Tu copiloto ya preparó el plan de hoy.`
+            : "No tienes tareas pendientes. Buen momento para adelantar apuntes o crear un cuaderno nuevo."}
         </p>
-      </header>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <DailyFocus
-            agenda={agenda}
-            loading={loading}
-            onComplete={handleComplete}
-            onReplan={load}
-          />
-          <SchedulePlanner plan={plan} />
+        <div className="mt-5 flex flex-wrap gap-2">
+          <Link
+            href="/focus"
+            className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-indigo-700 shadow-sm transition-transform hover:scale-[1.03]"
+          >
+            <Target className="h-4 w-4" /> Empezar a estudiar
+          </Link>
+          <Link
+            href="/studio"
+            className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/40 transition-colors hover:bg-white/25"
+          >
+            <Wand2 className="h-4 w-4" /> Crear con IA
+          </Link>
         </div>
+      </section>
 
-        <div className="space-y-6">
-          <SyncStatus onSynced={load} />
-          <TaskList tasks={tasks} loading={loading} onComplete={handleComplete} />
+      {/* ---- Qué puedes hacer ---- */}
+      <section className="space-y-3">
+        <div className="flex items-end justify-between">
+          <div>
+            <h2 className="text-xl font-bold tracking-tight">¿Qué puedes hacer aquí?</h2>
+            <p className="text-sm text-muted-foreground">
+              Todo lo que tu copiloto académico hace por ti, en un clic.
+            </p>
+          </div>
         </div>
-      </div>
+        <div className="stagger-in grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map(({ href, icon: Icon, title, description, tint }) => (
+            <Link
+              key={href}
+              href={href}
+              className="hover-lift group rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm"
+            >
+              <span
+                className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br ${tint} text-white shadow-md`}
+              >
+                <Icon className="h-5 w-5" />
+              </span>
+              <h3 className="mt-3 flex items-center gap-1.5 text-sm font-bold">
+                {title}
+                <ArrowRight className="h-3.5 w-3.5 -translate-x-1 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />
+              </h3>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* ---- Plan de hoy ---- */}
+      <section className="space-y-3">
+        <h2 className="text-xl font-bold tracking-tight">Tu plan de hoy</h2>
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
+            <div className="animate-fade-up">
+              <DailyFocus
+                agenda={agenda}
+                loading={loading}
+                onComplete={handleComplete}
+                onReplan={load}
+              />
+            </div>
+            <div className="animate-fade-up">
+              <SchedulePlanner plan={plan} />
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="animate-fade-up">
+              <SyncStatus onSynced={load} />
+            </div>
+            <div className="animate-fade-up">
+              <TaskList tasks={tasks} loading={loading} onComplete={handleComplete} />
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

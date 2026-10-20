@@ -3,35 +3,48 @@
 @tailwind utilities;
 
 @layer base {
-  /* Tema oscuro por defecto (interfaz minimalista). */
+  /* Tema claro, suave y moderno: lavanda, índigo y turquesa. */
   :root {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 5.5%;
-    --card-foreground: 0 0% 98%;
-    --primary: 250 89% 66%;
+    --background: 240 40% 98%;
+    --foreground: 233 30% 18%;
+    --card: 0 0% 100%;
+    --card-foreground: 233 30% 18%;
+    --primary: 243 75% 59%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 240 4% 16%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 4% 16%;
-    --muted-foreground: 240 5% 65%;
-    --accent: 240 4% 16%;
-    --accent-foreground: 0 0% 98%;
+    --secondary: 244 60% 96%;
+    --secondary-foreground: 243 55% 38%;
+    --muted: 240 30% 96%;
+    --muted-foreground: 235 12% 45%;
+    --accent: 246 80% 96%;
+    --accent-foreground: 243 60% 40%;
     --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 4% 16%;
-    --input: 240 4% 20%;
-    --ring: 250 89% 66%;
-    --radius: 0.75rem;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 24% 90%;
+    --input: 240 24% 88%;
+    --ring: 243 75% 59%;
+    --radius: 1rem;
   }
 
   * {
     @apply border-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+    background-image:
+      radial-gradient(900px 520px at 105% -10%, rgba(124, 58, 237, 0.1), transparent 62%),
+      radial-gradient(820px 520px at -10% 8%, rgba(14, 165, 233, 0.09), transparent 58%),
+      radial-gradient(720px 420px at 50% 112%, rgba(16, 185, 129, 0.07), transparent 62%);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background: rgba(99, 102, 241, 0.22);
   }
 }
 
@@ -42,4 +55,142 @@
 }
 ::-webkit-scrollbar-thumb {
   @apply rounded-full bg-muted;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.35);
+}
+
+/* --- Animaciones suaves --- */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@layer utilities {
+  .animate-fade-up {
+    animation: fade-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .animate-fade-in {
+    animation: fade-in 0.5s ease both;
+  }
+  .animate-pop {
+    animation: pop-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .animate-float {
+    animation: float-y 7s ease-in-out infinite;
+  }
+  .gradient-text {
+    background: linear-gradient(90deg, #4f46e5, #7c3aed 48%, #0891b2);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .hover-lift {
+    transition:
+      transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.28s ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 22px 45px -24px rgba(79, 70, 229, 0.5);
+  }
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(16px);
+  }
+  .stagger-in > * {
+    animation: fade-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .stagger-in > *:nth-child(1) {
+    animation-delay: 0.03s;
+  }
+  .stagger-in > *:nth-child(2) {
+    animation-delay: 0.08s;
+  }
+  .stagger-in > *:nth-child(3) {
+    animation-delay: 0.13s;
+  }
+  .stagger-in > *:nth-child(4) {
+    animation-delay: 0.18s;
+  }
+  .stagger-in > *:nth-child(5) {
+    animation-delay: 0.23s;
+  }
+  .stagger-in > *:nth-child(6) {
+    animation-delay: 0.28s;
+  }
+  .stagger-in > *:nth-child(7) {
+    animation-delay: 0.33s;
+  }
+  .stagger-in > *:nth-child(8) {
+    animation-delay: 0.38s;
+  }
+  .stagger-in > *:nth-child(9) {
+    animation-delay: 0.43s;
+  }
+  .stagger-in > *:nth-child(10) {
+    animation-delay: 0.48s;
+  }
+  .stagger-in > *:nth-child(11) {
+    animation-delay: 0.53s;
+  }
+  .stagger-in > *:nth-child(12) {
+    animation-delay: 0.58s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

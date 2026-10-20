@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Download, FileText, Sparkles, Trash2, Wand2 } from "lucide-react";
+import { Download, ExternalLink, FileText, Network, Sparkles, Trash2, Wand2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,13 @@ function errorMessage(error: unknown): string {
   return "Error inesperado";
 }
 
-type Kind = "summary" | "infographic";
+type Kind = "summary" | "infographic" | "mindmap";
+
+const KIND_LABEL: Record<string, string> = {
+  summary: "Resumen",
+  infographic: "Infografía",
+  mindmap: "Mapa mental",
+};
 
 export default function StudioPage() {
   const [files, setFiles] = useState<DocumentFile[]>([]);
@@ -68,7 +74,8 @@ export default function StudioPage() {
           <Wand2 className="h-5 w-5" /> IA Studio
         </h1>
         <p className="text-sm text-muted-foreground">
-          Genera resumenes e infografias en PDF a partir de tus documentos (PDF, DOCX o texto).
+          Genera resúmenes, infografías y mapas mentales en PDF a partir de tus documentos (PDF,
+          Word o Excel). También puedes descargarlos en Word y abrirlos en Canva.
         </p>
       </header>
 
@@ -104,7 +111,16 @@ export default function StudioPage() {
                   onClick={() => generate(file.id, "infographic")}
                 >
                   <Wand2 className="h-4 w-4" />
-                  {busyId === `${file.id}:infographic` ? "Generando..." : "Infografia"}
+                  {busyId === `${file.id}:infographic` ? "Generando..." : "Infografía"}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={busyId !== null}
+                  onClick={() => generate(file.id, "mindmap")}
+                >
+                  <Network className="h-4 w-4" />
+                  {busyId === `${file.id}:mindmap` ? "Generando..." : "Mapa mental"}
                 </Button>
               </div>
             </div>
@@ -131,14 +147,14 @@ export default function StudioPage() {
             >
               <span className="flex flex-wrap items-center gap-2">
                 <Badge variant={output.kind === "summary" ? "default" : "secondary"}>
-                  {output.kind === "summary" ? "Resumen" : "Infografia"}
+                  {KIND_LABEL[output.kind] ?? output.kind}
                 </Badge>
                 <span className="font-medium">{output.title}</span>
                 {output.source && (
                   <span className="text-xs text-muted-foreground">({output.source})</span>
                 )}
               </span>
-              <div className="flex gap-2">
+              <div className="flex gap-1">
                 {output.output_document_id && (
                   <Button
                     variant="ghost"
@@ -151,6 +167,22 @@ export default function StudioPage() {
                     <Download className="h-4 w-4" /> PDF
                   </Button>
                 )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => api.downloadStudioWord(output.id, `${output.title}.docx`)}
+                  title="Descargar en Word"
+                >
+                  <FileText className="h-4 w-4" /> Word
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => window.open("https://www.canva.com/create/", "_blank")}
+                  title="Abrir Canva y subir el PDF para editarlo"
+                >
+                  <ExternalLink className="h-4 w-4" /> Canva
+                </Button>
                 <Button variant="ghost" size="icon" onClick={() => removeOutput(output.id)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -159,7 +191,7 @@ export default function StudioPage() {
           ))}
           {outputs.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              Todavia no has generado ningun resumen ni infografia.
+              Todavía no has generado ningún resumen, infografía ni mapa mental.
             </p>
           )}
         </CardContent>

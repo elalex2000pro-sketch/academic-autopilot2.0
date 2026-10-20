@@ -85,7 +85,7 @@ export function SyncStatus({ onSynced }: { onSynced?: () => void }) {
               <Loader2 className="h-3 w-3 animate-spin" /> sincronizando
             </span>
           ) : (
-            <span className="flex items-center gap-1 text-xs text-emerald-400">
+            <span className="flex items-center gap-1 text-xs text-emerald-500">
               <span className="h-2 w-2 animate-[pulse-ring_1.5s_ease-in-out_infinite] rounded-full bg-emerald-400" />
               en vivo
             </span>

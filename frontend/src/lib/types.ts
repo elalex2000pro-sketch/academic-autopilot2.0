@@ -62,7 +62,7 @@ export interface TimetableEntry {
   location: string | null;
 }
 
-export type AiOutputKind = "summary" | "infographic";
+export type AiOutputKind = "summary" | "infographic" | "mindmap";
 
 export interface AiOutput {
   id: string;
@@ -277,4 +277,13 @@ export interface SyncResult {
   removed: number;
   message: string | null;
   errors: { provider: string; message: string }[];
+}
+
+export interface Notebook {
+  id: string;
+  title: string;
+  color: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
 }
