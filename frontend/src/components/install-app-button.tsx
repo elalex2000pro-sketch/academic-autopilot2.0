@@ -8,6 +8,7 @@ import {
   HardDrive,
   Loader2,
   MonitorDown,
+  ShieldAlert,
   ShieldCheck,
   Trash2,
   WifiOff,
@@ -40,6 +41,14 @@ interface InstallAppButtonProps {
   label?: string;
 }
 
+type DevicePlatform = "windows" | "mac" | "ios" | "android" | "other";
+
+const WINDOWS_INSTALLER_URL =
+  "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases/latest/download/Academic-Autopilot-Setup.exe";
+const DESKTOP_RELEASE_URL =
+  "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases/latest";
+const INSTALLER_SIZE = "107 MB";
+
 const EMPTY_STATS: LocalCacheStats = {
   entries: 0,
   drafts: 0,
@@ -68,8 +77,10 @@ function formatDate(value: string | null): string {
 export function InstallAppButton({ compact = false, className, label }: InstallAppButtonProps) {
   const [open, setOpen] = useState(false);
   const [promptEvent, setPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
-  const [installed, setInstalled] = useState(false);
-  const [isIos, setIsIos] = useState(false);
+  const [webAppInstalled, setWebAppInstalled] = useState(false);
+  const [platform, setPlatform] = useState<DevicePlatform>("other");
+  const [isDesktopApp, setIsDesktopApp] = useState(false);
+  const [desktopVersion, setDesktopVersion] = useState<string | null>(null);
   const [savingCopy, setSavingCopy] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [stats, setStats] = useState<LocalCacheStats>(EMPTY_STATS);
@@ -80,18 +91,38 @@ export function InstallAppButton({ compact = false, className, label }: InstallA
   }, []);
 
   useEffect(() => {
+    const userAgent = navigator.userAgent;
+    const desktopMatch = userAgent.match(/AcademicAutopilotDesktop\/([\d.]+)/i);
+    const isIosDevice =
+      /iphone|ipad|ipod/i.test(userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+    setPlatform(
+      /windows/i.test(userAgent)
+        ? "windows"
+        : isIosDevice
+          ? "ios"
+          : /android/i.test(userAgent)
+            ? "android"
+            : /macintosh|mac os x/i.test(userAgent)
+              ? "mac"
+              : "other",
+    );
+    setIsDesktopApp(Boolean(desktopMatch));
+    setDesktopVersion(desktopMatch?.[1] ?? null);
+
     const standalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
-    setInstalled(standalone);
-    setIsIos(/iphone|ipad|ipod/i.test(navigator.userAgent));
+      !desktopMatch &&
+      (window.matchMedia("(display-mode: standalone)").matches ||
+        Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
+    setWebAppInstalled(standalone);
 
     const onPrompt = (event: Event) => {
       event.preventDefault();
       setPromptEvent(event as BeforeInstallPromptEvent);
     };
     const onInstalled = () => {
-      setInstalled(true);
+      setWebAppInstalled(true);
       setPromptEvent(null);
       (window as InstallWindow).__autopilotInstallPrompt = null;
     };
@@ -125,7 +156,7 @@ export function InstallAppButton({ compact = false, className, label }: InstallA
     };
   }, [open, refreshStats]);
 
-  async function installNow() {
+  async function installWebApp() {
     if (!promptEvent) {
       setNotice(
         "Tu navegador no muestra el instalador automático. Usa las instrucciones de abajo o abre la web en Chrome o Edge.",
@@ -136,7 +167,7 @@ export function InstallAppButton({ compact = false, className, label }: InstallA
     await promptEvent.prompt();
     const choice = await promptEvent.userChoice;
     if (choice.outcome === "accepted") {
-      setInstalled(true);
+      setWebAppInstalled(true);
       setOpen(false);
     } else {
       setNotice("Instalación cancelada. Puedes intentarlo de nuevo cuando quieras.");
@@ -228,7 +259,97 @@ export function InstallAppButton({ compact = false, className, label }: InstallA
     }
   }
 
-  const triggerLabel = label ?? (installed ? "App instalada" : "Descargar app");
+  const isWindows = platform === "windows";
+  const triggerLabel = label ?? (isDesktopApp ? "App de escritorio" : "Descargar app");
+
+  const installCard = isDesktopApp ? (
+    <div>
+      <p className="flex items-start gap-2 text-sm font-semibold text-emerald-800 dark:text-emerald-200">
+        <Check className="mt-0.5 h-4 w-4 shrink-0" />
+        Ya estás usando la app de escritorio
+        {desktopVersion ? ` (versión ${desktopVersion})` : ""}.
+      </p>
+      <p className="mt-1.5 text-xs leading-5 text-slate-600 dark:text-slate-300">
+        No necesitas instalar nada más. Las mejoras de la web se aplican automáticamente. Si quieres
+        reparar o volver a instalar la app, descarga el instalador de nuevo.
+      </p>
+      <Button variant="secondary" size="sm" className="mt-3" asChild>
+        <a href={WINDOWS_INSTALLER_URL}>
+          <MonitorDown className="h-4 w-4" />
+          Descargar instalador de Windows
+        </a>
+      </Button>
+    </div>
+  ) : isWindows ? (
+    <div>
+      <p className="text-sm font-semibold text-indigo-950 dark:text-indigo-50">
+        Instalador para Windows 10 y 11
+      </p>
+      <p className="mt-1 text-xs leading-5 text-indigo-900/80 dark:text-indigo-100/80">
+        Descarga el archivo, ábrelo y sigue los pasos. Tendrás Academic Autopilot en su propia ventana,
+        con acceso directo en el escritorio y sin abrir el navegador.
+      </p>
+      <Button
+        asChild
+        size="lg"
+        className="mt-3 w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25 hover:from-indigo-700 hover:to-violet-700 sm:w-auto"
+      >
+        <a href={WINDOWS_INSTALLER_URL}>
+          <MonitorDown className="h-4 w-4" />
+          Descargar instalador para Windows
+        </a>
+      </Button>
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-indigo-800/75 dark:text-indigo-200/75">
+        <span>64 bits</span>
+        <span aria-hidden="true">·</span>
+        <span>{INSTALLER_SIZE}</span>
+        <span aria-hidden="true">·</span>
+        <span>Versión 1.0.0</span>
+        <span aria-hidden="true">·</span>
+        <a
+          href={DESKTOP_RELEASE_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="underline underline-offset-2 hover:text-indigo-950 dark:hover:text-white"
+        >
+          Notas de la versión
+        </a>
+      </div>
+      <div className="mt-3 flex gap-2 rounded-xl border border-amber-200/80 bg-amber-50 px-3 py-2 text-[11px] leading-5 text-amber-900 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-100">
+        <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <span>
+          Windows puede avisar de que el editor es desconocido porque el instalador no está firmado.
+          Pulsa <strong>Más información → Ejecutar de todas formas</strong>.
+        </span>
+      </div>
+    </div>
+  ) : (
+    <div>
+      <p className="text-sm font-semibold text-indigo-950 dark:text-indigo-50">
+        El instalador es para Windows
+      </p>
+      <p className="mt-1 text-xs leading-5 text-indigo-900/80 dark:text-indigo-100/80">
+        En este dispositivo puedes usar Autopilot como app web instalable, con su propia ventana y
+        acceso directo. Tus datos y tu cuenta son los mismos.
+      </p>
+      <p className="mt-2 text-[11px] leading-5 text-indigo-800/75 dark:text-indigo-200/75">
+        {platform === "ios"
+          ? "En iPhone o iPad: abre esta página en Safari y pulsa Compartir → Añadir a pantalla de inicio."
+          : platform === "mac"
+            ? "En Mac: en Safari, Compartir → Añadir al Dock. En Chrome o Edge, menú → Instalar aplicación."
+            : platform === "android"
+              ? "En Android: abre el menú de Chrome y pulsa Instalar aplicación o Añadir a pantalla de inicio."
+              : "En Chrome o Edge: abre el menú y pulsa Instalar aplicación."}
+      </p>
+      <a
+        href={WINDOWS_INSTALLER_URL}
+        className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-700 underline underline-offset-2 hover:text-indigo-950 dark:text-indigo-200 dark:hover:text-white"
+      >
+        <MonitorDown className="h-3.5 w-3.5" />
+        También puedes descargar el instalador para un PC con Windows
+      </a>
+    </div>
+  );
 
   const modal = (
     <div
@@ -249,10 +370,10 @@ export function InstallAppButton({ compact = false, className, label }: InstallA
             </span>
             <div>
               <h2 id="install-app-title" className="text-lg font-bold tracking-tight">
-                Lleva Autopilot a tu escritorio
+                Instala Autopilot en tu ordenador
               </h2>
               <p className="text-xs text-muted-foreground">
-                Una ventana propia, acceso directo y tus datos a mano.
+                Un programa propio para Windows, sin abrir el navegador.
               </p>
             </div>
           </div>
@@ -267,46 +388,7 @@ export function InstallAppButton({ compact = false, className, label }: InstallA
         </div>
 
         <div className="mt-4 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-fuchsia-50/60 p-4 dark:border-indigo-500/20 dark:from-indigo-500/10 dark:to-fuchsia-500/10">
-          {installed ? (
-            <p className="flex items-start gap-2 text-xs leading-5 text-emerald-800 dark:text-emerald-200">
-              <Check className="mt-0.5 h-4 w-4 shrink-0" />
-              Ya tienes la app instalada en este dispositivo. Ábrela desde tu escritorio o desde el menú
-              de aplicaciones. No hace falta volver a instalarla.
-            </p>
-          ) : promptEvent ? (
-            <div>
-              <p className="text-xs leading-5 text-indigo-900 dark:text-indigo-100">
-                El navegador puede instalarla ahora mismo. Se abrirá como una app independiente y podrás
-                anclarla a la barra de tareas.
-              </p>
-              <Button className="mt-3 w-full sm:w-auto" onClick={() => void installNow()}>
-                <Download className="h-4 w-4" />
-                Instalar en este dispositivo
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-2 text-xs leading-5 text-indigo-900 dark:text-indigo-100">
-              <p className="font-semibold">
-                {isIos
-                  ? "Para instalarla en iPhone o iPad:"
-                  : "Tu navegador no muestra el instalador automático. Puedes hacerlo así:"}
-              </p>
-              <p>
-                <strong>Chrome o Edge:</strong> pulsa el icono de instalar de la barra de direcciones
-                (un monitor con una flecha) o abre el menú y busca{" "}
-                <strong>Instalar aplicación</strong>.
-              </p>
-              <p>
-                <strong>Safari en Mac:</strong> menú <strong>Compartir → Añadir al Dock</strong>.
-              </p>
-              <p>
-                <strong>iPhone o iPad:</strong> <strong>Compartir → Añadir a pantalla de inicio</strong>.
-              </p>
-              <p className="text-[11px] text-indigo-700/80 dark:text-indigo-200/80">
-                Si no aparece la opción, abre esta web en Chrome o Edge actualizado.
-              </p>
-            </div>
-          )}
+          {installCard}
         </div>
 
         <div className="mt-4 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/50">
@@ -355,6 +437,42 @@ export function InstallAppButton({ compact = false, className, label }: InstallA
           </div>
         </div>
 
+        {!isDesktopApp && (
+          <div className="mt-4 rounded-2xl border border-slate-200/80 p-4 dark:border-slate-700">
+            <p className="flex items-center gap-1.5 text-sm font-semibold">
+              <Download className="h-4 w-4 text-indigo-500" /> Otra opción: instalar como app web
+            </p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Si no quieres descargar el instalador, puedes abrir Autopilot como una app web en este
+              dispositivo. Es la misma cuenta y los mismos datos.
+            </p>
+            {webAppInstalled ? (
+              <p className="mt-2 flex items-start gap-2 text-xs leading-5 text-emerald-700 dark:text-emerald-300">
+                <Check className="mt-0.5 h-4 w-4 shrink-0" />
+                Ya tienes la app web instalada. Ábrela desde tu escritorio o menú de aplicaciones.
+              </p>
+            ) : promptEvent ? (
+              <Button className="mt-3" size="sm" onClick={() => void installWebApp()}>
+                <Download className="h-4 w-4" />
+                Instalar app web en este dispositivo
+              </Button>
+            ) : (
+              <div className="mt-2 space-y-1.5 text-xs leading-5 text-muted-foreground">
+                <p>
+                  <strong>Chrome o Edge:</strong> pulsa el icono de instalar de la barra de direcciones o
+                  abre el menú y busca <strong>Instalar aplicación</strong>.
+                </p>
+                <p>
+                  <strong>Safari en Mac:</strong> menú <strong>Compartir → Añadir al Dock</strong>.
+                </p>
+                <p>
+                  <strong>iPhone o iPad:</strong> <strong>Compartir → Añadir a pantalla de inicio</strong>.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {notice && (
           <p
             role="status"
@@ -366,13 +484,13 @@ export function InstallAppButton({ compact = false, className, label }: InstallA
 
         <div className="mt-4 flex items-center justify-between gap-3">
           <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            {installed ? (
+            {isDesktopApp || webAppInstalled ? (
               <>
                 <Check className="h-3 w-3 text-emerald-500" /> Instalada
               </>
             ) : (
               <>
-                <WifiOff className="h-3 w-3" /> Funciona mejor con conexión
+                <WifiOff className="h-3 w-3" /> Necesita conexión para sincronizar
               </>
             )}
           </span>

@@ -313,13 +313,15 @@ function SettingsInner() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Instala Academic Autopilot en tu escritorio para abrirla en su propia ventana, con acceso
-            directo y una copia local de tus datos para consultarlos sin conexión.
+            Descarga el instalador para Windows y ábrelo como cualquier programa. Tendrás su propia
+            ventana y acceso directo, sin pasar por el navegador. La app conserva tu sesión y una copia
+            local de tus datos.
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <InstallAppButton label="Descargar app" />
+            <InstallAppButton label="Descargar instalador" />
             <span className="text-xs text-muted-foreground">
-              Tus datos siguen guardados en tu cuenta y se sincronizan entre dispositivos.
+              Windows 10 u 11, 64 bits. Tus datos siguen en tu cuenta y se sincronizan entre
+              dispositivos.
             </span>
           </div>
         </CardContent>

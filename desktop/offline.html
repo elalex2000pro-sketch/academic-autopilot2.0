@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'unsafe-inline'" />
+    <title>Sin conexión · Academic Autopilot</title>
+    <style>
+      :root { color-scheme: light dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 28px;
+        color: #0f172a;
+        background:
+          radial-gradient(900px 500px at 15% 0%, #e0e7ff 0, transparent 60%),
+          radial-gradient(800px 500px at 90% 100%, #fae8ff 0, transparent 55%),
+          #f7f7fc;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      main {
+        width: 100%;
+        max-width: 480px;
+        padding: 38px 30px;
+        border: 1px solid rgba(255, 255, 255, 0.9);
+        border-radius: 30px;
+        background: rgba(255, 255, 255, 0.88);
+        box-shadow: 0 26px 70px rgba(79, 70, 229, 0.17);
+        text-align: center;
+      }
+      img { width: 78px; height: 78px; margin-bottom: 18px; border-radius: 22px; object-fit: cover; }
+      h1 { margin: 0; font-size: 25px; letter-spacing: -0.03em; }
+      p { margin: 11px 0 0; color: #64748b; font-size: 14px; line-height: 1.65; }
+      .error {
+        margin-top: 18px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: #eef2ff;
+        color: #4338ca;
+        font-size: 12px;
+        line-height: 1.55;
+        word-break: break-word;
+      }
+      button {
+        width: 100%;
+        min-height: 46px;
+        margin-top: 22px;
+        border: 0;
+        border-radius: 14px;
+        background: linear-gradient(110deg, #4f46e5, #9333ea);
+        color: #fff;
+        font: inherit;
+        font-weight: 650;
+        cursor: pointer;
+      }
+      button:hover { filter: brightness(1.06); }
+      .hint { margin-top: 14px; font-size: 11px; color: #94a3b8; }
+      @media (prefers-color-scheme: dark) {
+        body { color: #e2e8f0; background: radial-gradient(900px 500px at 15% 0%, #1e1b4b 0, transparent 60%), #0b1120; }
+        main { border-color: rgba(148, 163, 184, 0.16); background: rgba(15, 23, 42, 0.9); }
+        p { color: #94a3b8; }
+        .error { background: rgba(79, 70, 229, 0.18); color: #c7d2fe; }
+        .hint { color: #64748b; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="assets/icon.png" alt="Academic Autopilot" />
+      <h1>No se pudo abrir Autopilot</h1>
+      <p>
+        La app necesita conexión a internet para sincronizar tus datos. Comprueba tu conexión y vuelve a
+        intentarlo.
+      </p>
+      <div class="error" id="error">Sin detalles del error.</div>
+      <button type="button" id="retry">Reintentar</button>
+      <p class="hint">
+        Tus datos siguen guardados en tu cuenta. Si ya habías iniciado sesión, se conservarán al volver.
+      </p>
+    </main>
+    <script>
+      (function () {
+        var params = new URLSearchParams(location.search);
+        var target = params.get("target") || "https://academic-autopilot2-0.vercel.app";
+        var error = params.get("error");
+        if (error) document.getElementById("error").textContent = error;
+        document.getElementById("retry").addEventListener("click", function () {
+          location.href = target;
+        });
+      })();
+    </script>
+  </body>
+</html>
