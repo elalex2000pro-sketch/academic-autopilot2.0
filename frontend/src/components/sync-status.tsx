@@ -76,7 +76,7 @@ export function SyncStatus({ onSynced }: { onSynced?: () => void }) {
   const lastSync = logs[0]?.finished_at ?? logs[0]?.started_at ?? null;
 
   return (
-    <Card>
+    <Card data-spotlight>
       <CardHeader className="flex-row items-center justify-between space-y-0">
         <div className="flex items-center gap-2">
           <CardTitle className="text-base">Sincronizacion</CardTitle>

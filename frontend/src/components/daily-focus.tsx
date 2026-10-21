@@ -48,7 +48,7 @@ export function DailyFocus({
   });
 
   return (
-    <Card className="border-border/80">
+    <Card data-spotlight>
       <CardHeader className="space-y-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -91,8 +91,8 @@ export function DailyFocus({
               key={item.task_id}
               className={`flex items-center gap-4 rounded-lg border px-4 py-3 transition-colors ${
                 current
-                  ? "border-primary/60 bg-primary/5"
-                  : "border-border/60 bg-secondary/20"
+                  ? "border-primary/50 bg-primary/[0.07]"
+                  : "border-white/50 bg-white/30 dark:border-white/10 dark:bg-white/[0.04]"
               }`}
             >
               <button

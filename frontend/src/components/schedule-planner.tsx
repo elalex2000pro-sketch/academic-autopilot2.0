@@ -35,7 +35,7 @@ function groupByDay(items: OptimizedPlanItem[]) {
 export function SchedulePlanner({ plan }: { plan: OptimizedPlan | null }) {
   if (!plan || plan.scheduled.length === 0) {
     return (
-      <Card>
+      <Card data-spotlight>
         <CardHeader>
           <CardTitle className="text-base">Plan horario</CardTitle>
         </CardHeader>
@@ -50,7 +50,7 @@ export function SchedulePlanner({ plan }: { plan: OptimizedPlan | null }) {
   const groups = groupByDay(plan.scheduled);
 
   return (
-    <Card>
+    <Card data-spotlight>
       <CardHeader className="flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base">Plan horario</CardTitle>
         <span className="text-xs text-muted-foreground">
@@ -67,7 +67,7 @@ export function SchedulePlanner({ plan }: { plan: OptimizedPlan | null }) {
               {items.map((item) => (
                 <div
                   key={`${item.task_id}-${item.start_at}`}
-                  className="flex items-center gap-3 rounded-md border border-border/60 bg-secondary/30 px-3 py-2"
+                  className="flex items-center gap-3 rounded-lg border border-white/50 bg-white/30 px-3 py-2 dark:border-white/10 dark:bg-white/[0.04]"
                 >
                   <div className="flex items-center gap-1.5 text-xs tabular-nums text-muted-foreground">
                     <Clock className="h-3.5 w-3.5" />

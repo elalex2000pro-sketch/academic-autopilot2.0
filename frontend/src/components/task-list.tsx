@@ -37,7 +37,7 @@ export function TaskList({
   onComplete: (id: string) => void;
 }) {
   return (
-    <Card>
+    <Card data-spotlight>
       <CardHeader className="flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base">Tareas pendientes</CardTitle>
         <div className="flex items-center gap-2">
@@ -62,7 +62,7 @@ export function TaskList({
         {tasks.map((task) => (
           <div
             key={task.id}
-            className="group flex items-start gap-3 rounded-md border border-border/60 px-3 py-2 transition-colors hover:bg-accent/40"
+            className="group flex items-start gap-3 rounded-lg border border-white/50 bg-white/25 px-3 py-2 transition-colors hover:bg-white/50 dark:border-white/10 dark:bg-white/[0.02] dark:hover:bg-white/[0.06]"
           >
             <button
               aria-label="Completar tarea"

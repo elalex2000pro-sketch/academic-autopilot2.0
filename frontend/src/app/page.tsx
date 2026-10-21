@@ -7,12 +7,15 @@ import {
   AudioLines,
   BookOpen,
   Brain,
+  CalendarClock,
   CalendarRange,
   BellRing,
   Headphones,
+  ListTodo,
   NotebookPen,
   Sparkles,
   Target,
+  Timer,
   Users,
   Wand2,
 } from "lucide-react";
@@ -26,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { useRealtime } from "@/components/realtime-provider";
 import { api } from "@/lib/api";
 import type { Book, DailyAgenda, OptimizedPlan, Task } from "@/lib/types";
+import { formatMinutes } from "@/lib/utils";
 
 const FEATURES = [
   {
@@ -156,7 +160,7 @@ export default function DashboardPage() {
     [load],
   );
 
-  const name = user?.full_name?.trim() || user?.email.split("@")[0] || "";
+  const name = user?.full_name?.trim() || user?.email.split("@")[0] || "estudiante";
   const rawDate = new Date().toLocaleDateString("es-ES", {
     weekday: "long",
     day: "numeric",
@@ -182,37 +186,120 @@ export default function DashboardPage() {
       ? "Empieza por la tarea más pequeña: reducir la lista también es avanzar. Después, abre un libro quince minutos."
       : "No hay tareas urgentes. Buen momento para subir ese libro que llevas tiempo queriendo leer o repasar un cuaderno.";
 
-  return (
-    <div className="mx-auto max-w-[1080px] space-y-8 px-5 py-7 sm:px-8 lg:py-9">
-      {/* ---- Bienvenida ---- */}
-      <header>
-        <p className="text-[12px] font-medium capitalize text-muted-foreground">{today}</p>
-        <h1 className="mt-1 text-[28px] font-semibold leading-tight tracking-[-0.03em]">
-          Hola, {name}
-        </h1>
-        <p className="mt-1.5 max-w-2xl text-[13px] leading-5 text-muted-foreground">
-          {tasks.length > 0
-            ? `Tienes ${tasks.length} tarea${tasks.length === 1 ? "" : "s"} pendiente${tasks.length === 1 ? "" : "s"}. Tu plan de hoy ya está repartido en huecos.`
-            : "No tienes tareas pendientes. Buen momento para adelantar apuntes o crear un cuaderno nuevo."}
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button asChild size="sm">
-            <Link href="/focus">
-              <Target className="h-4 w-4" /> Empezar a estudiar
-            </Link>
-          </Button>
-          <Button asChild size="sm" variant="outline">
-            <Link href="/studio">
-              <Wand2 className="h-4 w-4" /> Crear con IA
-            </Link>
-          </Button>
-        </div>
-      </header>
+  const stats = [
+    {
+      icon: ListTodo,
+      label: "Pendientes",
+      value: String(tasks.length),
+      tone: "text-[#007AFF] dark:text-[#0A84FF]",
+    },
+    {
+      icon: CalendarClock,
+      label: "Bloques hoy",
+      value: String(agenda?.items.length ?? 0),
+      tone: "text-[#AF52DE] dark:text-[#BF5AF2]",
+    },
+    {
+      icon: Timer,
+      label: "Planificado",
+      value: formatMinutes(agenda?.total_minutes ?? 0),
+      tone: "text-[#34C759] dark:text-[#30D158]",
+    },
+  ];
 
-      {/* ---- Continuar leyendo + impulso diario ---- */}
-      <section className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+  return (
+    <div className="relative isolate mx-auto max-w-[1120px] px-5 pb-16 pt-6 sm:px-8 lg:pb-20 lg:pt-8">
+      {/* Fondo ambiental: da algo real que desenfocar al cristal */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div className="ambient-blob left-[12%] top-[-260px] h-[440px] w-[560px] bg-[#007AFF]/15 dark:bg-[#0A84FF]/20" />
+        <div
+          className="ambient-blob right-[-180px] top-[220px] h-[480px] w-[440px] bg-[#AF52DE]/15 dark:bg-[#BF5AF2]/15"
+          style={{ animationDelay: "-10s" }}
+        />
+        <div
+          className="ambient-blob bottom-[-260px] left-[28%] h-[420px] w-[600px] bg-[#30B0C7]/12 dark:bg-[#40C8E0]/15"
+          style={{ animationDelay: "-20s" }}
+        />
+      </div>
+
+      {/* ---- Barra superior ---- */}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[12px] font-medium text-muted-foreground">{today}</p>
+        <Button variant="ghost" size="sm" asChild>
+          <Link href="/calendar">
+            <CalendarRange className="h-4 w-4" /> Calendario
+          </Link>
+        </Button>
+      </div>
+
+      {/* ---- Hero de cristal ---- */}
+      <section
+        data-spotlight
+        className="glass-strong lift relative overflow-hidden p-6 sm:p-8"
+      >
+        <div className="relative z-10 flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0 max-w-xl">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/50 bg-white/45 px-2.5 py-1 text-[11px] font-medium text-foreground/80 dark:border-white/10 dark:bg-white/[0.06]">
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  tasks.length > 0 ? "bg-[#34C759]" : "bg-[#8E8E93]"
+                }`}
+              />
+              {loading
+                ? "Preparando tu plan…"
+                : tasks.length > 0
+                  ? "Plan al día"
+                  : "Sin tareas urgentes"}
+            </span>
+
+            <h1 className="mt-3 text-[32px] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[38px]">
+              Hola, {name}
+            </h1>
+            <p className="mt-2 max-w-lg text-[13.5px] leading-6 text-muted-foreground">
+              {tasks.length > 0
+                ? `Tienes ${tasks.length} tarea${tasks.length === 1 ? "" : "s"} pendiente${
+                    tasks.length === 1 ? "" : "s"
+                  }. Tu plan de hoy ya está repartido en huecos.`
+                : "No tienes tareas pendientes. Buen momento para adelantar apuntes o crear un cuaderno nuevo."}
+            </p>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Button asChild>
+                <Link href="/focus">
+                  <Target className="h-4 w-4" /> Empezar a estudiar
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/studio">
+                  <Wand2 className="h-4 w-4" /> Crear con IA
+                </Link>
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid w-full shrink-0 grid-cols-3 gap-2.5 lg:w-[340px]">
+            {stats.map(({ icon: Icon, label, value, tone }) => (
+              <div key={label} className="glass-inset rounded-xl px-3 py-3">
+                <Icon className={`h-3.5 w-3.5 ${tone}`} strokeWidth={2} />
+                <p className="mt-2 truncate text-[16px] font-semibold leading-none tracking-[-0.02em] tabular-nums sm:text-[18px]">
+                  {value}
+                </p>
+                <p className="mt-1.5 text-[10px] font-medium uppercase tracking-[0.04em] text-muted-foreground">
+                  {label}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ---- Continuar leyendo + impulso ---- */}
+      <section className="mt-4 grid gap-4 lg:grid-cols-[1.5fr_1fr]">
         {continueBook ? (
-          <div className="rounded-xl border border-border/80 bg-card p-5 shadow-sm sm:p-6">
+          <div
+            data-spotlight
+            className="glass-card flex h-full flex-col justify-center p-5 sm:p-6"
+          >
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <div
                 className="flex h-32 w-24 shrink-0 flex-col justify-between rounded-xl p-3 text-white shadow-md"
@@ -227,7 +314,7 @@ export default function DashboardPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="label-caps">Continuar leyendo</p>
-                <h2 className="mt-1 truncate text-[17px] font-semibold tracking-[-0.02em]">
+                <h2 className="mt-1 truncate text-[18px] font-semibold tracking-[-0.02em]">
                   {continueBook.title}
                 </h2>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -236,55 +323,57 @@ export default function DashboardPage() {
                   · {Math.round(continueBook.progress_percent)}% leído
                   {readingBooks > 1 ? ` · ${readingBooks} libros en curso` : ""}
                 </p>
-                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                <div className="mt-3 h-1 overflow-hidden rounded-full bg-foreground/[0.06]">
                   <div
-                    className="h-full rounded-full bg-indigo-500"
+                    className="h-full rounded-full bg-[#007AFF] dark:bg-[#0A84FF]"
                     style={{ width: `${Math.max(2, continueBook.progress_percent)}%` }}
                   />
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Link href={`/library/${continueBook.id}`}>
-                    <Button size="sm">
+                  <Button asChild size="sm">
+                    <Link href={`/library/${continueBook.id}`}>
                       Seguir leyendo <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                  <Link href="/library">
-                    <Button size="sm" variant="secondary">
+                    </Link>
+                  </Button>
+                  <Button asChild size="sm" variant="secondary">
+                    <Link href="/library">
                       <BookOpen className="h-4 w-4" /> Biblioteca
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </div>
               </div>
             </div>
           </div>
         ) : (
-          <div className="rounded-xl border border-dashed border-border bg-card p-5 shadow-sm sm:p-6">
-            <span className="flex h-9 w-9 items-center justify-center rounded-[7px] bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400">
+          <div data-spotlight className="glass-card flex h-full flex-col p-5 sm:p-6">
+            <span className="flex h-9 w-9 items-center justify-center rounded-[9px] bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400">
               <BookOpen className="h-4 w-4" strokeWidth={1.9} />
             </span>
             <h2 className="mt-3 text-[15px] font-semibold tracking-[-0.01em]">
               {books.length > 0 ? "Elige tu próximo libro" : "Tu biblioteca te está esperando"}
             </h2>
-            <p className="mt-1 max-w-lg text-sm text-muted-foreground">
+            <p className="mt-1 max-w-lg text-[13px] leading-5 text-muted-foreground">
               {books.length > 0
                 ? "Tienes libros preparados. Abre uno y el progreso quedará guardado para la próxima vez."
                 : "Sube un PDF, EPUB, DOCX, TXT o Markdown. Guardaremos el texto completo para que puedas leerlo, preguntar y escuchar un resumen."}
             </p>
-            <Link href="/library" className="mt-4 inline-block">
-              <Button size="sm">
-                <BookOpen className="h-4 w-4" />
-                {books.length > 0 ? "Abrir mi biblioteca" : "Subir mi primer libro"}
+            <div className="mt-auto pt-4">
+              <Button asChild size="sm">
+                <Link href="/library">
+                  <BookOpen className="h-4 w-4" />
+                  {books.length > 0 ? "Abrir mi biblioteca" : "Subir mi primer libro"}
+                </Link>
               </Button>
-            </Link>
+            </div>
           </div>
         )}
 
-        <div className="rounded-xl border border-border/80 bg-card p-5 shadow-sm">
+        <div data-spotlight className="glass-card p-5 sm:p-6">
           <p className="label-caps flex items-center gap-1.5">
-            <Sparkles className="h-3.5 w-3.5" /> Impulso de hoy
+            <Sparkles className="h-3.5 w-3.5 text-[#007AFF] dark:text-[#0A84FF]" /> Impulso de hoy
           </p>
-          <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">{impulse}</p>
-          <div className="mt-4 space-y-2 border-t border-slate-100 pt-3 dark:border-border">
+          <p className="mt-2 text-[13px] leading-6 text-foreground/85">{impulse}</p>
+          <div className="mt-4 space-y-1 border-t border-white/50 pt-3 dark:border-white/10">
             {[
               {
                 href: "/library",
@@ -308,14 +397,16 @@ export default function DashboardPage() {
               <Link
                 key={`${item.href}-${item.title}`}
                 href={item.href}
-                className="group flex items-start gap-2 rounded-xl px-1.5 py-1.5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                className="group flex items-start gap-2.5 rounded-lg px-1.5 py-2 transition-colors hover:bg-foreground/[0.04]"
               >
-                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 group-hover:bg-indigo-50 group-hover:text-indigo-600 dark:bg-slate-800 dark:text-slate-400 dark:group-hover:bg-indigo-950/60 dark:group-hover:text-indigo-400">
+                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-foreground/[0.05] text-muted-foreground transition-colors group-hover:bg-[#007AFF]/10 group-hover:text-[#007AFF] dark:group-hover:bg-[#0A84FF]/15 dark:group-hover:text-[#0A84FF]">
                   <item.icon className="h-3.5 w-3.5" />
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-xs font-semibold">{item.title}</span>
-                  <span className="block text-[11px] text-muted-foreground">{item.text}</span>
+                  <span className="block text-[12px] font-semibold">{item.title}</span>
+                  <span className="block text-[11px] leading-4 text-muted-foreground">
+                    {item.text}
+                  </span>
                 </span>
               </Link>
             ))}
@@ -323,43 +414,21 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* ---- Qué puedes hacer ---- */}
-      <section className="space-y-3">
-        <div className="flex items-end justify-between">
+      {/* ---- Plan de hoy ---- */}
+      <section className="mt-9">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h2 className="text-[17px] font-semibold tracking-[-0.02em]">¿Qué puedes hacer aquí?</h2>
-            <p className="text-[13px] text-muted-foreground">
-              Todo lo que hace el planificador, en un clic.
+            <h2 className="text-[17px] font-semibold tracking-[-0.02em]">Tu plan de hoy</h2>
+            <p className="text-[12.5px] text-muted-foreground">
+              Bloques repartidos en tus huecos reales.
             </p>
           </div>
+          <span className="text-[11.5px] tabular-nums text-muted-foreground">
+            {agenda?.items.length ?? 0} bloques · {formatMinutes(agenda?.total_minutes ?? 0)}
+          </span>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map(({ href, icon: Icon, tone, title, description }) => (
-            <Link
-              key={href}
-              href={href}
-              className="group rounded-xl border border-border/80 bg-card p-4 shadow-sm transition-[background-color,box-shadow] duration-150 hover:bg-muted/40 hover:shadow-md"
-            >
-              <span
-                className={`inline-flex h-8 w-8 items-center justify-center rounded-[7px] ${tone}`}
-              >
-                <Icon className="h-4 w-4" strokeWidth={1.9} />
-              </span>
-              <h3 className="mt-3 flex items-center gap-1.5 text-[13.5px] font-semibold tracking-[-0.01em]">
-                {title}
-                <ArrowRight className="h-3.5 w-3.5 -translate-x-1 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />
-              </h3>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* ---- Plan de hoy ---- */}
-      <section className="space-y-3">
-        <h2 className="text-[17px] font-semibold tracking-[-0.02em]">Tu plan de hoy</h2>
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="space-y-6 lg:col-span-2">
+        <div className="grid gap-4 xl:grid-cols-5">
+          <div className="space-y-4 xl:col-span-3">
             <div className="animate-fade-up">
               <DailyFocus
                 agenda={agenda}
@@ -373,14 +442,76 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="animate-fade-up">
-              <SyncStatus onSynced={load} />
-            </div>
+          <div className="space-y-4 xl:col-span-2">
             <div className="animate-fade-up">
               <TaskList tasks={tasks} loading={loading} onComplete={handleComplete} />
             </div>
+            <div className="animate-fade-up">
+              <SyncStatus onSynced={load} />
+            </div>
           </div>
+        </div>
+      </section>
+
+      {/* ---- Herramientas ---- */}
+      <section className="mt-8">
+        <div className="mb-3 flex items-end justify-between">
+          <div>
+            <h2 className="text-[17px] font-semibold tracking-[-0.02em]">Herramientas</h2>
+            <p className="text-[12.5px] text-muted-foreground">
+              Todo lo que hace el planificador, en un clic.
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.slice(0, -1).map(({ href, icon: Icon, tone, title, description }) => (
+            <Link
+              key={href}
+              href={href}
+              data-spotlight
+              className="lift glass-card group flex items-start gap-3 p-3.5"
+            >
+              <span
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] ${tone}`}
+              >
+                <Icon className="h-4 w-4" strokeWidth={1.9} />
+              </span>
+              <span className="min-w-0">
+                <span className="flex items-center gap-1 text-[13px] font-semibold tracking-[-0.01em]">
+                  {title}
+                  <ArrowRight className="h-3 w-3 -translate-x-1 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-60" />
+                </span>
+                <span className="mt-0.5 line-clamp-2 block text-[11.5px] leading-4 text-muted-foreground">
+                  {description}
+                </span>
+              </span>
+            </Link>
+          ))}
+
+          {FEATURES.slice(-1).map(({ href, icon: Icon, tone, title, description }) => (
+            <Link
+              key={href}
+              href={href}
+              data-spotlight
+              className="lift glass-card group flex items-center gap-3.5 p-4 sm:col-span-2 lg:col-span-3"
+            >
+              <span
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] ${tone}`}
+              >
+                <Icon className="h-[18px] w-[18px]" strokeWidth={1.9} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13px] font-semibold tracking-[-0.01em]">{title}</span>
+                <span className="mt-0.5 line-clamp-1 block text-[11.5px] leading-4 text-muted-foreground">
+                  {description}
+                </span>
+              </span>
+              <span className="flex shrink-0 items-center gap-1 text-[12px] font-medium text-primary">
+                Abrir
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+              </span>
+            </Link>
+          ))}
         </div>
       </section>
     </div>
