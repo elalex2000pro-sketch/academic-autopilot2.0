@@ -27,6 +27,8 @@ import {
 import { useAuth } from "@/components/auth-provider";
 import { AssistantFab } from "@/components/assistant-fab";
 import { HelpWidget } from "@/components/help-widget";
+import { InstallAppButton } from "@/components/install-app-button";
+import { OfflineStatus } from "@/components/offline-status";
 import { ThemeCycleButton } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -165,6 +167,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="mt-2 space-y-2 border-t border-slate-200/70 pt-3">
+          <InstallAppButton className="mb-1 w-full justify-start bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/25 hover:from-indigo-700 hover:to-violet-700" />
           <div className="flex items-center gap-1">
             <Link
               href={SETTINGS_ITEM.href}
@@ -208,6 +211,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center justify-between gap-2 px-4 py-2.5">
             <Logo />
             <div className="flex shrink-0 items-center gap-1">
+              <InstallAppButton compact />
               <ThemeCycleButton />
               <Button variant="ghost" size="icon" onClick={logout} aria-label="Cerrar sesión">
                 <LogOut className="h-4 w-4" />
@@ -235,6 +239,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
         </header>
+
+        <OfflineStatus />
 
         <main className="min-w-0 flex-1 overflow-x-hidden">
           {children}

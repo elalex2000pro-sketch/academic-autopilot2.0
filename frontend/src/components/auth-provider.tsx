@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { useRouter } from "next/navigation";
 
 import { ApiError, api, tokenStore } from "@/lib/api";
+import { clearLocalAppData } from "@/lib/local-cache";
 import type { User } from "@/lib/types";
 
 interface AuthContextValue {
@@ -32,7 +33,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .me()
       .then(setUser)
       .catch((error) => {
-        if (error instanceof ApiError && error.status === 401) tokenStore.clear();
+        if (error instanceof ApiError && error.status === 401) {
+          tokenStore.clear();
+          void clearLocalAppData();
+        }
       })
       .finally(() => setLoading(false));
   }, []);
@@ -40,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(
     async (email: string, password: string) => {
       const { access_token } = await api.login({ email, password });
+      await clearLocalAppData();
       tokenStore.set(access_token);
       setUser(await api.me());
       router.push("/");
@@ -55,6 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         full_name: fullName,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
+      await clearLocalAppData();
       tokenStore.set(access_token);
       setUser(await api.me());
       router.push("/");
@@ -64,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     tokenStore.clear();
+    void clearLocalAppData();
     setUser(null);
     router.push("/login");
   }, [router]);

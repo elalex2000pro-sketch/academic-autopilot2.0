@@ -9,6 +9,7 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
+  HardDrive,
   LayoutTemplate,
   Loader2,
   NotebookPen,
@@ -23,6 +24,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
 import { api, ApiError } from "@/lib/api";
+import {
+  deleteNotebookDraft,
+  getNotebookDraft,
+  saveNotebookDraft,
+} from "@/lib/local-cache";
 import type { Book, DocumentFile, Notebook, NotebookSource, SharedClass } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -110,6 +116,7 @@ export default function NotebooksPage() {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [localOnly, setLocalOnly] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -134,6 +141,8 @@ export default function NotebooksPage() {
 
   const draftRef = useRef<Draft>(draft);
   draftRef.current = draft;
+  const selectedIdRef = useRef<string | null>(selectedId);
+  selectedIdRef.current = selectedId;
 
   const selected = useMemo(
     () => notebooks.find((notebook) => notebook.id === selectedId) ?? null,
@@ -156,15 +165,46 @@ export default function NotebooksPage() {
       .catch(() => setClasses([]));
   }, [load]);
 
-  // Al cambiar de cuaderno, se carga su contenido en el editor.
+  // Al cambiar de cuaderno, se carga su contenido en el editor. Si hay una
+  // copia local más reciente (por ejemplo, editada sin conexión), se recupera.
   useEffect(() => {
-    if (selected) {
-      setDraft(toDraft(selected));
-      setDirty(false);
-      setSavedAt(null);
-      setShareClassId(selected.shared_class_id ?? "");
-      setSharePermission(selected.share_permission === "edit" ? "edit" : "read");
-    }
+    if (!selected) return;
+    const base = toDraft(selected);
+    setDraft(base);
+    setDirty(false);
+    setLocalOnly(false);
+    setSavedAt(null);
+    setShareClassId(selected.shared_class_id ?? "");
+    setSharePermission(selected.share_permission === "edit" ? "edit" : "read");
+
+    let cancelled = false;
+    getNotebookDraft(selected.id)
+      .then((saved) => {
+        if (cancelled || !saved) return;
+        const local = { title: saved.title, color: saved.color, content: saved.content };
+        if (JSON.stringify(local) === JSON.stringify(base)) {
+          void deleteNotebookDraft(selected.id);
+          return;
+        }
+        setDraft(local);
+        setDirty(false);
+        setLocalOnly(true);
+        setSavedAt(
+          new Date(saved.savedAt).toLocaleTimeString("es-ES", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        );
+        setNotice(
+          "Recuperados cambios guardados en este dispositivo. Se sincronizarán al volver la conexión.",
+        );
+      })
+      .catch(() => {
+        // Sin IndexedDB se usa directamente la copia del servidor.
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -231,10 +271,15 @@ export default function NotebooksPage() {
       setNotice(null);
       try {
         const updated = await api.updateNotebook(id, payload);
+        const isCurrent = JSON.stringify(draftRef.current) === JSON.stringify(payload);
+        if (isCurrent) {
+          await deleteNotebookDraft(id);
+          if (selectedIdRef.current === id) setLocalOnly(false);
+        }
         setNotebooks((prev) =>
           prev.map((notebook) => (notebook.id === id ? updated : notebook)),
         );
-        if (JSON.stringify(draftRef.current) === JSON.stringify(payload)) {
+        if (isCurrent && selectedIdRef.current === id) {
           setDirty(false);
           setSavedAt(
             new Date().toLocaleTimeString("es-ES", {
@@ -244,13 +289,67 @@ export default function NotebooksPage() {
           );
         }
       } catch (error) {
-        setNotice(errorMessage(error));
+        const offline =
+          error instanceof ApiError &&
+          (error.status === 0 || [502, 503, 504].includes(error.status));
+        if (offline) {
+          // Sin red (o con el servidor caído): los apuntes se guardan en el
+          // dispositivo y se reintenta la sincronización al recuperar la conexión.
+          await saveNotebookDraft(id, payload);
+          const isCurrent = JSON.stringify(draftRef.current) === JSON.stringify(payload);
+          if (isCurrent && selectedIdRef.current === id) {
+            setDirty(false);
+            setSavedAt(
+              new Date().toLocaleTimeString("es-ES", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            );
+            setLocalOnly(true);
+            setNotice(
+              "No hay conexión con el servidor: los cambios están guardados en este dispositivo. Se sincronizarán cuando vuelva internet.",
+            );
+          }
+        } else if (selectedIdRef.current === id) {
+          setNotice(errorMessage(error));
+        }
       } finally {
         setSaving(false);
       }
     },
     [],
   );
+
+  // Guarda también una copia en IndexedDB mientras se escribe. Así no se
+  // pierden los apuntes si la conexión cae antes del autoguardado del servidor.
+  useEffect(() => {
+    if (!selectedId || !dirty) return;
+    const timeout = setTimeout(() => {
+      void saveNotebookDraft(selectedId, draft);
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [draft, dirty, selectedId]);
+
+  // Al volver la conexión se reintenta guardar lo que quedó solo en local.
+  useEffect(() => {
+    const retry = () => {
+      if (selectedId && (dirty || localOnly)) {
+        void save(selectedId, draftRef.current);
+      }
+    };
+    window.addEventListener("online", retry);
+    return () => window.removeEventListener("online", retry);
+  }, [dirty, localOnly, save, selectedId]);
+
+  // Si al abrir la app ya hay internet, sincroniza los cambios recuperados de
+  // IndexedDB sin obligar a pulsar "Sincronizar".
+  useEffect(() => {
+    if (!selectedId || !localOnly || dirty || !navigator.onLine) return;
+    const timeout = setTimeout(() => {
+      void save(selectedId, draftRef.current);
+    }, 900);
+    return () => clearTimeout(timeout);
+  }, [dirty, localOnly, save, selectedId]);
 
   // Autoguardado con retardo para no escribir en cada pulsacion.
   useEffect(() => {
@@ -284,6 +383,7 @@ export default function NotebooksPage() {
       });
       setNotebooks((prev) => [created, ...prev]);
       setSelectedId(created.id);
+      setLocalOnly(false);
       setShowTemplates(false);
     } catch (error) {
       setNotice(errorMessage(error));
@@ -340,10 +440,12 @@ export default function NotebooksPage() {
     if (!window.confirm(`¿Eliminar el cuaderno "${selected.title}"?`)) return;
     try {
       await api.deleteNotebook(selected.id);
+      await deleteNotebookDraft(selected.id);
       const rest = notebooks.filter((notebook) => notebook.id !== selected.id);
       setNotebooks(rest);
       setSelectedId(rest[0]?.id ?? null);
       setDraft({ title: "", color: "#6366f1", content: "" });
+      setLocalOnly(false);
     } catch (error) {
       setNotice(errorMessage(error));
     }
@@ -730,6 +832,11 @@ export default function NotebooksPage() {
                       </>
                     ) : dirty ? (
                       "Cambios sin guardar"
+                    ) : localOnly ? (
+                      <>
+                        <HardDrive className="h-3.5 w-3.5 text-amber-500" /> Guardado en este
+                        dispositivo · pendiente de sincronizar
+                      </>
                     ) : savedAt ? (
                       <>
                         <Check className="h-3.5 w-3.5 text-emerald-500" /> Guardado a las {savedAt}
@@ -743,9 +850,9 @@ export default function NotebooksPage() {
                       variant="secondary"
                       size="sm"
                       onClick={() => save(selected.id, draft)}
-                      disabled={saving || !dirty}
+                      disabled={saving || (!dirty && !localOnly)}
                     >
-                      <Check className="h-4 w-4" /> Guardar
+                      <Check className="h-4 w-4" /> {localOnly ? "Sincronizar" : "Guardar"}
                     </Button>
                     <Button variant="secondary" size="sm" onClick={downloadWord}>
                       <Download className="h-4 w-4" /> Word

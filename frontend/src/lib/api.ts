@@ -43,6 +43,11 @@ import type {
   UploadSession,
   User,
 } from "@/lib/types";
+import {
+  LOCAL_CACHE_EVENT,
+  cacheApiResponse,
+  readCachedApiResponse,
+} from "@/lib/local-cache";
 
 const TOKEN_KEY = "autopilot_token";
 
@@ -132,6 +137,7 @@ async function request<T>(
   options: RequestInit = {},
 ): Promise<T> {
   const token = tokenStore.get();
+  const method = (options.method ?? "GET").toUpperCase();
   const headers = new Headers(options.headers);
   if (!(options.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
@@ -142,7 +148,19 @@ async function request<T>(
   try {
     response = await fetch(`${resolveApiBase()}${path}`, { ...options, headers });
   } catch {
-    throw new ApiError(0, "No se pudo contactar con el servidor");
+    const cached = await readCachedApiResponse<T>(path);
+    if (cached) {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent(LOCAL_CACHE_EVENT, { detail: { path, savedAt: cached.savedAt } }),
+        );
+      }
+      return cached.data;
+    }
+    throw new ApiError(
+      0,
+      "No se pudo contactar con el servidor. Conéctate una vez para guardar una copia local.",
+    );
   }
 
   if (response.status === 204) return undefined as T;
@@ -159,7 +177,28 @@ async function request<T>(
   }
 
   if (!response.ok) {
+    // El servidor puede estar despertando (Render) o caido: si ya hay copia
+    // local, es mejor mostrar los datos guardados que una pantalla de error.
+    if ([502, 503, 504].includes(response.status)) {
+      const cached = await readCachedApiResponse<T>(path);
+      if (cached) {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent(LOCAL_CACHE_EVENT, {
+              detail: { path, savedAt: cached.savedAt },
+            }),
+          );
+        }
+        return cached.data;
+      }
+    }
     throw new ApiError(response.status, extractErrorMessage(response.status, data));
+  }
+
+  if (method === "GET" && data !== null) {
+    // Se espera la escritura para que "Guardar copia local" no marque la copia
+    // como completa antes de que IndexedDB haya guardado los datos.
+    await cacheApiResponse(path, data);
   }
   return data as T;
 }

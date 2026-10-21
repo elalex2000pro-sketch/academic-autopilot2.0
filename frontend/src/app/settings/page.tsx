@@ -10,12 +10,14 @@ import {
   FileSpreadsheet,
   Loader2,
   Link2,
+  MonitorDown,
   Palette,
   Plus,
   Send,
   Trash2,
 } from "lucide-react";
 
+import { InstallAppButton } from "@/components/install-app-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -299,6 +301,27 @@ function SettingsInner() {
           <p className="text-xs text-muted-foreground">
             Con «Sistema» se sigue automáticamente la preferencia de tu dispositivo.
           </p>
+        </CardContent>
+      </Card>
+
+      {/* ---- App de escritorio ---- */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <MonitorDown className="h-4 w-4" /> App de escritorio
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Instala Academic Autopilot en tu escritorio para abrirla en su propia ventana, con acceso
+            directo y una copia local de tus datos para consultarlos sin conexión.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <InstallAppButton label="Descargar app" />
+            <span className="text-xs text-muted-foreground">
+              Tus datos siguen guardados en tu cuenta y se sincronizan entre dispositivos.
+            </span>
+          </div>
         </CardContent>
       </Card>
 
