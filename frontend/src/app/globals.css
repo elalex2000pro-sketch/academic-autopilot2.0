@@ -1,0 +1,498 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Paleta de papel y tinta: neutros cálidos + un único acento verde pizarra. */
+  :root {
+    --background: 40 33% 97%;
+    --foreground: 30 8% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 30 8% 12%;
+    --primary: 170 73% 22%;
+    --primary-foreground: 40 33% 98%;
+    --secondary: 168 18% 93%;
+    --secondary-foreground: 173 45% 20%;
+    --muted: 40 20% 94%;
+    --muted-foreground: 35 7% 42%;
+    --accent: 168 20% 92%;
+    --accent-foreground: 173 48% 20%;
+    --destructive: 4 62% 42%;
+    --destructive-foreground: 40 33% 98%;
+    --border: 40 14% 86%;
+    --input: 40 14% 82%;
+    --ring: 170 60% 30%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 150 6% 8%;
+    --foreground: 40 12% 90%;
+    --card: 150 5% 11%;
+    --card-foreground: 40 12% 90%;
+    --primary: 168 45% 56%;
+    --primary-foreground: 170 60% 8%;
+    --secondary: 168 12% 16%;
+    --secondary-foreground: 40 10% 88%;
+    --muted: 150 5% 15%;
+    --muted-foreground: 45 6% 62%;
+    --accent: 168 14% 18%;
+    --accent-foreground: 168 40% 78%;
+    --destructive: 4 55% 52%;
+    --destructive-foreground: 40 33% 98%;
+    --border: 150 6% 20%;
+    --input: 150 6% 24%;
+    --ring: 168 45% 50%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Los números de horas y fechas se alinean en columna. */
+  time,
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.18);
+  }
+}
+
+/* Barra de desplazamiento discreta */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.45);
+  background-clip: content-box;
+}
+
+/* --- Animaciones: solo un aparecer sobrio --- */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@layer utilities {
+  .animate-fade-up {
+    animation: fade-up 0.32s ease-out both;
+  }
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out both;
+  }
+  .animate-pop {
+    animation: fade-in 0.2s ease-out both;
+  }
+  /* Se conservan por compatibilidad, pero ya no flotan ni brillan. */
+  .animate-float {
+    animation: none;
+  }
+  .gradient-text {
+    color: hsl(var(--foreground));
+    background: none;
+  }
+  .hover-lift {
+    transition:
+      border-color 0.16s ease,
+      background-color 0.16s ease;
+  }
+  .hover-lift:hover {
+    border-color: hsl(var(--foreground) / 0.22);
+    background-color: hsl(var(--muted) / 0.5);
+  }
+  .glass-panel {
+    background: hsl(var(--card));
+  }
+  .stagger-in > * {
+    animation: fade-in 0.28s ease-out both;
+  }
+
+  /* Etiqueta pequeña en versalitas: el recurso tipográfico de toda la app. */
+  .label-caps {
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .rule {
+    border-top: 1px solid hsl(var(--border));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Modo oscuro
+   Las páginas antiguas usan colores fijos de Tailwind (bg-white, text-slate-...).
+   Estas reglas los llevan al tema oscuro y cubren también las variantes con
+   opacidad que antes se quedaban en gris claro.
+   -------------------------------------------------------------------------- */
+html.dark .bg-white {
+  background-color: hsl(var(--card));
+}
+html.dark .bg-white\/95,
+html.dark .bg-white\/90,
+html.dark .bg-white\/85 {
+  background-color: hsl(var(--card) / 0.94);
+}
+html.dark .bg-white\/80,
+html.dark .bg-white\/75,
+html.dark .bg-white\/72 {
+  background-color: hsl(var(--card) / 0.86);
+}
+html.dark .bg-white\/70,
+html.dark .bg-white\/60,
+html.dark .bg-white\/50 {
+  background-color: hsl(var(--card) / 0.66);
+}
+html.dark .bg-white\/15,
+html.dark .bg-white\/10 {
+  background-color: hsl(0 0% 100% / 0.08);
+}
+html.dark .hover\:bg-white:hover,
+html.dark .focus\:bg-white:focus {
+  background-color: hsl(var(--card));
+}
+
+html.dark .bg-slate-50,
+html.dark .bg-slate-50\/95,
+html.dark .bg-slate-50\/90,
+html.dark .bg-slate-50\/80,
+html.dark .bg-slate-50\/70,
+html.dark .bg-slate-50\/60,
+html.dark .bg-slate-50\/40 {
+  background-color: hsl(var(--muted));
+}
+html.dark .bg-slate-100,
+html.dark .bg-slate-100\/90,
+html.dark .bg-slate-100\/70 {
+  background-color: hsl(var(--secondary));
+}
+html.dark .bg-slate-200 {
+  background-color: hsl(150 6% 20%);
+}
+html.dark .hover\:bg-slate-50:hover {
+  background-color: hsl(150 6% 14%);
+}
+html.dark .hover\:bg-slate-100:hover {
+  background-color: hsl(150 6% 17%);
+}
+html.dark .hover\:bg-slate-200:hover {
+  background-color: hsl(150 6% 21%);
+}
+
+html.dark .bg-indigo-50,
+html.dark .bg-indigo-50\/40,
+html.dark .bg-indigo-50\/50,
+html.dark .bg-indigo-50\/60 {
+  background-color: hsl(168 20% 16%);
+}
+html.dark .bg-indigo-100 {
+  background-color: hsl(168 20% 20%);
+}
+html.dark .bg-violet-100,
+html.dark .bg-violet-50\/40 {
+  background-color: hsl(258 16% 22%);
+}
+html.dark .bg-fuchsia-50\/40 {
+  background-color: hsl(22 22% 20%);
+}
+html.dark .bg-rose-50,
+html.dark .bg-rose-50\/70 {
+  background-color: hsl(343 22% 17%);
+}
+html.dark .bg-red-50,
+html.dark .bg-red-50\/70 {
+  background-color: hsl(4 30% 17%);
+}
+html.dark .bg-amber-50 {
+  background-color: hsl(38 26% 15%);
+}
+html.dark .bg-emerald-50,
+html.dark .bg-emerald-50\/60,
+html.dark .bg-emerald-100 {
+  background-color: hsl(160 22% 16%);
+}
+html.dark .hover\:bg-indigo-50:hover,
+html.dark .group:hover .dark\:group-hover\:bg-indigo-950\/60 {
+  background-color: hsl(168 20% 18%);
+}
+html.dark .hover\:bg-rose-50:hover {
+  background-color: hsl(343 22% 20%);
+}
+html.dark .hover\:bg-fuchsia-50:hover {
+  background-color: hsl(22 22% 20%);
+}
+
+/* Degradados heredados: fondo plano. */
+html.dark .from-indigo-50,
+html.dark .from-indigo-50\/40,
+html.dark .from-indigo-50\/50,
+html.dark .from-indigo-50\/60,
+html.dark .from-indigo-50\/80,
+html.dark .from-violet-50,
+html.dark .from-violet-50\/80,
+html.dark .from-orange-50,
+html.dark .from-emerald-50 {
+  background-image: none;
+  background-color: hsl(168 14% 14%);
+}
+
+html.dark .text-slate-900,
+html.dark .text-slate-800 {
+  color: hsl(var(--foreground));
+}
+html.dark .text-slate-700 {
+  color: hsl(40 10% 84%);
+}
+html.dark .text-slate-600 {
+  color: hsl(40 8% 74%);
+}
+html.dark .text-slate-500 {
+  color: hsl(45 6% 62%);
+}
+html.dark .text-slate-400 {
+  color: hsl(45 6% 52%);
+}
+html.dark .text-slate-300 {
+  color: hsl(45 6% 44%);
+}
+html.dark .hover\:text-slate-900:hover {
+  color: hsl(var(--foreground));
+}
+
+html.dark .text-indigo-600,
+html.dark .text-indigo-700,
+html.dark .text-indigo-700\/80,
+html.dark .text-indigo-800 {
+  color: hsl(168 48% 68%);
+}
+html.dark .text-violet-600,
+html.dark .text-violet-700 {
+  color: hsl(258 40% 76%);
+}
+html.dark .text-fuchsia-600 {
+  color: hsl(22 60% 72%);
+}
+html.dark .text-rose-600,
+html.dark .text-rose-700,
+html.dark .text-rose-800 {
+  color: hsl(343 55% 74%);
+}
+html.dark .text-red-600 {
+  color: hsl(4 65% 72%);
+}
+html.dark .text-amber-600 {
+  color: hsl(38 60% 66%);
+}
+html.dark .text-amber-800 {
+  color: hsl(38 60% 72%);
+}
+html.dark .text-emerald-600,
+html.dark .text-emerald-700,
+html.dark .text-emerald-800 {
+  color: hsl(160 38% 66%);
+}
+
+html.dark .border-slate-200,
+html.dark .border-slate-200\/90,
+html.dark .border-slate-200\/80,
+html.dark .border-slate-200\/70,
+html.dark .border-slate-100,
+html.dark .border-slate-300 {
+  border-color: hsl(var(--border));
+}
+html.dark .border-slate-800 {
+  border-color: hsl(40 8% 74%);
+}
+html.dark .border-white\/70,
+html.dark .border-white\/40,
+html.dark .border-white\/30,
+html.dark .border-white\/25 {
+  border-color: hsl(0 0% 100% / 0.16);
+}
+html.dark .border-indigo-100,
+html.dark .border-indigo-200 {
+  border-color: hsl(168 24% 28%);
+}
+html.dark .border-violet-100,
+html.dark .border-violet-200 {
+  border-color: hsl(258 18% 30%);
+}
+html.dark .border-fuchsia-200 {
+  border-color: hsl(22 20% 30%);
+}
+html.dark .border-rose-200,
+html.dark .border-rose-300,
+html.dark .border-red-300 {
+  border-color: hsl(343 24% 30%);
+}
+html.dark .border-amber-200 {
+  border-color: hsl(38 30% 28%);
+}
+html.dark .border-emerald-100,
+html.dark .border-emerald-200,
+html.dark .border-emerald-300 {
+  border-color: hsl(160 22% 26%);
+}
+html.dark .border-orange-100 {
+  border-color: hsl(25 26% 28%);
+}
+
+html.dark .ring-indigo-100 {
+  --tw-ring-color: hsl(168 24% 28%);
+}
+html.dark .ring-slate-100 {
+  --tw-ring-color: hsl(var(--border));
+}
+
+html.dark select option {
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  background-clip: content-box;
+}
+
+/* --------------------------------------------------------------------------
+   Horario semanal: cada asignatura tiene un tono estable y apagado.
+   --tone-bar pinta la barra lateral; --tone-bg el fondo del bloque.
+   -------------------------------------------------------------------------- */
+.tt-tone-0 {
+  --tone-bar: #4a6c8f;
+  --tone-bg: #e9eff7;
+  --tone-text: #1e2f42;
+}
+.tt-tone-1 {
+  --tone-bar: #9a7b32;
+  --tone-bg: #f7f0e0;
+  --tone-text: #3e3010;
+}
+.tt-tone-2 {
+  --tone-bar: #5f7a4d;
+  --tone-bg: #eaf0e4;
+  --tone-text: #26331c;
+}
+.tt-tone-3 {
+  --tone-bar: #9c5348;
+  --tone-bg: #f7eae7;
+  --tone-text: #401d19;
+}
+.tt-tone-4 {
+  --tone-bar: #6f5b86;
+  --tone-bg: #efeaF4;
+  --tone-text: #2c2338;
+}
+.tt-tone-5 {
+  --tone-bar: #a8733f;
+  --tone-bg: #f8ede1;
+  --tone-text: #42290f;
+}
+.tt-tone-6 {
+  --tone-bar: #96606f;
+  --tone-bg: #f6e9ed;
+  --tone-text: #3d1f27;
+}
+.tt-tone-7 {
+  --tone-bar: #3d7d72;
+  --tone-bg: #e5f0ee;
+  --tone-text: #14302c;
+}
+.tt-tone-break {
+  --tone-bar: #a8a29a;
+  --tone-bg: #eeede8;
+  --tone-text: #4a463f;
+}
+
+html.dark .tt-tone-0 {
+  --tone-bar: #7fa6cc;
+  --tone-bg: #1b2a3a;
+  --tone-text: #dce9f7;
+}
+html.dark .tt-tone-1 {
+  --tone-bar: #d4b06a;
+  --tone-bg: #30271a;
+  --tone-text: #f4e8ce;
+}
+html.dark .tt-tone-2 {
+  --tone-bar: #9dbb85;
+  --tone-bg: #232d1e;
+  --tone-text: #e1f0d5;
+}
+html.dark .tt-tone-3 {
+  --tone-bar: #d08c81;
+  --tone-bg: #33201f;
+  --tone-text: #f7ded9;
+}
+html.dark .tt-tone-4 {
+  --tone-bar: #b6a2cf;
+  --tone-bg: #2a2334;
+  --tone-text: #e8dff4;
+}
+html.dark .tt-tone-5 {
+  --tone-bar: #d5a479;
+  --tone-bg: #32261a;
+  --tone-text: #f6e4d2;
+}
+html.dark .tt-tone-6 {
+  --tone-bar: #cf9aab;
+  --tone-bg: #31222a;
+  --tone-text: #f6dee6;
+}
+html.dark .tt-tone-7 {
+  --tone-bar: #86c7ba;
+  --tone-bg: #17302c;
+  --tone-text: #d8f1ea;
+}
+html.dark .tt-tone-break {
+  --tone-bar: #7b8790;
+  --tone-bg: #23272a;
+  --tone-text: #d2d9dd;
+}

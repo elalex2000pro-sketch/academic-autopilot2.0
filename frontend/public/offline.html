@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#4f46e5" />
+    <title>Sin conexión · Academic Autopilot</title>
+    <style>
+      :root { color-scheme: light dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        color: #0f172a;
+        background: radial-gradient(900px 500px at 15% 0%, #e0e7ff 0, transparent 60%),
+          radial-gradient(800px 500px at 90% 100%, #fae8ff 0, transparent 55%), #f7f7fc;
+      }
+      main {
+        width: 100%;
+        max-width: 440px;
+        text-align: center;
+        padding: 36px 28px;
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        border-radius: 28px;
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow: 0 25px 60px rgba(79, 70, 229, 0.15);
+        backdrop-filter: blur(18px);
+      }
+      .logo {
+        width: 76px;
+        height: 76px;
+        margin: 0 auto 18px;
+        border-radius: 22px;
+        object-fit: cover;
+        box-shadow: 0 16px 34px rgba(79, 70, 229, 0.24);
+      }
+      h1 { margin: 0; font-size: 24px; letter-spacing: -0.03em; }
+      p { margin: 10px 0 0; color: #64748b; font-size: 14px; line-height: 1.6; }
+      .box {
+        margin-top: 22px;
+        padding: 14px;
+        border-radius: 16px;
+        background: #eef2ff;
+        color: #4338ca;
+        font-size: 12px;
+        line-height: 1.55;
+        text-align: left;
+      }
+      button, a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        margin-top: 22px;
+        padding: 0 20px;
+        border: 0;
+        border-radius: 14px;
+        background: #4f46e5;
+        color: white;
+        font: inherit;
+        font-weight: 650;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      button:hover, a:hover { background: #4338ca; }
+      .hint { margin-top: 14px; font-size: 11px; color: #94a3b8; }
+      @media (prefers-color-scheme: dark) {
+        body { color: #e2e8f0; background: radial-gradient(900px 500px at 15% 0%, #1e1b4b 0, transparent 60%), #0b1120; }
+        main { background: rgba(15, 23, 42, 0.82); border-color: rgba(148, 163, 184, 0.16); }
+        p { color: #94a3b8; }
+        .box { background: rgba(79, 70, 229, 0.18); color: #c7d2fe; }
+        .hint { color: #64748b; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img class="logo" src="/icons/icon-192.png" alt="Academic Autopilot" />
+      <h1>Estás sin conexión</h1>
+      <p>
+        Academic Autopilot necesita conexión para sincronizar. Si ya instalaste la app, puedes volver a
+        abrirla y consultar la copia local de tus apuntes.
+      </p>
+      <div class="box">
+        <strong>Consejo:</strong> abre la app instalada desde tu escritorio. Los cuadernos editados sin
+        conexión se guardan en este dispositivo y se sincronizan cuando vuelve internet.
+      </div>
+      <button type="button" onclick="location.reload()">Reintentar</button>
+      <p class="hint">Si sigue sin funcionar, revisa tu Wi-Fi o datos móviles.</p>
+    </main>
+  </body>
+</html>

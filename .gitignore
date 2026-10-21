@@ -1,0 +1,45 @@
+# --- Entorno ---
+.env
+.env.*
+!.env.example
+*.local
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Recursos de compilación de la app de escritorio (icono del instalador).
+!desktop/build/
+!desktop/build/**
+
+# --- Node / Next.js ---
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+
+# --- Bases de datos / logs ---
+*.db
+*.sqlite3
+*.log
+pgdata/
+
+# --- Editores / SO ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Secretos de Google ---
+credentials.json
+token.json
+client_secret*.json

@@ -1,0 +1,178 @@
+========================================================================
+  ACADEMIC AUTOPILOT - MANUAL DE INSTALACION Y USO
+========================================================================
+
+Que es esto
+-----------
+Esta carpeta contiene la aplicacion completa "Academic Autopilot" lista
+para ejecutarse en tu ordenador. Incluye todo el codigo, la configuracion
+y unos asistentes que instalan solos los programas necesarios.
+
+
+Requisitos
+----------
+  - Windows 10 o Windows 11 (64 bits).
+  - Conexion a internet (solo la primera vez, para descargar programas
+    y construir la aplicacion).
+  - 8 GB de RAM recomendados.
+  - Unos 6 GB de espacio libre en disco.
+
+
+Pasos para instalarlo (solo la primera vez)
+--------------------------------------------
+PASO 1. Ejecuta "1 - Instalar programas.cmd"
+        (doble clic). Se abrira una ventana negra.
+
+        - Instala automaticamente Docker Desktop (obligatorio) y
+          Ollama (opcional, para IA local).
+        - Si Windows te pide permisos, acepta.
+        - Al terminar, REINICIA el ordenador (o cierra sesion y
+          vuelve a entrar). Es importante para que Docker funcione.
+
+PASO 2. Abre "Docker Desktop" desde el menu Inicio.
+        - La primera vez te pedira aceptar las condiciones: acéptalas.
+        - Espera a que el icono de la ballena (abajo a la derecha)
+          deje de parpadear. Ya estara listo.
+
+PASO 3. Ejecuta "2 - Iniciar Academic Autopilot.cmd".
+        - La primera vez tarda unos minutos (esta construyendo).
+        - Cuando termine, se abrira sola la aplicacion en el navegador:
+          http://localhost:8080
+
+        Ya puedes crear tu cuenta (boton "Registrarse") y usarla.
+
+
+Uso del dia a dia
+-----------------
+  - Para arrancar la app:  doble clic en
+    "2 - Iniciar Academic Autopilot.cmd".
+  - Para apagarla:         doble clic en "3 - Detener.cmd".
+  - Tus datos (tareas, notas, horario...) se guardan y se conservan
+    aunque apagues la app o el ordenador.
+
+
+Primeros pasos dentro de la app
+-------------------------------
+Esta instalacion empieza sin ninguna cuenta: crea la tuya con el boton
+"Registrarse" (email y contrasena).
+
+El horario del ciclo (7 asignaturas y sus 30 clases semanales) se carga
+AUTOMATICAMENTE en tu cuenta la primera vez que arrancas la app con esa
+cuenta creada. Es decir:
+
+   1) Ejecuta "2 - Iniciar Academic Autopilot.cmd".
+   2) Registrate dentro de la app.
+   3) Cierra esa ventana y vuelve a ejecutar
+      "2 - Iniciar Academic Autopilot.cmd" (o el 4, ver abajo).
+
+Si ya tenias la app abierta al registrarte y no ves el horario, doble clic
+en "4 - Cargar el horario.cmd" y recarga la pagina del navegador.
+
+A partir de ahi puedes anadir tus propias asignaturas y clases, o pedirle
+al asistente (esquina inferior derecha) que lo haga por ti. Ejemplo:
+      "Anade una clase de Redes Locales los martes de 10:15 a 11:15".
+
+
+Configurar la IA (opcional pero recomendado)
+--------------------------------------------
+La app funciona sin IA (te responde con reglas), pero con IA va mucho
+mejor. Tienes dos opciones en "Ajustes -> Motor del asistente IA":
+
+  OPCION A - Local (Ollama, gratis, sin limites, sin internet)
+     1. Abre la aplicacion Ollama (instalada en el PASO 1).
+     2. En "Ajustes -> Motor del asistente IA" elige "Local (Ollama)".
+     3. Guarda. La primera vez, Ollama descargara el modelo solo.
+
+  OPCION B - Gemini de Google (mas potente, gratis con limite diario)
+     1. Entra en https://aistudio.google.com/apikey
+     2. Inicia sesion con tu cuenta de Google y crea una "API key".
+     3. Copiala.
+     4. En "Ajustes -> Motor del asistente IA" elige "Gemini".
+     5. Pega la clave y pulsa "Guardar motor IA".
+
+  La clave se guarda cifrada en tu base de datos, nunca en texto plano.
+
+
+Asistente flotante
+------------------
+En la esquina inferior derecha de toda la aplicacion tienes un boton
+con una estrella (✦). Al pulsarlo se abre el asistente en cualquier
+pantalla para que le pidas cambios sin ir a la seccion "Asistente".
+Los borrados siempre te pediran confirmacion antes de hacerse.
+
+
+Clases compartidas (trabajar en grupo)
+--------------------------------------
+En el menu lateral, "Clases compartidas" permite crear un grupo de
+estudio con tus companeros:
+
+  - Crea la clase y copia su codigo (boton con el candado / copiar).
+  - Compartelo (WhatsApp, correo...). Quien lo pegue en "Unirse con
+    codigo" entra de forma PERMANENTE a la clase.
+  - Dentro de la clase teneis cuatro pestanas: un chat (el propietario
+    puede publicar anuncios que quedan fijados arriba), un calendario
+    en comun (para examenes y entregas), una carpeta de archivos
+    compartidos y la lista de miembros.
+
+El propietario (quien creo la clase) puede renombrarla, generar un
+codigo nuevo (el anterior deja de servir) y eliminarla. Cualquiera
+puede salir de la clase y volver a entrar con el codigo.
+
+
+Archivos grandes (hasta 20 GB)
+------------------------------
+Tanto en "Archivos" como en cada clase compartida puedes subir apuntes
+de hasta 20 GB por archivo. Los archivos grandes se suben por trozos:
+veras una barra de progreso y, si se corta la conexion, la subida se
+reanuda sola desde donde se habia quedado.
+
+
+Problemas frecuentes
+--------------------
+- "No encuentro Docker" al iniciar:
+      No has hecho el PASO 1 o no reiniciaste. Ejecuta
+      "1 - Instalar programas.cmd" y reinicia.
+
+- La pagina no carga / "este sitio no se puede alcanzar":
+      Espera 1-2 minutos. La primera vez tarda en arrancar. Si sigue
+      igual, abre Docker Desktop y comprueba que esta en marcha, luego
+      vuelve a ejecutar "2 - Iniciar Academic Autopilot.cmd".
+
+- "docker: command not found" o error de Docker al construir:
+      Reinicia el ordenador y asegurate de que Docker Desktop esta
+      abierto y "en verde" antes de iniciar la app.
+
+- Quiero cambiar la clave de seguridad (SECRET_KEY):
+      Edita el archivo ".env" con el Bloc de notas y cambia el valor
+      de SECRET_KEY por una cadena larga y aleatoria. No lo hagas
+      despues de tener datos importantes (las claves guardadas
+      dejarian de descifrarse).
+
+
+Estructura de la carpeta
+------------------------
+  backend/                       Codigo del servidor (API + IA + planificador)
+  frontend/                      Codigo de la interfaz web
+  docs/                          Documentacion tecnica
+  deploy/                        Scripts auxiliares
+  docker-compose.yml             Define los servicios de la aplicacion
+  docker-compose.prod.yml        Variante para servidor con dominio propio
+  Caddyfile                      Configuracion del proxy web
+  .env                           Configuracion (incluye tu clave secreta)
+  1 - Instalar programas.cmd     Instala Docker y Ollama
+  2 - Iniciar Academic Autopilot.cmd   Arranca la aplicacion (y carga el horario)
+  3 - Detener.cmd                Apaga la aplicacion
+  4 - Cargar el horario.cmd      Carga el horario en tu cuenta si no aparece
+  MANUAL.txt                     Este documento
+
+
+Acceso desde otro dispositivo de tu casa (opcional)
+---------------------------------------------------
+La app se abre en http://localhost:8080 en este ordenador. Si quieres
+abrirla desde el movil u otro PC conectado al mismo WiFi, usa la IP
+local de este ordenador, por ejemplo:
+      http://192.168.1.XX:8080
+Puedes ver tu IP con el comando:  ipconfig
+
+
+========================================================================

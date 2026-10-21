@@ -1,0 +1,119 @@
+name: academic-autopilot
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-autopilot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-autopilot}
+      POSTGRES_DB: ${POSTGRES_DB:-academic_autopilot}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-autopilot} -d ${POSTGRES_DB:-academic_autopilot}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    image: academic-autopilot-backend:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      SECRET_KEY: ${SECRET_KEY}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-autopilot}:${POSTGRES_PASSWORD:-autopilot}@db:5432/${POSTGRES_DB:-academic_autopilot}
+      DATABASE_URL_SYNC: postgresql+psycopg2://${POSTGRES_USER:-autopilot}:${POSTGRES_PASSWORD:-autopilot}@db:5432/${POSTGRES_DB:-academic_autopilot}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      CORS_ORIGIN_REGEX: ${CORS_ORIGIN_REGEX:-^https?://.*$}
+      REALTIME_ENABLED: ${REALTIME_ENABLED:-true}
+      BACKEND_PORT: 8000
+      ENABLE_SCHEDULER: "false"   # el scheduler corre en el servicio `worker`
+      SYNC_INTERVAL_MINUTES: ${SYNC_INTERVAL_MINUTES:-30}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:3000/settings}
+      GOOGLE_CLASSROOM_SCOPES: ${GOOGLE_CLASSROOM_SCOPES:-https://www.googleapis.com/auth/classroom.courses.readonly,https://www.googleapis.com/auth/classroom.coursework.me.readonly}
+      FILES_DIR: /data/files
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-20480}
+      UPLOAD_CHUNK_MB: ${UPLOAD_CHUNK_MB:-25}
+      UPLOAD_SESSION_TTL_HOURS: ${UPLOAD_SESSION_TTL_HOURS:-48}
+      AI_ENABLED: ${AI_ENABLED:-true}
+      AI_BASE_URL: ${AI_BASE_URL:-http://host.docker.internal:11434/v1}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-llama3.1}
+      AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-120}
+      AI_TEMPERATURE: ${AI_TEMPERATURE:-0.3}
+      AI_VISION_MODEL: ${AI_VISION_MODEL:-llava}
+      AI_MAX_IMAGE_MB: ${AI_MAX_IMAGE_MB:-8}
+      AI_TOOLS_ENABLED: ${AI_TOOLS_ENABLED:-true}
+      AI_MAX_TOOL_ITERATIONS: ${AI_MAX_TOOL_ITERATIONS:-6}
+      ALLOWED_UPLOAD_EXTENSIONS: ${ALLOWED_UPLOAD_EXTENSIONS:-pdf,doc,docx,ppt,pptx,xls,xlsx,txt,md,csv,png,jpg,jpeg,gif}
+      AI_STUDIO_MAX_CHARS: ${AI_STUDIO_MAX_CHARS:-12000}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - appfiles:/data/files
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+
+  worker:
+    build: ./backend
+    image: academic-autopilot-backend:latest
+    restart: unless-stopped
+    command: ["python", "-m", "app.workers.run"]
+    depends_on:
+      db:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      SECRET_KEY: ${SECRET_KEY}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-autopilot}:${POSTGRES_PASSWORD:-autopilot}@db:5432/${POSTGRES_DB:-academic_autopilot}
+      DATABASE_URL_SYNC: postgresql+psycopg2://${POSTGRES_USER:-autopilot}:${POSTGRES_PASSWORD:-autopilot}@db:5432/${POSTGRES_DB:-academic_autopilot}
+      ENABLE_SCHEDULER: "true"
+      SYNC_INTERVAL_MINUTES: ${SYNC_INTERVAL_MINUTES:-30}
+      # El worker limpia subidas a medias, asi que necesita la misma carpeta.
+      FILES_DIR: /data/files
+      UPLOAD_SESSION_TTL_HOURS: ${UPLOAD_SESSION_TTL_HOURS:-48}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    healthcheck:
+      disable: true
+    volumes:
+      - appfiles:/data/files
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    ports:
+      - "3000:3000"
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - frontend
+    ports:
+      - "${PROXY_PORT:-8080}:8080"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+
+volumes:
+  pgdata:
+  appfiles:
