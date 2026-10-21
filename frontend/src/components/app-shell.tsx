@@ -78,17 +78,28 @@ function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
 }
 
+/** Semáforos de la ventana. Solo decorativos. */
+function TrafficLights({ className }: { className?: string }) {
+  return (
+    <span className={cn("flex items-center gap-2", className)} aria-hidden>
+      <span className="h-3 w-3 rounded-full bg-[#ff5f57] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.18)]" />
+      <span className="h-3 w-3 rounded-full bg-[#febc2e] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.16)]" />
+      <span className="h-3 w-3 rounded-full bg-[#28c840] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.16)]" />
+    </span>
+  );
+}
+
 function Logo() {
   return (
-    <Link href="/" className="flex items-center gap-2.5">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-card text-primary">
-        <CalendarCheck className="h-4 w-4" />
+    <Link href="/" className="flex min-w-0 items-center gap-2.5">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-gradient-to-b from-[#4da3ff] to-[#0066d6] text-white shadow-[0_1px_2px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.35)]">
+        <CalendarCheck className="h-[17px] w-[17px]" strokeWidth={2.2} />
       </span>
       <span className="min-w-0">
-        <span className="block truncate font-display text-[15px] font-semibold leading-tight tracking-tight">
+        <span className="block truncate text-[13px] font-semibold leading-tight tracking-[-0.01em]">
           Academic Autopilot
         </span>
-        <span className="block truncate text-[11px] text-muted-foreground">
+        <span className="block truncate text-[11px] leading-tight text-muted-foreground">
           Planificador de estudio
         </span>
       </span>
@@ -118,9 +129,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (loading || !user) {
     return (
-      <div className="flex h-dvh flex-col items-center justify-center gap-3 text-muted-foreground">
+      <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-background text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin text-primary" />
-        <span className="text-sm">Cargando tu espacio...</span>
+        <span className="text-[13px]">Cargando tu espacio…</span>
       </div>
     );
   }
@@ -130,15 +141,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-dvh flex-col lg:flex-row">
-      <aside className="sticky top-0 hidden h-dvh w-[15.5rem] shrink-0 flex-col border-r border-border bg-card/60 p-3 lg:flex">
-        <div className="mb-6 px-2 pt-2">
+      <aside className="vibrancy sticky top-0 hidden h-dvh w-[232px] shrink-0 flex-col border-r border-separator lg:flex">
+        <div className="flex h-11 shrink-0 items-center px-4">
+          <TrafficLights />
+        </div>
+
+        <div className="px-3 pb-4">
           <Logo />
         </div>
 
-        <nav className="flex flex-1 flex-col gap-5 overflow-y-auto pb-3">
+        <nav className="flex flex-1 flex-col gap-4 overflow-y-auto px-2 pb-3">
           {NAV_GROUPS.map((group) => (
             <div key={group.label}>
-              <p className="label-caps px-3 pb-1.5 text-[10px]">{group.label}</p>
+              <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-muted-foreground/85">
+                {group.label}
+              </p>
               <div className="space-y-px">
                 {group.items.map(({ href, label, icon: Icon }) => {
                   const active = isActive(pathname, href);
@@ -148,19 +165,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       href={href}
                       aria-current={active ? "page" : undefined}
                       className={cn(
-                        "relative flex items-center gap-2.5 rounded-md px-3 py-1.5 text-[13px] transition-colors",
+                        "flex h-[29px] items-center gap-2.5 rounded-md px-2 text-[13px] transition-colors duration-100 ease-mac",
                         active
-                          ? "bg-muted font-semibold text-foreground before:absolute before:left-0 before:top-1/2 before:h-4 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-primary"
-                          : "font-medium text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                          ? "bg-primary font-medium text-primary-foreground shadow-sm"
+                          : "font-normal text-foreground/85 hover:bg-foreground/[0.055] hover:text-foreground",
                       )}
                     >
                       <Icon
                         className={cn(
                           "h-4 w-4 shrink-0",
-                          active ? "text-primary" : "text-muted-foreground/80",
+                          active ? "text-white" : "text-foreground/55",
                         )}
+                        strokeWidth={1.8}
                       />
-                      {label}
+                      <span className="truncate">{label}</span>
                     </Link>
                   );
                 })}
@@ -169,31 +187,41 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        <div className="mt-2 space-y-2 border-t border-border pt-3">
-          <InstallAppButton className="mb-1 w-full justify-start" />
+        <div className="shrink-0 space-y-2 border-t border-separator px-2 py-2.5">
+          <InstallAppButton
+            variant="ghost"
+            className="h-[29px] w-full justify-start px-2 text-[13px] font-normal text-foreground/85"
+          />
+
           <div className="flex items-center gap-1">
             <Link
               href={SETTINGS_ITEM.href}
               className={cn(
-                "flex flex-1 items-center gap-2.5 rounded-md px-3 py-1.5 text-[13px] transition-colors",
+                "flex h-[29px] flex-1 items-center gap-2.5 rounded-md px-2 text-[13px] transition-colors duration-100",
                 isActive(pathname, SETTINGS_ITEM.href)
-                  ? "bg-muted font-semibold text-foreground"
-                  : "font-medium text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                  ? "bg-primary font-medium text-primary-foreground shadow-sm"
+                  : "text-foreground/85 hover:bg-foreground/[0.055] hover:text-foreground",
               )}
             >
-              <Settings className="h-4 w-4" />
+              <Settings
+                className={cn(
+                  "h-4 w-4",
+                  isActive(pathname, SETTINGS_ITEM.href) ? "text-white" : "text-foreground/55",
+                )}
+                strokeWidth={1.8}
+              />
               Ajustes
             </Link>
             <ThemeCycleButton />
           </div>
 
-          <div className="flex items-center gap-2.5 rounded-md border border-border px-2.5 py-2">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-secondary text-[11px] font-semibold text-secondary-foreground">
+          <div className="flex items-center gap-2 rounded-md px-1.5 py-1.5 hover:bg-foreground/[0.04]">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
               {initials}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-xs font-semibold">{name}</span>
-              <span className="block truncate text-[11px] text-muted-foreground">
+              <span className="block truncate text-[12px] font-medium leading-tight">{name}</span>
+              <span className="block truncate text-[11px] leading-tight text-muted-foreground">
                 {user.email}
               </span>
             </span>
@@ -212,8 +240,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Barra superior móvil */}
-        <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur lg:hidden">
+        {/* Barra superior móvil, con la translucidez de una toolbar. */}
+        <header className="vibrancy sticky top-0 z-40 border-b border-separator lg:hidden">
           <div className="flex items-center justify-between gap-2 px-3 py-2">
             <Logo />
             <div className="flex shrink-0 items-center gap-0.5">
@@ -233,13 +261,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   href={href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                    "flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors",
                     active
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-card text-muted-foreground hover:text-foreground",
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-foreground/[0.055] hover:text-foreground",
                   )}
                 >
-                  <Icon className="h-3.5 w-3.5" />
+                  <Icon className="h-3.5 w-3.5" strokeWidth={1.8} />
                   {label}
                 </Link>
               );

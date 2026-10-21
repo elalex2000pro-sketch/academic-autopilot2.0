@@ -4,23 +4,31 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
+/**
+ * Controles de 28–32 px con radio de 6 px, como los botones nativos de macOS.
+ * El relleno azul lleva un brillo interior de un píxel para dar volumen.
+ */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md text-[13px] font-medium leading-none transition-[background-color,box-shadow,filter] duration-150 ease-mac focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/25 disabled:pointer-events-none disabled:opacity-45 [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-border bg-card text-foreground hover:bg-muted",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/70",
-        ghost: "text-foreground hover:bg-muted",
+        default:
+          "bg-primary text-primary-foreground shadow-button hover:brightness-[1.07] active:brightness-[0.95] active:shadow-pressed",
+        destructive:
+          "bg-destructive text-destructive-foreground shadow-button hover:brightness-[1.07] active:brightness-[0.95]",
+        outline:
+          "border border-input bg-card text-foreground shadow-sm hover:bg-muted/70 active:bg-muted",
+        secondary:
+          "border border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/70 active:bg-secondary/50",
+        ghost: "text-foreground hover:bg-foreground/[0.055] active:bg-foreground/[0.09]",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-9 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-10 px-5",
-        icon: "h-9 w-9",
+        default: "h-8 px-3.5",
+        sm: "h-7 rounded-md px-2.5 text-xs",
+        lg: "h-9 px-5 text-sm",
+        icon: "h-8 w-8",
       },
     },
     defaultVariants: { variant: "default", size: "default" },

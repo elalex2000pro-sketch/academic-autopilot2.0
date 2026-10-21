@@ -39,6 +39,7 @@ interface InstallAppButtonProps {
   compact?: boolean;
   className?: string;
   label?: string;
+  variant?: "default" | "outline" | "secondary" | "ghost";
 }
 
 type DevicePlatform = "windows" | "mac" | "ios" | "android" | "other";
@@ -74,7 +75,12 @@ function formatDate(value: string | null): string {
   });
 }
 
-export function InstallAppButton({ compact = false, className, label }: InstallAppButtonProps) {
+export function InstallAppButton({
+  compact = false,
+  className,
+  label,
+  variant = "default",
+}: InstallAppButtonProps) {
   const [open, setOpen] = useState(false);
   const [promptEvent, setPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [webAppInstalled, setWebAppInstalled] = useState(false);
@@ -506,7 +512,7 @@ export function InstallAppButton({ compact = false, className, label }: InstallA
     <>
       <Button
         type="button"
-        variant={compact ? "ghost" : "default"}
+        variant={compact ? "ghost" : variant}
         size={compact ? "icon" : "default"}
         className={cn(!compact && "justify-start", className)}
         onClick={() => setOpen(true)}

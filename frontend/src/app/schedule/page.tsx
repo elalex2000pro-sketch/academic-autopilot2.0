@@ -20,7 +20,7 @@ function errorMessage(error: unknown): string {
 }
 
 const selectClass =
-  "flex h-9 w-full rounded-lg border border-input bg-card px-2.5 text-sm transition-colors focus-visible:border-ring focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+  "inset-field flex h-8 w-full rounded-md border border-input bg-card px-2.5 text-[13px] text-foreground transition-[border-color,box-shadow] duration-150 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/20";
 
 export default function SchedulePage() {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -116,12 +116,12 @@ export default function SchedulePage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8 px-4 py-6 sm:px-6 lg:py-8">
-      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
+    <div className="mx-auto max-w-[1080px] space-y-8 px-5 py-7 sm:px-8 lg:py-9">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="label-caps">Tu semana</p>
-          <h1 className="mt-1 font-display text-3xl tracking-tight">Horario</h1>
-          <p className="mt-1 max-w-prose text-sm text-muted-foreground">
+          <p className="text-[12px] font-medium text-muted-foreground">Tu semana</p>
+          <h1 className="mt-1 text-[28px] font-semibold leading-tight tracking-[-0.03em]">Horario</h1>
+          <p className="mt-1.5 max-w-prose text-[13px] leading-5 text-muted-foreground">
             La semana a escala real: cada asignatura conserva su color y las horas vacías se ven tal
             cual son.
           </p>
@@ -151,7 +151,7 @@ export default function SchedulePage() {
 
       <section aria-labelledby="semana">
         <div className="mb-3 flex items-baseline justify-between gap-3">
-          <h2 id="semana" className="font-display text-xl tracking-tight">
+          <h2 id="semana" className="text-[17px] font-semibold tracking-[-0.02em]">
             Semana
           </h2>
           <span className="label-caps">
@@ -164,7 +164,7 @@ export default function SchedulePage() {
         ) : (
           <div className="rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
             <CalendarDays className="mx-auto h-6 w-6 text-muted-foreground" />
-            <p className="mt-3 font-display text-lg">Tu horario está vacío</p>
+            <p className="mt-3 text-[15px] font-semibold">Tu horario está vacío</p>
             <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
               Añade una clase a mano o importa una foto o un PDF de tu horario.
             </p>
@@ -180,9 +180,9 @@ export default function SchedulePage() {
       <section
         id="add-class"
         aria-labelledby="add-class-title"
-        className="scroll-mt-20 rounded-xl border border-border bg-card p-5"
+        className="scroll-mt-20 rounded-xl border border-border/80 bg-card p-5 shadow-sm"
       >
-        <h2 id="add-class-title" className="font-display text-xl tracking-tight">
+        <h2 id="add-class-title" className="text-[17px] font-semibold tracking-[-0.02em]">
           Añadir clase
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -283,7 +283,7 @@ export default function SchedulePage() {
         aria-labelledby="importar-title"
         className="scroll-mt-20 rounded-xl border border-dashed border-border bg-muted/30 p-5"
       >
-        <h2 id="importar-title" className="font-display text-xl tracking-tight">
+        <h2 id="importar-title" className="text-[17px] font-semibold tracking-[-0.02em]">
           Importar desde una foto o un PDF
         </h2>
         <p className="mt-1 max-w-prose text-sm text-muted-foreground">

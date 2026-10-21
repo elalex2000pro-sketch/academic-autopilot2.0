@@ -26,7 +26,7 @@ export function ThemeToggle({
       role="group"
       aria-label="Tema de la aplicación"
       className={cn(
-        "grid grid-cols-3 gap-1 rounded-xl border border-border bg-muted/60 p-1",
+        "grid grid-cols-3 gap-0.5 rounded-md border border-border/70 bg-muted p-0.5",
         className,
       )}
     >
@@ -41,9 +41,9 @@ export function ThemeToggle({
             aria-label={label}
             title={label}
             className={cn(
-              "flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors",
+              "flex h-[26px] items-center justify-center gap-1.5 rounded-[5px] px-2 text-[12.5px] font-medium transition-all duration-150 ease-mac",
               active
-                ? "bg-card text-primary shadow-sm ring-1 ring-border dark:text-indigo-300"
+                ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >

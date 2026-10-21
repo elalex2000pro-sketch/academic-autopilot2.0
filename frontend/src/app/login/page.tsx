@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarCheck } from "lucide-react";
+import { CalendarCheck, Check } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 const HIGHLIGHTS = [
   "Horario, tareas y exámenes en un solo plan diario",
@@ -14,6 +15,16 @@ const HIGHLIGHTS = [
   "Resúmenes e infografías a partir de tus documentos",
   "Clases compartidas con chat, archivos y calendario",
 ];
+
+function TrafficLights() {
+  return (
+    <span className="flex items-center gap-2" aria-hidden>
+      <span className="h-3 w-3 rounded-full bg-[#ff5f57] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.18)]" />
+      <span className="h-3 w-3 rounded-full bg-[#febc2e] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.16)]" />
+      <span className="h-3 w-3 rounded-full bg-[#28c840] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.16)]" />
+    </span>
+  );
+}
 
 export default function LoginPage() {
   const { login, register } = useAuth();
@@ -42,129 +53,158 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-dvh bg-background">
-      {/* Panel editorial */}
-      <div className="relative hidden w-[44%] flex-col justify-between border-r border-border bg-foreground p-10 text-background lg:flex">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-md border border-background/25">
-            <CalendarCheck className="h-4 w-4" />
+    <div className="flex min-h-dvh items-center justify-center bg-[#e9e9ee] px-3 py-6 sm:px-6 sm:py-10 dark:bg-[#101011]">
+      <div className="mac-window w-full max-w-[880px] overflow-hidden bg-card">
+        {/* Barra de título de la ventana */}
+        <div className="relative flex h-11 items-center border-b border-separator bg-card px-4">
+          <TrafficLights />
+          <span className="pointer-events-none absolute inset-x-0 text-center text-[13px] font-medium text-muted-foreground">
+            Academic Autopilot
           </span>
-          <span className="font-display text-lg tracking-tight">Academic Autopilot</span>
         </div>
 
-        <div>
-          <p className="label-caps !text-background/50">Planificador académico</p>
-          <h1 className="mt-4 max-w-md font-display text-4xl leading-[1.1] tracking-tight">
-            El curso entero, ordenado en una sola página.
-          </h1>
-          <p className="mt-4 max-w-sm text-sm leading-6 text-background/70">
-            Sincroniza tus asignaturas, reparte el estudio en huecos reales y llega a cada entrega
-            con margen.
-          </p>
+        <div className="grid lg:grid-cols-[1.02fr_1fr]">
+          {/* Presentación */}
+          <div className="hidden flex-col justify-between border-r border-separator bg-muted/50 p-9 lg:flex">
+            <div>
+              <span className="flex h-14 w-14 items-center justify-center rounded-[14px] bg-gradient-to-b from-[#4da3ff] to-[#0066d6] text-white shadow-[0_2px_6px_rgba(0,80,200,0.28),inset_0_1px_0_rgba(255,255,255,0.4)]">
+                <CalendarCheck className="h-7 w-7" strokeWidth={2} />
+              </span>
 
-          <ol className="mt-8 space-y-0 border-t border-background/15">
-            {HIGHLIGHTS.map((text, index) => (
-              <li
-                key={text}
-                className="flex items-baseline gap-4 border-b border-background/15 py-3 text-sm text-background/85"
-              >
-                <span className="tabular text-[11px] text-background/45">
-                  {(index + 1).toString().padStart(2, "0")}
-                </span>
-                {text}
-              </li>
-            ))}
-          </ol>
-        </div>
+              <h1 className="mt-6 text-[26px] font-semibold leading-[1.15] tracking-[-0.025em]">
+                El curso entero,
+                <br />
+                ordenado en una página.
+              </h1>
+              <p className="mt-3 max-w-xs text-[13px] leading-5 text-muted-foreground">
+                Sincroniza tus asignaturas, reparte el estudio en huecos reales y llega a cada
+                entrega con margen.
+              </p>
 
-        <p className="text-xs text-background/45">
-          Tus apuntes, tus clases y tu plan, siempre a mano.
-        </p>
-      </div>
+              <ul className="mt-8 space-y-3">
+                {HIGHLIGHTS.map((text) => (
+                  <li key={text} className="flex items-start gap-2.5 text-[13px] leading-5">
+                    <span className="mt-px flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <Check className="h-2.5 w-2.5" strokeWidth={3} />
+                    </span>
+                    <span className="text-foreground/85">{text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-      {/* Formulario */}
-      <div className="flex flex-1 items-center justify-center px-5 py-10">
-        <div className="w-full max-w-sm">
-          <div className="mb-8 lg:hidden">
-            <span className="flex h-9 w-9 items-center justify-center rounded-md border border-border text-primary">
-              <CalendarCheck className="h-4 w-4" />
-            </span>
-            <p className="mt-3 font-display text-lg tracking-tight">Academic Autopilot</p>
+            <p className="mt-10 text-[11px] text-muted-foreground">
+              Tus apuntes, tus clases y tu plan, siempre a mano.
+            </p>
           </div>
 
-          <p className="label-caps">{mode === "login" ? "Acceso" : "Nueva cuenta"}</p>
-          <h2 className="mt-2 font-display text-3xl tracking-tight">
-            {mode === "login" ? "Entra en tu espacio" : "Crea tu cuenta"}
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {mode === "login"
-              ? "Tu plan de estudio te está esperando."
-              : "Solo necesitas un email y una contraseña."}
-          </p>
+          {/* Formulario */}
+          <div className="p-6 sm:p-9">
+            <div className="mb-7 flex items-center gap-2.5 lg:hidden">
+              <span className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-gradient-to-b from-[#4da3ff] to-[#0066d6] text-white shadow-sm">
+                <CalendarCheck className="h-4 w-4" strokeWidth={2.2} />
+              </span>
+              <span className="text-[13px] font-semibold">Academic Autopilot</span>
+            </div>
 
-          <form onSubmit={handleSubmit} className="mt-7 space-y-4">
-            {mode === "register" && (
+            {/* Control segmentado */}
+            <div
+              role="tablist"
+              aria-label="Acceso o registro"
+              className="flex rounded-md bg-muted p-0.5"
+            >
+              {(
+                [
+                  ["login", "Entrar"],
+                  ["register", "Crear cuenta"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === value}
+                  onClick={() => {
+                    setMode(value);
+                    setError(null);
+                  }}
+                  className={cn(
+                    "h-[26px] flex-1 rounded-[5px] text-[12.5px] font-medium transition-all duration-150 ease-mac",
+                    mode === value
+                      ? "bg-card text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <h2 className="mt-6 text-[20px] font-semibold tracking-[-0.02em]">
+              {mode === "login" ? "Bienvenido de nuevo" : "Crea tu cuenta"}
+            </h2>
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              {mode === "login"
+                ? "Entra para ver el plan de hoy."
+                : "Solo necesitas un email y una contraseña."}
+            </p>
+
+            <form onSubmit={handleSubmit} className="mt-6 space-y-3.5">
+              {mode === "register" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="fullName">Nombre</Label>
+                  <Input
+                    id="fullName"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Tu nombre"
+                    autoComplete="name"
+                  />
+                </div>
+              )}
               <div className="space-y-1.5">
-                <Label htmlFor="fullName">Nombre</Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
-                  id="fullName"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Tu nombre"
-                  autoComplete="name"
+                  id="email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="tu@universidad.edu"
+                  autoComplete="email"
                 />
               </div>
-            )}
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="tu@universidad.edu"
-                autoComplete="email"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Contraseña</Label>
-              <Input
-                id="password"
-                type="password"
-                required
-                minLength={8}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Mínimo 8 caracteres"
-                autoComplete={mode === "login" ? "current-password" : "new-password"}
-              />
-            </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="password">Contraseña</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  required
+                  minLength={8}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Mínimo 8 caracteres"
+                  autoComplete={mode === "login" ? "current-password" : "new-password"}
+                />
+              </div>
 
-            {error && (
-              <p className="rounded-md border border-destructive/25 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                {error}
-              </p>
-            )}
+              {error && (
+                <p className="rounded-md border border-destructive/25 bg-destructive/5 px-2.5 py-2 text-[12.5px] text-destructive">
+                  {error}
+                </p>
+              )}
 
-            <Button type="submit" className="w-full" disabled={busy}>
-              {busy ? "Procesando..." : mode === "login" ? "Entrar" : "Crear cuenta"}
-            </Button>
-          </form>
+              <Button type="submit" className="w-full" size="lg" disabled={busy}>
+                {busy ? "Procesando…" : mode === "login" ? "Entrar" : "Crear cuenta"}
+              </Button>
+            </form>
 
-          <p className="mt-5 border-t border-border pt-4 text-sm text-muted-foreground">
-            {mode === "login" ? "¿Aún no tienes cuenta?" : "¿Ya tienes una cuenta?"}{" "}
-            <button
-              type="button"
-              onClick={() => {
-                setMode(mode === "login" ? "register" : "login");
-                setError(null);
-              }}
-              className="font-medium text-primary underline-offset-4 hover:underline"
-            >
-              {mode === "login" ? "Regístrate" : "Inicia sesión"}
-            </button>
-          </p>
+            <p className="mt-5 text-center text-[11px] leading-4 text-muted-foreground">
+              Al continuar aceptas el uso responsable de tus datos.
+              <br />
+              Tu cuenta es privada: nadie más ve tus apuntes.
+            </p>
+          </div>
         </div>
       </div>
     </div>

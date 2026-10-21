@@ -235,31 +235,34 @@ export function WeeklyTimetable({
         role="region"
         aria-label="Horario semanal"
         tabIndex={0}
-        className="overflow-x-auto rounded-lg border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="overflow-x-auto rounded-xl border border-border/80 bg-card shadow-sm focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/20"
       >
         <div className="min-w-[640px]">
           {/* Cabecera de días */}
           <div
-            className="sticky top-0 z-20 grid border-b border-border bg-card"
-            style={{ gridTemplateColumns: `56px repeat(${visibleDays.length}, minmax(0, 1fr))` }}
+            className="sticky top-0 z-20 grid border-b border-separator bg-card"
+            style={{ gridTemplateColumns: `52px repeat(${visibleDays.length}, minmax(0, 1fr))` }}
           >
-            <div className="sticky left-0 z-30 border-r border-border bg-card" aria-hidden />
+            <div className="sticky left-0 z-30 border-r border-separator bg-card" aria-hidden />
             {visibleDays.map((day) => (
               <div
                 key={day}
                 className={cn(
-                  "border-r border-border px-2 py-2 text-center last:border-r-0",
-                  day === today && "bg-accent/60",
+                  "border-r border-separator px-2 py-2.5 text-center last:border-r-0",
+                  day === today && "bg-primary/[0.04]",
                 )}
               >
                 <span
                   className={cn(
-                    "block text-[11px] font-semibold uppercase tracking-[0.1em]",
-                    day === today ? "text-primary" : "text-muted-foreground",
+                    "block text-[11px] font-semibold uppercase tracking-[0.06em]",
+                    day === today ? "text-[#ff3b30]" : "text-muted-foreground",
                   )}
                 >
                   {DAY_SHORT[day]}
                 </span>
+                {day === today && (
+                  <span className="mx-auto mt-1 block h-1 w-1 rounded-full bg-[#ff3b30]" />
+                )}
                 <span className="sr-only">{DAY_LONG[day]}</span>
               </div>
             ))}
@@ -268,11 +271,11 @@ export function WeeklyTimetable({
           {/* Rejilla */}
           <div
             className="grid"
-            style={{ gridTemplateColumns: `56px repeat(${visibleDays.length}, minmax(0, 1fr))` }}
+            style={{ gridTemplateColumns: `52px repeat(${visibleDays.length}, minmax(0, 1fr))` }}
           >
             {/* Columna de horas (fija al desplazar en horizontal) */}
             <div
-              className="relative sticky left-0 z-10 border-r border-border bg-card"
+              className="relative sticky left-0 z-10 border-r border-separator bg-card"
               style={{ height: range.height }}
               aria-hidden
             >
@@ -282,7 +285,7 @@ export function WeeklyTimetable({
                 return (
                   <span
                     key={hour}
-                    className="tabular absolute right-0 block pr-2 text-[11px] font-medium text-muted-foreground"
+                    className="tabular absolute right-0 block pr-2 text-[10.5px] font-normal text-muted-foreground/85"
                     style={{
                       top: (hour - range.start) * MINUTE_HEIGHT,
                       transform: isFirst
@@ -304,14 +307,14 @@ export function WeeklyTimetable({
               <div
                 key={day}
                 className={cn(
-                  "relative border-r border-border last:border-r-0",
-                  day === today ? "bg-accent/25" : "bg-card",
+                  "relative border-r border-separator last:border-r-0",
+                  day === today ? "bg-primary/[0.035]" : "bg-card",
                 )}
                 style={{
                   height: range.height,
                   backgroundImage:
-                    "repeating-linear-gradient(to bottom, hsl(var(--border)) 0 1px, transparent 1px " +
-                    `${(60 * MINUTE_HEIGHT) / 2}px)`,
+                    "repeating-linear-gradient(to bottom, hsl(var(--border) / 0.55) 0 1px, transparent 1px " +
+                    `${(60 * MINUTE_HEIGHT) / 2}px), repeating-linear-gradient(to bottom, hsl(var(--border) / 0.95) 0 1px, transparent 1px ${60 * MINUTE_HEIGHT}px)`,
                 }}
               >
                 {blocks.map((block) => {
@@ -323,37 +326,37 @@ export function WeeklyTimetable({
                     <div
                       key={block.entry.id}
                       className={cn(
-                        "group absolute overflow-hidden border border-black/5 px-2 py-1.5 text-left transition-shadow hover:z-10 hover:shadow-md dark:border-white/10",
+                        "group absolute overflow-hidden border px-1.5 py-1 text-left transition-shadow hover:z-10 hover:shadow-md",
                         block.tone,
-                        block.joinsAbove ? "rounded-t-none" : "rounded-md",
-                        block.joinsBelow ? "rounded-b-none" : "rounded-md",
-                        block.breakEntry && "border-dashed",
+                        "border-black/[0.06] dark:border-white/10",
+                        block.joinsAbove ? "rounded-t-none" : "rounded-[5px]",
+                        block.joinsBelow ? "rounded-b-none" : "rounded-[5px]",
+                        block.breakEntry && "border-dashed border-white/25",
                       )}
                       style={{
                         top,
                         height,
-                        left: `calc(${block.lane * width}% + 2px)`,
-                        width: `calc(${width}% - 4px)`,
-                        borderLeft: "3px solid var(--tone-bar)",
+                        left: `calc(${block.lane * width}% + 1.5px)`,
+                        width: `calc(${width}% - 3px)`,
                         backgroundColor: "var(--tone-bg)",
                         color: "var(--tone-text)",
                       }}
                       title={`${block.name} · ${formatTime(block.start)}-${formatTime(block.end)}`}
                     >
-                      <span className="tabular block text-[10px] font-medium opacity-70">
+                      <span className="tabular block text-[10px] font-medium opacity-80">
                         {formatTime(block.start)}–{formatTime(block.end)}
                       </span>
                       <span
                         className={cn(
                           "block font-semibold leading-tight",
-                          compact ? "text-[11px]" : "text-[12.5px]",
-                          block.breakEntry && "uppercase tracking-[0.08em]",
+                          compact ? "text-[11px]" : "text-[12px]",
+                          block.breakEntry && "uppercase tracking-[0.06em]",
                         )}
                       >
                         {block.name}
                       </span>
                       {!compact && block.entry.location && (
-                        <span className="mt-0.5 block truncate text-[10.5px] opacity-70">
+                        <span className="mt-0.5 block truncate text-[10.5px] opacity-80">
                           {block.entry.location}
                         </span>
                       )}
@@ -362,7 +365,7 @@ export function WeeklyTimetable({
                         onClick={() => onDelete(block.entry.id)}
                         title={`Eliminar ${block.name}`}
                         aria-label={`Eliminar ${block.name} de ${DAY_LONG[day]}`}
-                        className="absolute right-1 top-1 rounded border border-black/10 bg-card/90 p-1 text-muted-foreground opacity-100 transition-opacity hover:text-destructive focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 dark:border-white/15"
+                        className="absolute right-1 top-1 rounded-[4px] bg-black/15 p-1 text-white/80 opacity-100 transition-colors hover:bg-black/30 hover:text-white focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                       >
                         <Trash2 className="h-3 w-3" />
                       </button>
@@ -383,8 +386,8 @@ export function WeeklyTimetable({
               className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground"
             >
               <span
-                className={cn("h-2.5 w-2.5 rounded-sm", item.tone)}
-                style={{ backgroundColor: "var(--tone-bar)" }}
+                className={cn("h-2 w-2 rounded-full", item.tone)}
+                style={{ backgroundColor: "var(--tone-bg)" }}
                 aria-hidden
               />
               {item.name}
