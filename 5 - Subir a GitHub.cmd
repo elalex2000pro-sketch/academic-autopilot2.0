@@ -1,5 +1,5 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal
 chcp 65001 >nul
 title Subir Academic Autopilot a GitHub
 cd /d "%~dp0"
@@ -28,29 +28,30 @@ if errorlevel 1 (
 )
 
 set "REPO="
-for /f "delims=" %%i in ('"%GIT%" remote get-url origin 2^>nul') do set "REPO=%%i"
+"%GIT%" remote get-url origin > "%TEMP%\aa_repo.txt" 2>nul
+if exist "%TEMP%\aa_repo.txt" set /p REPO=<"%TEMP%\aa_repo.txt"
+del "%TEMP%\aa_repo.txt" >nul 2>nul
 
-if not defined REPO (
-  echo.
-  echo ============================================================
-  echo  Antes de continuar, crea el repositorio en GitHub:
-  echo   1. Entra en https://github.com/new
-  echo   2. Ponle un nombre (por ejemplo academic-autopilot)
-  echo   3. NO marques "Add a README file" ni licencia ni .gitignore
-  echo   4. Pulsa "Create repository"
-  echo   5. Copia la URL que termina en .git
-  echo ============================================================
-  echo.
-  set /p "REPO=Pega la URL del repositorio (o pulsa Enter para salir): "
-  if "!REPO!"=="" (
-    echo.
-    echo Cancelado. No se ha cambiado nada.
-    pause
-    exit /b 0
-  )
-  "%GIT%" remote add origin "!REPO!"
-)
+if defined REPO goto push
 
+echo.
+echo ============================================================
+echo  Antes de continuar, crea el repositorio en GitHub:
+echo   1. Entra en https://github.com/new
+echo   2. Ponle un nombre (por ejemplo academic-autopilot)
+echo   3. NO marques "Add a README file" ni licencia ni .gitignore
+echo   4. Pulsa "Create repository"
+echo   5. Copia la URL que termina en .git
+echo ============================================================
+echo.
+set "REPO="
+set /p "REPO=Pega la URL del repositorio (o pulsa Enter para salir): "
+if not defined REPO goto cancel
+
+"%GIT%" remote remove origin >nul 2>nul
+"%GIT%" remote add origin "%REPO%"
+
+:push
 echo.
 echo Repositorio: %REPO%
 echo.
@@ -68,19 +69,27 @@ echo Subiendo... Si es la primera vez, se abrira el navegador
 echo para que inicies sesion en GitHub y autorices el acceso.
 echo.
 "%GIT%" push -u origin main
-if errorlevel 1 (
-  echo.
-  echo [AVISO] No se pudo subir.
-  echo  - Si el repositorio remoto tiene commits que no tienes en local,
-  echo    ejecuta:  "%GIT%" pull --rebase origin main
-  echo  - Si fallo el inicio de sesion, repite y completa el navegador.
-  echo.
-  pause
-  exit /b 1
-)
+if errorlevel 1 goto failed
 
 echo.
 echo Listo. Tu proyecto esta actualizado en GitHub:
 echo   %REPO%
 echo.
 pause
+exit /b 0
+
+:failed
+echo.
+echo [AVISO] No se pudo subir.
+echo  - Si el repositorio remoto tiene commits que no tienes en local,
+echo    ejecuta:  "%GIT%" pull --rebase origin main
+echo  - Si fallo el inicio de sesion, repite y completa el navegador.
+echo.
+pause
+exit /b 1
+
+:cancel
+echo.
+echo Cancelado. No se ha cambiado nada.
+pause
+exit /b 0
