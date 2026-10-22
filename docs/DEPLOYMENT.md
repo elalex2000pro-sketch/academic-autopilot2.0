@@ -148,8 +148,17 @@ pytest -q
    (`https://moodle.universidad.edu`) y el token.
 
 El conector usa estas funciones (deben estar permitidas en el servicio web):
-`core_webservice_get_site_info`, `core_enrol_get_users_courses`,
+`core_webservice_get_site_info`, `core_enrol_get_users_courses` y
 `mod_assign_get_assignments`.
+
+Para marcar automaticamente las tareas ya entregadas se usa ademas
+`mod_assign_get_submissions`. Es opcional: si el token no la permite, la app
+conserva el estado de completado que hayas marcado manualmente.
+
+La pantalla de conexion comprueba el token contra esas funciones antes de
+guardarlo. Si ves un error de permisos, revisa el servicio web asociado al
+token en Moodle (`Administracion del sitio -> Plugins -> Web services ->
+Servicios externos`).
 
 ---
 

@@ -3,9 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, RefreshCw, Wifi, WifiOff } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import type { SyncLog } from "@/lib/types";
 
@@ -15,10 +12,10 @@ const PROVIDER_LABEL: Record<string, string> = {
   all: "Todas",
 };
 
-const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive"> = {
-  success: "success",
-  partial: "warning",
-  error: "destructive",
+const STATUS_COLOR: Record<string, string> = {
+  success: "#30d158",
+  partial: "#ff9f0a",
+  error: "#ff453a",
 };
 
 function relativeTime(iso: string | null): string {
@@ -76,53 +73,67 @@ export function SyncStatus({ onSynced }: { onSynced?: () => void }) {
   const lastSync = logs[0]?.finished_at ?? logs[0]?.started_at ?? null;
 
   return (
-    <Card data-spotlight>
-      <CardHeader className="flex-row items-center justify-between space-y-0">
-        <div className="flex items-center gap-2">
-          <CardTitle className="text-base">Sincronizacion</CardTitle>
-          {syncing ? (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Loader2 className="h-3 w-3 animate-spin" /> sincronizando
-            </span>
-          ) : (
-            <span className="flex items-center gap-1 text-xs text-emerald-500">
-              <span className="h-2 w-2 animate-[pulse-ring_1.5s_ease-in-out_infinite] rounded-full bg-emerald-400" />
-              en vivo
-            </span>
-          )}
+    <section className="app-glass rounded-2xl p-3.5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+              syncing ? "bg-[#ff9f0a]" : "bg-[#30d158]"
+            }`}
+          />
+          <p className="truncate text-[12px] font-medium text-white/75">Sincronización</p>
+          <span className="truncate text-[9.5px] text-white/25">
+            {syncing ? "trabajando…" : relativeTime(lastSync)}
+          </span>
         </div>
-        <Button size="sm" onClick={handleSync} disabled={syncing}>
-          {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          Sincronizar
-        </Button>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <p className="text-xs text-muted-foreground">Ultima sincronizacion: {relativeTime(lastSync)}</p>
-
-        <div className="space-y-2">
-          {logs.length === 0 && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <WifiOff className="h-4 w-4" /> Aun no hay sincronizaciones.
-            </div>
+        <button
+          type="button"
+          onClick={handleSync}
+          disabled={syncing}
+          title="Sincronizar ahora"
+          aria-label="Sincronizar ahora"
+          className="app-glass-soft flex h-7 w-7 items-center justify-center rounded-lg text-white/35 transition-colors hover:bg-white/[0.08] hover:text-white/75 disabled:opacity-50"
+        >
+          {syncing ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <RefreshCw className="h-3.5 w-3.5" />
           )}
-          {logs.map((log) => (
-            <div key={log.id} className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2">
-                <Wifi className="h-3.5 w-3.5 text-muted-foreground" />
-                {PROVIDER_LABEL[log.provider] ?? log.provider}
+        </button>
+      </div>
+
+      {logs.length === 0 ? (
+        <p className="mt-2.5 flex items-center gap-1.5 text-[10.5px] text-white/30">
+          <WifiOff className="h-3 w-3" /> Aún no hay sincronizaciones.
+        </p>
+      ) : (
+        <div className="mt-2.5 space-y-1">
+          {logs.slice(0, 3).map((log) => (
+            <div key={log.id} className="flex items-center justify-between gap-2 text-[10.5px]">
+              <span className="flex min-w-0 items-center gap-1.5 text-white/40">
+                <Wifi className="h-3 w-3 shrink-0" />
+                <span className="truncate">{PROVIDER_LABEL[log.provider] ?? log.provider}</span>
               </span>
-              <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>+{log.created} ~{log.updated} -{log.removed}</span>
-                <Badge variant={STATUS_VARIANT[log.status] ?? "secondary"}>
-                  {log.status}
-                </Badge>
+              <span className="flex shrink-0 items-center gap-1.5">
+                <span className="tabular-nums text-white/25">
+                  +{log.created} ~{log.updated} -{log.removed}
+                </span>
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: STATUS_COLOR[log.status] ?? "#8e8e93" }}
+                  title={log.status}
+                />
               </span>
             </div>
           ))}
         </div>
+      )}
 
-        {message && <p className="text-xs text-muted-foreground">{message}</p>}
-      </CardContent>
-    </Card>
+      {message && (
+        <p className="mt-2 truncate text-[10px] text-white/30" title={message}>
+          {message}
+        </p>
+      )}
+    </section>
   );
 }

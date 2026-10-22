@@ -229,24 +229,24 @@ export function HelpWidget() {
   return (
     <div className="fixed bottom-5 right-24 z-50 flex flex-col items-end gap-3">
       {open && (
-        <div className="animate-pop w-72 max-w-[calc(100vw-2.5rem)] rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl shadow-indigo-500/10 backdrop-blur">
+        <div className="animate-pop w-72 max-w-[calc(100vw-2.5rem)] rounded-2xl border border-white/[0.08] bg-black/75 p-4 text-white/90 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.9)] backdrop-blur-3xl">
           <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold">💡 {tutorial.title}</p>
+            <p className="text-sm font-semibold text-white/90">💡 {tutorial.title}</p>
             <button
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Cerrar tutorial"
-              className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent"
+              className="rounded p-0.5 text-white/40 transition-colors hover:bg-white/10 hover:text-white"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
-          <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-sm text-muted-foreground">
+          <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-sm text-white/60">
             {tutorial.steps.map((step) => (
               <li key={step}>{step}</li>
             ))}
           </ol>
-          <p className="mt-3 text-[11px] text-muted-foreground/70">
+          <p className="mt-3 text-[11px] text-white/30">
             Pulsa el botón «?» cuando quieras volver a ver este tutorial.
           </p>
         </div>
@@ -256,7 +256,7 @@ export function HelpWidget() {
         onClick={() => setOpen((value) => !value)}
         title="Ayuda y tutoriales"
         aria-label="Ayuda y tutoriales"
-        className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-md transition-colors hover:bg-primary/90"
+        className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/[0.08] bg-black/30 text-white/70 shadow-[0_18px_40px_-24px_rgba(0,0,0,0.9)] backdrop-blur-3xl transition-colors hover:bg-black/45 hover:text-white"
       >
         <CircleHelp className="h-5 w-5" />
       </button>

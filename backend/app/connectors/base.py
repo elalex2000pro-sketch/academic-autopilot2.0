@@ -38,6 +38,9 @@ class NormalizedTask:
     description: str | None = None
     due_at: datetime | None = None
     completed: bool = False
+    # False cuando la plataforma no informa del estado de entrega. En ese caso
+    # el sync no debe reabrir una tarea que el usuario ya marco como completada.
+    completion_known: bool = True
     url: str | None = None
     extra: dict = field(default_factory=dict)
 

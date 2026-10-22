@@ -1,6 +1,6 @@
 "use strict";
 
-const { app, BrowserWindow, Menu, Notification, session, shell } = require("electron");
+const { app, BrowserWindow, Menu, Notification, session, shell, ipcMain } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -33,6 +33,7 @@ if (!gotTheLock) {
 
   app.whenReady().then(() => {
     configureSession(session.fromPartition(PARTITION));
+    registerWindowControls();
     createWindow();
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -41,17 +42,27 @@ if (!gotTheLock) {
 }
 
 function createWindow() {
+  const isMac = process.platform === "darwin";
+  const isWindows = process.platform === "win32";
+
   mainWindow = new BrowserWindow({
     width: 1360,
     height: 900,
     minWidth: 1024,
     minHeight: 680,
     show: false,
-    backgroundColor: "#f7f7fc",
+    // La página pinta su propio cristal; el SO aporta el escritorio y el blur.
+    transparent: true,
+    backgroundColor: "#00000000",
+    frame: false,
+    hasShadow: true,
     title: "Academic Autopilot",
     icon: ICON_PATH,
     autoHideMenuBar: true,
+    ...(isMac ? { vibrancy: "under-window", visualEffectState: "active" } : {}),
+    ...(isWindows ? { backgroundMaterial: "acrylic" } : {}),
     webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
       partition: PARTITION,
       contextIsolation: true,
       nodeIntegration: false,
@@ -139,6 +150,21 @@ function createWindow() {
   });
 
   mainWindow.loadURL(APP_URL);
+}
+
+function registerWindowControls() {
+  ipcMain.on("window:minimize", (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.minimize();
+  });
+  ipcMain.on("window:toggle-maximize", (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return;
+    if (win.isMaximized()) win.unmaximize();
+    else win.maximize();
+  });
+  ipcMain.on("window:close", (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.close();
+  });
 }
 
 function configureSession(appSession) {

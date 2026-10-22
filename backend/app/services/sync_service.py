@@ -251,7 +251,11 @@ async def _upsert_tasks(
                     due_at=item.due_at,
                     estimated_minutes=60,
                     priority=_initial_priority(item.due_at),
-                    status=TaskStatus.completed if item.completed else TaskStatus.pending,
+                    status=(
+                        TaskStatus.completed
+                        if item.completion_known and item.completed
+                        else TaskStatus.pending
+                    ),
                 )
             )
             created += 1
@@ -268,11 +272,12 @@ async def _upsert_tasks(
         if course and current.course_id != course.id:
             current.course_id, changed = course.id, True
 
-        if item.completed and current.status != TaskStatus.completed:
-            current.status, changed = TaskStatus.completed, True
-        elif not item.completed and current.status == TaskStatus.completed:
-            # Reabierta en origen.
-            current.status, changed = TaskStatus.pending, True
+        if item.completion_known:
+            if item.completed and current.status != TaskStatus.completed:
+                current.status, changed = TaskStatus.completed, True
+            elif not item.completed and current.status == TaskStatus.completed:
+                # Reabierta en origen.
+                current.status, changed = TaskStatus.pending, True
 
         if changed:
             updated += 1

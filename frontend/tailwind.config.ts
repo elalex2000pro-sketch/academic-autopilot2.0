@@ -216,11 +216,12 @@ const config: Config = {
       borderRadius: {
         sm: "4px",
         DEFAULT: "6px",
-        md: "6px",
-        lg: "8px",
-        xl: "10px",
-        "2xl": "12px",
-        "3xl": "16px",
+        md: "8px",
+        lg: "10px",
+        xl: "14px",
+        "2xl": "20px",
+        "3xl": "28px",
+        "4xl": "36px",
       },
       fontSize: {
         "2xs": ["10.5px", "14px"],

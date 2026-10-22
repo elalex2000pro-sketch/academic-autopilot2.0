@@ -61,13 +61,18 @@
     @apply border-border;
   }
 
+  html,
+  body {
+    background: transparent !important;
+  }
+
   html {
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply text-foreground antialiased;
     font-family:
       -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter var", Inter, "Segoe UI Variable Text",
       "Segoe UI", system-ui, sans-serif;
@@ -270,6 +275,48 @@
     background-color: hsl(0 0% 100% / 0.05);
     box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.04);
   }
+
+  /* Cristal oscuro de la ventana: deja ver el escritorio y mantiene el texto
+     legible. La transparencia real la aporta Electron (acrylic/vibrancy). */
+  .app-glass {
+    border: 1px solid rgb(255 255 255 / 0.07);
+    background-color: rgb(0 0 0 / 0.24);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.035),
+      0 24px 64px -40px rgb(0 0 0 / 0.9);
+    backdrop-filter: blur(44px) saturate(150%);
+    -webkit-backdrop-filter: blur(44px) saturate(150%);
+  }
+
+  .app-glass-strong {
+    border: 1px solid rgb(255 255 255 / 0.07);
+    background-color: rgb(0 0 0 / 0.32);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.04),
+      0 28px 72px -42px rgb(0 0 0 / 0.95);
+    backdrop-filter: blur(52px) saturate(155%);
+    -webkit-backdrop-filter: blur(52px) saturate(155%);
+  }
+
+  .app-glass-soft {
+    border: 1px solid rgb(255 255 255 / 0.055);
+    background-color: rgb(255 255 255 / 0.035);
+  }
+}
+
+/* Zonas de arrastre de la ventana frameless de Electron. */
+.app-drag {
+  -webkit-app-region: drag;
+}
+.app-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.hide-scrollbar {
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* Luz que sigue al cursor sobre cualquier superficie con data-spotlight. */
@@ -350,100 +397,6 @@
   to {
     transform: translate3d(40px, -30px, 0) scale(1.12);
   }
-}
-
-/* --------------------------------------------------------------------------
-   Fondo de pantalla: capa fija y difuminada bajo toda la interfaz.
-   -------------------------------------------------------------------------- */
-.wallpaper-layer {
-  position: fixed;
-  inset: 0;
-  z-index: -20;
-  overflow: hidden;
-  pointer-events: none;
-  background-color: hsl(var(--background));
-}
-
-.wallpaper-photo,
-.wallpaper-default {
-  position: absolute;
-  inset: -90px;
-  background-position: center;
-  background-size: cover;
-  transform: scale(1.04);
-}
-
-.wallpaper-photo {
-  filter: blur(30px) saturate(0.7) brightness(1.02);
-}
-
-.wallpaper-default {
-  filter: blur(46px) saturate(1.05);
-}
-
-.dark .wallpaper-photo {
-  filter: blur(30px) saturate(0.95) brightness(0.5);
-}
-
-/* Una imagen oscura en tema claro se aclara para que el texto siga legible. */
-:root:not(.dark) .wallpaper-layer[data-tone="dark"] .wallpaper-photo {
-  filter: blur(30px) saturate(0.45) brightness(1.55);
-}
-
-:root:not(.dark) .wallpaper-layer[data-tone="dark"] .wallpaper-veil {
-  background:
-    linear-gradient(180deg, hsl(0 0% 100% / 0.32), hsl(0 0% 100% / 0.2)),
-    hsl(var(--background) / 0.54);
-}
-
-/* Una imagen clara en tema oscuro se oscurece para no deslumbrar. */
-.dark .wallpaper-layer[data-tone="light"] .wallpaper-photo {
-  filter: blur(30px) saturate(0.9) brightness(0.38);
-}
-
-.dark .wallpaper-layer[data-tone="light"] .wallpaper-veil {
-  background: hsl(240 8% 6% / 0.56);
-}
-
-/* Imagen oscura sobre tema oscuro: conservamos algo de detalle. */
-.dark .wallpaper-layer[data-tone="dark"] .wallpaper-photo {
-  filter: blur(30px) saturate(0.95) brightness(0.78);
-}
-
-.dark .wallpaper-layer[data-tone="dark"] .wallpaper-veil {
-  background: hsl(240 8% 6% / 0.4);
-}
-
-.wallpaper-swatch {
-  background-color: #e9eefb;
-  background-image:
-    radial-gradient(60% 60% at 16% 16%, #b9d6ff 0%, transparent 70%),
-    radial-gradient(55% 60% at 84% 10%, #e2c9ff 0%, transparent 72%),
-    radial-gradient(65% 65% at 76% 88%, #b7ecd9 0%, transparent 70%),
-    radial-gradient(45% 55% at 20% 92%, #ffdfb8 0%, transparent 72%),
-    linear-gradient(135deg, #f0f5ff 0%, #f6efff 50%, #effcf6 100%);
-}
-
-.dark .wallpaper-swatch {
-  background-color: #0b1020;
-  background-image:
-    radial-gradient(60% 60% at 16% 16%, #1e4f9e 0%, transparent 70%),
-    radial-gradient(55% 60% at 84% 10%, #542d8a 0%, transparent 72%),
-    radial-gradient(65% 65% at 76% 88%, #0d5a50 0%, transparent 70%),
-    radial-gradient(45% 55% at 20% 92%, #6b3a1c 0%, transparent 72%),
-    linear-gradient(135deg, #0b1020 0%, #150e29 50%, #081a19 100%);
-}
-
-.wallpaper-veil {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(180deg, hsl(0 0% 100% / 0.14), hsl(0 0% 100% / 0.03)),
-    hsl(var(--background) / 0.34);
-}
-
-.dark .wallpaper-veil {
-  background: hsl(240 8% 6% / 0.48);
 }
 
 @media (prefers-reduced-motion: reduce) {

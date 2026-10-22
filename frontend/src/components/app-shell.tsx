@@ -31,6 +31,7 @@ import { InstallAppButton } from "@/components/install-app-button";
 import { OfflineStatus } from "@/components/offline-status";
 import { ThemeCycleButton } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { WindowControls } from "@/components/window-controls";
 import { cn } from "@/lib/utils";
 
 const NAV_GROUPS = [
@@ -78,28 +79,17 @@ function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
 }
 
-/** Semáforos de la ventana. Solo decorativos. */
-function TrafficLights({ className }: { className?: string }) {
-  return (
-    <span className={cn("flex items-center gap-2", className)} aria-hidden>
-      <span className="h-3 w-3 rounded-full bg-[#ff5f57] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.18)]" />
-      <span className="h-3 w-3 rounded-full bg-[#febc2e] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.16)]" />
-      <span className="h-3 w-3 rounded-full bg-[#28c840] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.16)]" />
-    </span>
-  );
-}
-
 function Logo() {
   return (
-    <Link href="/" className="flex min-w-0 items-center gap-2.5">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-gradient-to-b from-[#4da3ff] to-[#0066d6] text-white shadow-[0_1px_2px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.35)]">
+    <Link href="/" className="app-no-drag flex min-w-0 items-center gap-2.5">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-gradient-to-b from-[#4da3ff] to-[#0066d6] text-white shadow-[0_1px_2px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.35)]">
         <CalendarCheck className="h-[17px] w-[17px]" strokeWidth={2.2} />
       </span>
       <span className="min-w-0">
-        <span className="block truncate text-[13px] font-semibold leading-tight tracking-[-0.01em]">
+        <span className="block truncate text-[13px] font-semibold leading-tight tracking-[-0.01em] text-white/90">
           Academic Autopilot
         </span>
-        <span className="block truncate text-[11px] leading-tight text-muted-foreground">
+        <span className="block truncate text-[10.5px] leading-tight text-white/35">
           Planificador de estudio
         </span>
       </span>
@@ -129,9 +119,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (loading || !user) {
     return (
-      <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-background text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-        <span className="text-[13px]">Cargando tu espacio…</span>
+      <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-transparent text-white/45">
+        <Loader2 className="h-5 w-5 animate-spin text-[#4da3ff]" />
+        <span className="text-[12.5px]">Cargando tu espacio…</span>
       </div>
     );
   }
@@ -140,23 +130,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const initials = name.slice(0, 2).toUpperCase();
 
   return (
-    <div className="flex min-h-dvh flex-col lg:flex-row">
-      <aside className="vibrancy sticky top-0 hidden h-dvh w-[232px] shrink-0 flex-col border-r border-separator lg:flex">
-        <div className="flex h-11 shrink-0 items-center px-4">
-          <TrafficLights />
+    <div className="flex min-h-dvh flex-col bg-transparent lg:flex-row">
+      <aside className="sticky top-0 hidden h-dvh w-[236px] shrink-0 flex-col border-r border-white/[0.06] bg-black/30 shadow-[18px_0_60px_-48px_rgba(0,0,0,0.9)] backdrop-blur-3xl lg:flex">
+        <div className="app-drag flex h-12 shrink-0 items-center px-4">
+          <WindowControls />
         </div>
 
-        <div className="px-3 pb-4">
+        <div className="px-4 pb-5">
           <Logo />
         </div>
 
-        <nav className="flex flex-1 flex-col gap-4 overflow-y-auto px-2 pb-3">
+        <nav className="flex flex-1 flex-col gap-4 overflow-y-auto px-2.5 pb-3">
           {NAV_GROUPS.map((group) => (
             <div key={group.label}>
-              <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-muted-foreground/85">
+              <p className="px-3 pb-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-white/30">
                 {group.label}
               </p>
-              <div className="space-y-px">
+              <div className="space-y-0.5">
                 {group.items.map(({ href, label, icon: Icon }) => {
                   const active = isActive(pathname, href);
                   return (
@@ -165,16 +155,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       href={href}
                       aria-current={active ? "page" : undefined}
                       className={cn(
-                        "flex h-[29px] items-center gap-2.5 rounded-md px-2 text-[13px] transition-colors duration-100 ease-mac",
+                        "group flex h-8 items-center gap-2.5 rounded-xl px-3 text-[12.5px] transition-colors duration-150 ease-mac",
                         active
-                          ? "bg-primary font-medium text-primary-foreground shadow-sm"
-                          : "font-normal text-foreground/85 hover:bg-foreground/[0.055] hover:text-foreground",
+                          ? "bg-white/[0.09] font-medium text-white shadow-[inset_0_0_0_0.5px_rgba(255,255,255,0.07)]"
+                          : "font-normal text-white/55 hover:bg-white/[0.055] hover:text-white/90",
                       )}
                     >
                       <Icon
                         className={cn(
-                          "h-4 w-4 shrink-0",
-                          active ? "text-white" : "text-foreground/55",
+                          "h-4 w-4 shrink-0 transition-colors",
+                          active ? "text-white" : "text-white/40 group-hover:text-white/70",
                         )}
                         strokeWidth={1.8}
                       />
@@ -187,41 +177,43 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        <div className="shrink-0 space-y-2 border-t border-separator px-2 py-2.5">
+        <div className="shrink-0 space-y-2 border-t border-white/[0.06] px-2.5 py-3">
           <InstallAppButton
             variant="ghost"
-            className="h-[29px] w-full justify-start px-2 text-[13px] font-normal text-foreground/85"
+            className="h-8 w-full justify-start rounded-xl px-3 text-[12.5px] font-normal text-white/55 hover:bg-white/[0.06] hover:text-white/90 [&_svg]:text-white/40"
           />
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <Link
               href={SETTINGS_ITEM.href}
               className={cn(
-                "flex h-[29px] flex-1 items-center gap-2.5 rounded-md px-2 text-[13px] transition-colors duration-100",
+                "flex h-8 flex-1 items-center gap-2.5 rounded-xl px-3 text-[12.5px] transition-colors duration-150",
                 isActive(pathname, SETTINGS_ITEM.href)
-                  ? "bg-primary font-medium text-primary-foreground shadow-sm"
-                  : "text-foreground/85 hover:bg-foreground/[0.055] hover:text-foreground",
+                  ? "bg-white/[0.09] font-medium text-white shadow-[inset_0_0_0_0.5px_rgba(255,255,255,0.07)]"
+                  : "text-white/55 hover:bg-white/[0.055] hover:text-white/90",
               )}
             >
               <Settings
                 className={cn(
                   "h-4 w-4",
-                  isActive(pathname, SETTINGS_ITEM.href) ? "text-white" : "text-foreground/55",
+                  isActive(pathname, SETTINGS_ITEM.href) ? "text-white" : "text-white/40",
                 )}
                 strokeWidth={1.8}
               />
               Ajustes
             </Link>
-            <ThemeCycleButton />
+            <ThemeCycleButton className="text-white/45 hover:bg-white/[0.06] hover:text-white/90" />
           </div>
 
-          <div className="flex items-center gap-2 rounded-md px-1.5 py-1.5 hover:bg-foreground/[0.04]">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
+          <div className="flex items-center gap-2 rounded-xl px-1.5 py-1.5">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-[10px] font-semibold text-white/90 ring-1 ring-white/10">
               {initials}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[12px] font-medium leading-tight">{name}</span>
-              <span className="block truncate text-[11px] leading-tight text-muted-foreground">
+              <span className="block truncate text-[12px] font-medium leading-tight text-white/85">
+                {name}
+              </span>
+              <span className="block truncate text-[10.5px] leading-tight text-white/35">
                 {user.email}
               </span>
             </span>
@@ -231,7 +223,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onClick={logout}
               aria-label="Cerrar sesión"
               title="Cerrar sesión"
-              className="h-7 w-7 text-muted-foreground"
+              className="h-7 w-7 text-white/40 hover:bg-white/[0.06] hover:text-white/90"
             >
               <LogOut className="h-3.5 w-3.5" />
             </Button>
@@ -239,20 +231,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col bg-transparent">
         {/* Barra superior móvil, con la translucidez de una toolbar. */}
-        <header className="vibrancy sticky top-0 z-40 border-b border-separator lg:hidden">
+        <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-black/40 backdrop-blur-3xl lg:hidden">
           <div className="flex items-center justify-between gap-2 px-3 py-2">
             <Logo />
             <div className="flex shrink-0 items-center gap-0.5">
               <InstallAppButton compact />
-              <ThemeCycleButton />
-              <Button variant="ghost" size="icon" onClick={logout} aria-label="Cerrar sesión">
+              <ThemeCycleButton className="text-white/50 hover:bg-white/10 hover:text-white" />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={logout}
+                aria-label="Cerrar sesión"
+                className="text-white/50 hover:bg-white/10 hover:text-white"
+              >
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
           </div>
-          <nav className="flex gap-1 overflow-x-auto px-2.5 pb-2 [scrollbar-width:none]">
+          <nav className="hide-scrollbar flex gap-1 overflow-x-auto px-2.5 pb-2">
             {ALL_ITEMS.map(({ href, label, icon: Icon }) => {
               const active = isActive(pathname, href);
               return (
@@ -261,10 +259,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   href={href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors",
+                    "flex h-7 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors",
                     active
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:bg-foreground/[0.055] hover:text-foreground",
+                      ? "bg-white/[0.12] text-white shadow-[inset_0_0_0_0.5px_rgba(255,255,255,0.07)]"
+                      : "text-white/45 hover:bg-white/[0.06] hover:text-white/85",
                   )}
                 >
                   <Icon className="h-3.5 w-3.5" strokeWidth={1.8} />
@@ -277,7 +275,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <OfflineStatus />
 
-        <main className="min-w-0 flex-1 overflow-x-hidden">
+        <main className="min-w-0 flex-1 overflow-x-hidden bg-transparent">
           {children}
           <AssistantFab />
           <HelpWidget />

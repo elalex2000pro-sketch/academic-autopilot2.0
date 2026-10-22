@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { WindowControls } from "@/components/window-controls";
 import { cn } from "@/lib/utils";
 
 const HIGHLIGHTS = [
@@ -17,13 +18,7 @@ const HIGHLIGHTS = [
 ];
 
 function TrafficLights() {
-  return (
-    <span className="flex items-center gap-2" aria-hidden>
-      <span className="h-3 w-3 rounded-full bg-[#ff5f57] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.18)]" />
-      <span className="h-3 w-3 rounded-full bg-[#febc2e] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.16)]" />
-      <span className="h-3 w-3 rounded-full bg-[#28c840] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.16)]" />
-    </span>
-  );
+  return <WindowControls />;
 }
 
 export default function LoginPage() {
@@ -56,7 +51,7 @@ export default function LoginPage() {
     <div className="flex min-h-dvh items-center justify-center bg-[#e9e9ee] px-3 py-6 sm:px-6 sm:py-10 dark:bg-[#101011]">
       <div className="mac-window w-full max-w-[880px] overflow-hidden bg-card">
         {/* Barra de título de la ventana */}
-        <div className="relative flex h-11 items-center border-b border-separator bg-card px-4">
+        <div className="app-drag relative flex h-11 items-center border-b border-separator bg-card px-4">
           <TrafficLights />
           <span className="pointer-events-none absolute inset-x-0 text-center text-[13px] font-medium text-muted-foreground">
             Academic Autopilot

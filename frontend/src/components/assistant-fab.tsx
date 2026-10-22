@@ -120,7 +120,7 @@ export function AssistantFab() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="Abrir asistente IA"
-        className="fixed bottom-5 right-5 z-50 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg transition-colors hover:bg-primary/90"
+        className="fixed bottom-5 right-5 z-50 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.08] bg-black/30 text-white/75 shadow-[0_18px_40px_-24px_rgba(0,0,0,0.9)] backdrop-blur-3xl transition-colors hover:bg-black/45 hover:text-white"
       >
         {open ? <X className="h-6 w-6" /> : <Sparkles className="h-6 w-6" />}
       </button>

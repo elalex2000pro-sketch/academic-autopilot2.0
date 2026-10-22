@@ -2,11 +2,9 @@ import type { Metadata } from "next";
 
 import { AppShell } from "@/components/app-shell";
 import { AuthProvider } from "@/components/auth-provider";
-import { CursorGlow } from "@/components/cursor-glow";
 import { PwaRegister } from "@/components/pwa-register";
 import { RealtimeProvider } from "@/components/realtime-provider";
 import { ThemeProvider } from "@/components/theme-provider";
-import { WallpaperBackdrop } from "@/components/wallpaper-backdrop";
 
 import "./globals.css";
 
@@ -51,11 +49,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: INSTALL_SCRIPT }} />
       </head>
-      <body>
-        <WallpaperBackdrop />
+      <body className="min-h-dvh bg-transparent">
         <PwaRegister />
         <ThemeProvider>
-          <CursorGlow />
           <AuthProvider>
             <RealtimeProvider>
               <AppShell>{children}</AppShell>

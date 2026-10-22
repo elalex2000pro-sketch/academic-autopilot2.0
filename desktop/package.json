@@ -25,6 +25,7 @@
     },
     "files": [
       "main.js",
+      "preload.js",
       "offline.html",
       "assets/**/*",
       "package.json"

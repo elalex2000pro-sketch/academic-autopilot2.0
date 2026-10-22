@@ -19,7 +19,6 @@ import {
 
 import { InstallAppButton } from "@/components/install-app-button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { WallpaperPicker } from "@/components/wallpaper-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +42,17 @@ const AI_PROVIDER_LABEL: Record<string, string> = {
   openrouter: "OpenRouter",
   custom: "Otra IA",
 };
+
+function integrationDetails(integration: Integration): string {
+  const meta = integration.meta ?? {};
+  return [
+    typeof meta.sitename === "string" ? meta.sitename : null,
+    typeof meta.courses_visible === "number" ? `${meta.courses_visible} cursos` : null,
+    typeof meta.assignments_visible === "number" ? `${meta.assignments_visible} tareas` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
 
 // Ayuda contextual de cada proveedor de IA (etiqueta y pista de la clave).
 const AI_PROVIDER_INFO: Record<string, { keyLabel: string; keyHelp: string }> = {
@@ -302,9 +312,6 @@ function SettingsInner() {
           <p className="text-xs text-muted-foreground">
             Con «Sistema» se sigue automáticamente la preferencia de tu dispositivo.
           </p>
-          <div className="border-t border-separator pt-3">
-            <WallpaperPicker />
-          </div>
         </CardContent>
       </Card>
 
@@ -339,27 +346,35 @@ function SettingsInner() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {integrations.map((integration) => (
-            <div
-              key={integration.id}
-              className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2"
-            >
-              <div>
-                <p className="text-sm">{PROVIDER_LABEL[integration.provider] ?? integration.provider}</p>
-                <p className="text-xs text-muted-foreground">
-                  {integration.base_url ?? (integration.meta?.username as string) ?? ""}
-                </p>
+          {integrations.map((integration) => {
+            const details = integrationDetails(integration);
+            return (
+              <div
+                key={integration.id}
+                className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm">
+                    {PROVIDER_LABEL[integration.provider] ?? integration.provider}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {integration.base_url ?? (integration.meta?.username as string) ?? ""}
+                  </p>
+                  {details && (
+                    <p className="truncate text-[11px] text-muted-foreground">{details}</p>
+                  )}
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Badge variant={integration.status === "connected" ? "success" : "destructive"}>
+                    {integration.status}
+                  </Badge>
+                  <Button variant="ghost" size="icon" onClick={() => disconnect(integration.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge variant={integration.status === "connected" ? "success" : "destructive"}>
-                  {integration.status}
-                </Badge>
-                <Button variant="ghost" size="icon" onClick={() => disconnect(integration.id)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
           {integrations.length === 0 && (
             <p className="text-sm text-muted-foreground">Aun no hay plataformas conectadas.</p>
           )}
@@ -374,6 +389,8 @@ function SettingsInner() {
                 placeholder="https://moodle.universidad.edu"
                 value={moodleUrl}
                 onChange={(e) => setMoodleUrl(e.target.value)}
+                autoComplete="url"
+                inputMode="url"
                 required
               />
             </div>
@@ -381,11 +398,18 @@ function SettingsInner() {
               <Label htmlFor="moodleToken">Token de Web Services</Label>
               <Input
                 id="moodleToken"
+                type="password"
                 placeholder="Perfil > Seguridad > Claves de acceso"
                 value={moodleToken}
                 onChange={(e) => setMoodleToken(e.target.value)}
+                autoComplete="off"
+                spellCheck={false}
                 required
               />
+              <p className="text-[11px] text-muted-foreground">
+                El token debe permitir leer cursos y tareas. Si Moodle devuelve un error de
+                permisos, revisa el servicio web asociado al token.
+              </p>
             </div>
             <Button type="submit" size="sm" disabled={busy}>
               Guardar Moodle

@@ -23,6 +23,18 @@ Get-Content $env:AUTOPILOT_SMOKE_FILE
 
 También se puede apuntar a otro despliegue con `AUTOPILOT_APP_URL`.
 
+## Ventana transparente
+
+La interfaz está pensada para un escritorio real, no para una página con fondo propio:
+
+- `transparent: true` y `backgroundColor: "#00000000"` dejan ver el escritorio.
+- `frame: false` elimina la barra nativa; la ventana se arrastra desde la franja superior de la barra lateral.
+- En macOS se usa `vibrancy: "under-window"`.
+- En Windows 11 se usa `backgroundMaterial: "acrylic"`. En Windows 10 la transparencia sigue funcionando, pero sin desenfoque nativo.
+- Los semáforos de la barra lateral son reales: `preload.js` expone minimizar, maximizar y cerrar por IPC.
+
+El HTML no pinta ningún fondo. Si algún día se añade un fondo opaco en CSS, la transparencia del sistema dejará de verse.
+
 ## Generar el instalador
 
 ```powershell

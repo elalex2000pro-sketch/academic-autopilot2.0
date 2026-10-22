@@ -37,11 +37,21 @@ async def connect_moodle(
     connector = MoodleConnector(base_url=payload.base_url, token=payload.token)
     try:
         site_info = await connector.test_connection()
+        # No basta con site_info: comprobamos las funciones que usa el sync.
+        courses = await connector.fetch_courses()
+        tasks = await connector.fetch_tasks()
     except ConnectorError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"No se pudo conectar a Moodle: {exc}",
         ) from exc
+
+    site_info.update(
+        {
+            "courses_visible": len(courses),
+            "assignments_visible": len(tasks),
+        }
+    )
 
     integration = await _upsert_integration(
         db,
@@ -50,7 +60,7 @@ async def connect_moodle(
         token=payload.token,
         refresh_token=None,
         expires_at=None,
-        base_url=payload.base_url.rstrip("/"),
+        base_url=connector.base_url,
         meta=site_info,
     )
     return integration
