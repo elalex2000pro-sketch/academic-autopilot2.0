@@ -68,7 +68,11 @@ app.include_router(api_router)
 @app.get("/health", tags=["system"])
 async def health() -> dict:
     """Healthcheck para Docker/Kubernetes."""
-    return {"status": "ok", "environment": settings.environment}
+    return {
+        "status": "ok",
+        "environment": settings.environment,
+        "version": app.version,
+    }
 
 
 @app.get("/", tags=["system"])
