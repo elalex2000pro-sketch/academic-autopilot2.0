@@ -19,6 +19,7 @@ import {
 
 import { InstallAppButton } from "@/components/install-app-button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { WallpaperPicker } from "@/components/wallpaper-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -94,6 +95,11 @@ function SettingsInner() {
   // Formulario Moodle
   const [moodleUrl, setMoodleUrl] = useState("");
   const [moodleToken, setMoodleToken] = useState("");
+  const [moodleBusy, setMoodleBusy] = useState(false);
+  const [moodleNotice, setMoodleNotice] = useState<{
+    tone: "success" | "error";
+    text: string;
+  } | null>(null);
 
   // Formulario de disponibilidad
   const [day, setDay] = useState(0);
@@ -171,18 +177,38 @@ function SettingsInner() {
 
   async function connectMoodle(event: React.FormEvent) {
     event.preventDefault();
-    setBusy(true);
+    setMoodleBusy(true);
+    setMoodleNotice(null);
     setNotice(null);
     try {
-      await api.connectMoodle({ base_url: moodleUrl, token: moodleToken });
-      setNotice("Moodle conectado");
+      const integration = await api.connectMoodle({
+        base_url: moodleUrl.trim(),
+        token: moodleToken.trim(),
+      });
+      const details = integrationDetails(integration);
+      setMoodleNotice({
+        tone: "success",
+        text: details ? `Moodle conectado: ${details}` : "Moodle conectado",
+      });
       setMoodleUrl("");
       setMoodleToken("");
-      await loadData();
+      try {
+        await loadData();
+      } catch (e) {
+        setMoodleNotice({
+          tone: "error",
+          text: `Moodle conectado, pero no se pudo actualizar la lista: ${
+            e instanceof Error ? e.message : "error desconocido"
+          }`,
+        });
+      }
     } catch (e) {
-      setNotice(e instanceof ApiError ? e.message : "Error al conectar Moodle");
+      setMoodleNotice({
+        tone: "error",
+        text: e instanceof Error ? e.message : "Error al conectar Moodle",
+      });
     } finally {
-      setBusy(false);
+      setMoodleBusy(false);
     }
   }
 
@@ -312,6 +338,9 @@ function SettingsInner() {
           <p className="text-xs text-muted-foreground">
             Con «Sistema» se sigue automáticamente la preferencia de tu dispositivo.
           </p>
+          <div className="border-t border-separator pt-3">
+            <WallpaperPicker />
+          </div>
         </CardContent>
       </Card>
 
@@ -411,9 +440,23 @@ function SettingsInner() {
                 permisos, revisa el servicio web asociado al token.
               </p>
             </div>
-            <Button type="submit" size="sm" disabled={busy}>
-              Guardar Moodle
+            <Button type="submit" size="sm" disabled={moodleBusy}>
+              {moodleBusy && <Loader2 className="h-4 w-4 animate-spin" />}
+              {moodleBusy ? "Conectando..." : "Guardar Moodle"}
             </Button>
+            {moodleNotice && (
+              <p
+                role="status"
+                aria-live="polite"
+                className={`rounded-md border px-3 py-2 text-xs ${
+                  moodleNotice.tone === "success"
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                    : "border-destructive/30 bg-destructive/10 text-destructive"
+                }`}
+              >
+                {moodleNotice.text}
+              </p>
+            )}
           </form>
 
           {/* Google */}
