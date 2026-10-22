@@ -19,6 +19,7 @@ import {
 
 import { InstallAppButton } from "@/components/install-app-button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { WallpaperPicker } from "@/components/wallpaper-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -301,6 +302,9 @@ function SettingsInner() {
           <p className="text-xs text-muted-foreground">
             Con «Sistema» se sigue automáticamente la preferencia de tu dispositivo.
           </p>
+          <div className="border-t border-separator pt-3">
+            <WallpaperPicker />
+          </div>
         </CardContent>
       </Card>
 

@@ -205,23 +205,16 @@ export default function DashboardPage() {
       value: formatMinutes(agenda?.total_minutes ?? 0),
       tone: "text-[#34C759] dark:text-[#30D158]",
     },
+    {
+      icon: BookOpen,
+      label: "Leyendo",
+      value: String(readingBooks),
+      tone: "text-[#FF9500] dark:text-[#FF9F0A]",
+    },
   ];
 
   return (
-    <div className="relative isolate mx-auto max-w-[1120px] px-5 pb-16 pt-6 sm:px-8 lg:pb-20 lg:pt-8">
-      {/* Fondo ambiental: da algo real que desenfocar al cristal */}
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="ambient-blob left-[12%] top-[-260px] h-[440px] w-[560px] bg-[#007AFF]/15 dark:bg-[#0A84FF]/20" />
-        <div
-          className="ambient-blob right-[-180px] top-[220px] h-[480px] w-[440px] bg-[#AF52DE]/15 dark:bg-[#BF5AF2]/15"
-          style={{ animationDelay: "-10s" }}
-        />
-        <div
-          className="ambient-blob bottom-[-260px] left-[28%] h-[420px] w-[600px] bg-[#30B0C7]/12 dark:bg-[#40C8E0]/15"
-          style={{ animationDelay: "-20s" }}
-        />
-      </div>
-
+    <div className="relative isolate mx-auto max-w-[1680px] px-5 pb-16 pt-6 sm:px-8 lg:pb-20 lg:pt-8">
       {/* ---- Barra superior ---- */}
       <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
         <p className="text-[12px] font-medium text-muted-foreground">{today}</p>
@@ -237,7 +230,7 @@ export default function DashboardPage() {
         data-spotlight
         className="glass-strong lift relative overflow-hidden p-6 sm:p-8"
       >
-        <div className="relative z-10 flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative z-10 flex flex-col gap-8 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0 max-w-xl">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-white/50 bg-white/45 px-2.5 py-1 text-[11px] font-medium text-foreground/80 dark:border-white/10 dark:bg-white/[0.06]">
               <span
@@ -277,7 +270,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="grid w-full shrink-0 grid-cols-3 gap-2.5 lg:w-[340px]">
+          <div className="grid w-full shrink-0 grid-cols-2 gap-2.5 sm:grid-cols-4 xl:w-[500px]">
             {stats.map(({ icon: Icon, label, value, tone }) => (
               <div key={label} className="glass-inset rounded-xl px-3 py-3">
                 <Icon className={`h-3.5 w-3.5 ${tone}`} strokeWidth={2} />
@@ -463,7 +456,7 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
-        <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 min-[1700px]:grid-cols-5">
           {FEATURES.slice(0, -1).map(({ href, icon: Icon, tone, title, description }) => (
             <Link
               key={href}
@@ -481,7 +474,7 @@ export default function DashboardPage() {
                   {title}
                   <ArrowRight className="h-3 w-3 -translate-x-1 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-60" />
                 </span>
-                <span className="mt-0.5 line-clamp-2 block text-[11.5px] leading-4 text-muted-foreground">
+                <span className="mt-0.5 line-clamp-2 text-[11.5px] leading-4 text-muted-foreground">
                   {description}
                 </span>
               </span>
@@ -493,7 +486,7 @@ export default function DashboardPage() {
               key={href}
               href={href}
               data-spotlight
-              className="lift glass-card group flex items-center gap-3.5 p-4 sm:col-span-2 lg:col-span-3"
+              className="lift glass-card group flex items-center gap-3.5 p-4 sm:col-span-2 lg:col-span-3 min-[1700px]:hidden"
             >
               <span
                 className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] ${tone}`}
@@ -502,13 +495,38 @@ export default function DashboardPage() {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[13px] font-semibold tracking-[-0.01em]">{title}</span>
-                <span className="mt-0.5 line-clamp-1 block text-[11.5px] leading-4 text-muted-foreground">
+                <span className="mt-0.5 line-clamp-1 text-[11.5px] leading-4 text-muted-foreground">
                   {description}
                 </span>
               </span>
               <span className="flex shrink-0 items-center gap-1 text-[12px] font-medium text-primary">
                 Abrir
                 <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+              </span>
+            </Link>
+          ))}
+
+          {/* En pantallas anchas la décima tarjeta completa la fila de cinco. */}
+          {FEATURES.slice(-1).map(({ href, icon: Icon, tone, title, description }) => (
+            <Link
+              key={`${href}-wide`}
+              href={href}
+              data-spotlight
+              className="lift glass-card group hidden items-start gap-3 p-3.5 min-[1700px]:flex"
+            >
+              <span
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] ${tone}`}
+              >
+                <Icon className="h-4 w-4" strokeWidth={1.9} />
+              </span>
+              <span className="min-w-0">
+                <span className="flex items-center gap-1 text-[13px] font-semibold tracking-[-0.01em]">
+                  {title}
+                  <ArrowRight className="h-3 w-3 -translate-x-1 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-60" />
+                </span>
+                <span className="mt-0.5 line-clamp-2 text-[11.5px] leading-4 text-muted-foreground">
+                  {description}
+                </span>
               </span>
             </Link>
           ))}
