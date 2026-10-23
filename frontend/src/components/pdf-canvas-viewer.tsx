@@ -32,10 +32,12 @@ export function PdfCanvasViewer({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pdfRef = useRef<PDFDocumentProxy | null>(null);
   const renderTaskRef = useRef<RenderTask | null>(null);
+  const renderGenerationRef = useRef(0);
   const [page, setPage] = useState(initialPage);
   const [total, setTotal] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [documentReady, setDocumentReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [rendering, setRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +48,7 @@ export function PdfCanvasViewer({
 
     async function load() {
       setLoading(true);
+      setDocumentReady(false);
       setError(null);
       try {
         const blob = await api.fileBlob(documentId);
@@ -62,9 +65,11 @@ export function PdfCanvasViewer({
         setTotal(nextTotal);
         const nextPage = Math.min(Math.max(initialPage, 1), nextTotal);
         setPage(nextPage);
+        setDocumentReady(true);
         onPageChange?.(nextPage, nextTotal);
       } catch {
         if (!cancelled) {
+          setDocumentReady(false);
           setError("No se pudo abrir el PDF original. Inténtalo de nuevo.");
         }
       } finally {
@@ -97,20 +102,26 @@ export function PdfCanvasViewer({
   const renderPage = useCallback(async () => {
     const doc = pdfRef.current;
     const canvas = canvasRef.current;
-    if (!doc || !canvas || containerWidth <= 0) return;
+    if (!documentReady || !doc || !canvas || containerWidth <= 0) return;
 
+    // Cada render tiene una generación. Si el contenedor o la página cambian
+    // mientras pdf.js está preparando el canvas, el render antiguo se descarta
+    // antes de tocar el canvas para que no pueda dejarlo en blanco.
+    const generation = ++renderGenerationRef.current;
     renderTaskRef.current?.cancel();
     renderTaskRef.current = null;
     setRendering(true);
     try {
       const pdfPage = await doc.getPage(page);
+      if (generation !== renderGenerationRef.current) return;
+
       const baseViewport = pdfPage.getViewport({ scale: 1 });
       const available = Math.max(260, containerWidth - 28);
       const fitScale = available / baseViewport.width;
       const viewport = pdfPage.getViewport({ scale: fitScale * zoom });
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const context = canvas.getContext("2d");
-      if (!context) return;
+      if (!context || generation !== renderGenerationRef.current) return;
 
       canvas.width = Math.max(1, Math.floor(viewport.width * dpr));
       canvas.height = Math.max(1, Math.floor(viewport.height * dpr));
@@ -122,22 +133,29 @@ export function PdfCanvasViewer({
         viewport,
         transform: dpr === 1 ? undefined : [dpr, 0, 0, dpr, 0, 0],
       });
+      if (generation !== renderGenerationRef.current) {
+        task.cancel();
+        return;
+      }
       renderTaskRef.current = task;
       await task.promise;
     } catch (reason) {
       const name = reason instanceof Error ? reason.name : "";
-      if (name !== "RenderingCancelledException") {
+      if (generation === renderGenerationRef.current && name !== "RenderingCancelledException") {
         setError("No se pudo dibujar esta página del PDF.");
       }
     } finally {
-      renderTaskRef.current = null;
-      setRendering(false);
+      if (generation === renderGenerationRef.current) {
+        renderTaskRef.current = null;
+        setRendering(false);
+      }
     }
-  }, [containerWidth, page, zoom]);
+  }, [containerWidth, documentReady, page, zoom]);
 
   useEffect(() => {
     void renderPage();
     return () => {
+      renderGenerationRef.current += 1;
       renderTaskRef.current?.cancel();
       renderTaskRef.current = null;
     };
