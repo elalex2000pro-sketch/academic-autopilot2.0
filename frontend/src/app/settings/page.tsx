@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import {
   BellRing,
   BookOpen,
+  CheckCircle2,
   Cpu,
   ExternalLink,
   FileSpreadsheet,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 
 import { InstallAppButton } from "@/components/install-app-button";
+import { usePreferences } from "@/components/preferences-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { WallpaperPicker } from "@/components/wallpaper-picker";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { api, ApiError } from "@/lib/api";
 import type { AssistantStatus, Integration, ReminderSettings, ScheduleBlock } from "@/lib/types";
 
@@ -86,6 +89,7 @@ const AI_PROVIDER_INFO: Record<string, { keyLabel: string; keyHelp: string }> = 
 
 function SettingsInner() {
   const searchParams = useSearchParams();
+  const { autoStrikeOverdue, setAutoStrikeOverdue } = usePreferences();
 
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [blocks, setBlocks] = useState<ScheduleBlock[]>([]);
@@ -309,16 +313,19 @@ function SettingsInner() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-6">
+    <div className="mx-auto max-w-4xl space-y-6 px-5 pb-12 pt-7 sm:px-8 lg:pt-9">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Ajustes</h1>
-        <p className="text-sm text-muted-foreground">
-          Conecta tus plataformas y define tu disponibilidad semanal.
+        <p className="label-caps">Configuración</p>
+        <h1 className="mt-2 text-[30px] font-semibold leading-tight tracking-[-0.035em] text-slate-800 dark:text-white/90">
+          Ajustes
+        </h1>
+        <p className="mt-1.5 max-w-2xl text-[13px] leading-5 text-slate-500 dark:text-white/45">
+          Conecta tus plataformas, elige cómo se ve la app y define tus preferencias de estudio.
         </p>
       </header>
 
       {notice && (
-        <div className="rounded-md border border-border bg-secondary/40 px-4 py-2 text-sm">
+        <div className="rounded-2xl border border-white/60 bg-white/35 px-4 py-3 text-[13px] text-slate-700 shadow-sm backdrop-blur-2xl dark:border-white/[0.07] dark:bg-white/[0.05] dark:text-white/75">
           {notice}
         </div>
       )}
@@ -340,6 +347,33 @@ function SettingsInner() {
           </p>
           <div className="border-t border-separator pt-3">
             <WallpaperPicker />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ---- Preferencias de estudio ---- */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CheckCircle2 className="h-4 w-4" /> Preferencias de estudio
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-4 rounded-2xl border border-white/60 bg-white/30 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-white/[0.06] dark:bg-white/[0.03]">
+            <div className="min-w-0">
+              <p id="auto-strike-label" className="text-[13px] font-semibold text-slate-800 dark:text-white/90">
+                Tachar automáticamente actividades vencidas
+              </p>
+              <p className="mt-1 max-w-xl text-xs leading-5 text-muted-foreground">
+                Si una entrega ha pasado de fecha y sigue sin completarse, se mostrará tachada, con
+                opacidad reducida y un tono apagado. Puedes desactivarlo cuando quieras.
+              </p>
+            </div>
+            <Switch
+              checked={autoStrikeOverdue}
+              onCheckedChange={setAutoStrikeOverdue}
+              aria-labelledby="auto-strike-label"
+            />
           </div>
         </CardContent>
       </Card>

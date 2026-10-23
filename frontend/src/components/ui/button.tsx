@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
  * El relleno azul lleva un brillo interior de un píxel para dar volumen.
  */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md text-[13px] font-medium leading-none transition-[background-color,box-shadow,filter] duration-150 ease-mac focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/25 disabled:pointer-events-none disabled:opacity-45 [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-xl text-[13px] font-medium leading-none transition-[background-color,box-shadow,filter] duration-150 ease-mac focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/25 disabled:pointer-events-none disabled:opacity-45 [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -18,17 +18,17 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive text-destructive-foreground shadow-button hover:brightness-[1.07] active:brightness-[0.95]",
         outline:
-          "border border-input bg-card text-foreground shadow-sm hover:bg-muted/70 active:bg-muted",
+          "border border-white/60 bg-white/40 text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] backdrop-blur-xl hover:bg-white/55 active:bg-white/35 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/80 dark:hover:bg-white/[0.1]",
         secondary:
           "border border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/70 active:bg-secondary/50",
         ghost: "text-foreground hover:bg-foreground/[0.055] active:bg-foreground/[0.09]",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-8 px-3.5",
-        sm: "h-7 rounded-md px-2.5 text-xs",
-        lg: "h-9 px-5 text-sm",
-        icon: "h-8 w-8",
+        default: "h-9 px-4",
+        sm: "h-8 rounded-lg px-3 text-xs",
+        lg: "h-10 px-5 text-sm",
+        icon: "h-8 w-8 rounded-xl",
       },
     },
     defaultVariants: { variant: "default", size: "default" },

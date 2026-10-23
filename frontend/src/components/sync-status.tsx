@@ -73,7 +73,7 @@ export function SyncStatus({ onSynced }: { onSynced?: () => void }) {
   const lastSync = logs[0]?.finished_at ?? logs[0]?.started_at ?? null;
 
   return (
-    <section className="app-glass rounded-2xl p-3.5">
+    <section className="app-glass rounded-3xl p-3.5">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <span
@@ -81,8 +81,10 @@ export function SyncStatus({ onSynced }: { onSynced?: () => void }) {
               syncing ? "bg-[#ff9f0a]" : "bg-[#30d158]"
             }`}
           />
-          <p className="truncate text-[12px] font-medium text-white/75">Sincronización</p>
-          <span className="truncate text-[9.5px] text-white/25">
+          <p className="truncate text-[12px] font-medium text-slate-700 dark:text-white/75">
+            Sincronización
+          </p>
+          <span className="truncate text-[9.5px] text-slate-400 dark:text-white/25">
             {syncing ? "trabajando…" : relativeTime(lastSync)}
           </span>
         </div>
@@ -92,7 +94,7 @@ export function SyncStatus({ onSynced }: { onSynced?: () => void }) {
           disabled={syncing}
           title="Sincronizar ahora"
           aria-label="Sincronizar ahora"
-          className="app-glass-soft flex h-7 w-7 items-center justify-center rounded-lg text-white/35 transition-colors hover:bg-white/[0.08] hover:text-white/75 disabled:opacity-50"
+          className="app-glass-soft flex h-7 w-7 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-900/[0.05] hover:text-slate-800 disabled:opacity-50 dark:text-white/35 dark:hover:bg-white/[0.08] dark:hover:text-white/75"
         >
           {syncing ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -103,19 +105,19 @@ export function SyncStatus({ onSynced }: { onSynced?: () => void }) {
       </div>
 
       {logs.length === 0 ? (
-        <p className="mt-2.5 flex items-center gap-1.5 text-[10.5px] text-white/30">
+        <p className="mt-2.5 flex items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-white/30">
           <WifiOff className="h-3 w-3" /> Aún no hay sincronizaciones.
         </p>
       ) : (
         <div className="mt-2.5 space-y-1">
           {logs.slice(0, 3).map((log) => (
             <div key={log.id} className="flex items-center justify-between gap-2 text-[10.5px]">
-              <span className="flex min-w-0 items-center gap-1.5 text-white/40">
+              <span className="flex min-w-0 items-center gap-1.5 text-slate-500 dark:text-white/40">
                 <Wifi className="h-3 w-3 shrink-0" />
                 <span className="truncate">{PROVIDER_LABEL[log.provider] ?? log.provider}</span>
               </span>
               <span className="flex shrink-0 items-center gap-1.5">
-                <span className="tabular-nums text-white/25">
+                <span className="tabular-nums text-slate-400 dark:text-white/25">
                   +{log.created} ~{log.updated} -{log.removed}
                 </span>
                 <span
@@ -130,7 +132,7 @@ export function SyncStatus({ onSynced }: { onSynced?: () => void }) {
       )}
 
       {message && (
-        <p className="mt-2 truncate text-[10px] text-white/30" title={message}>
+        <p className="mt-2 truncate text-[10px] text-slate-500 dark:text-white/30" title={message}>
           {message}
         </p>
       )}

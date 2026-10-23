@@ -26,7 +26,7 @@ export function ThemeToggle({
       role="group"
       aria-label="Tema de la aplicación"
       className={cn(
-        "grid grid-cols-3 gap-0.5 rounded-md border border-border/70 bg-muted p-0.5",
+        "grid grid-cols-3 gap-0.5 rounded-2xl border border-white/60 bg-white/35 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05]",
         className,
       )}
     >
@@ -41,10 +41,10 @@ export function ThemeToggle({
             aria-label={label}
             title={label}
             className={cn(
-              "flex h-[26px] items-center justify-center gap-1.5 rounded-[5px] px-2 text-[12.5px] font-medium transition-all duration-150 ease-mac",
+              "flex h-8 items-center justify-center gap-1.5 rounded-xl px-2.5 text-[12.5px] font-medium transition-all duration-150 ease-mac",
               active
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
+                ? "bg-white/85 text-slate-800 shadow-[0_2px_8px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.8)] dark:bg-white/[0.12] dark:text-white"
+                : "text-slate-500 hover:text-slate-800 dark:text-white/45 dark:hover:text-white/85",
             )}
           >
             <Icon className="h-3.5 w-3.5 shrink-0" />

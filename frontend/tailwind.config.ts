@@ -11,8 +11,8 @@ const blue = {
   200: "#b8d4ff",
   300: "#8ebaff",
   400: "#5c9bff",
-  500: "#007aff",
-  600: "#0066d6",
+  500: "#2b7fff",
+  600: "#0066ff",
   700: "#0052ad",
   800: "#003f85",
   900: "#002d5e",
@@ -226,7 +226,13 @@ const config: Config = {
       fontSize: {
         "2xs": ["10.5px", "14px"],
       },
+      backdropBlur: {
+        "4xl": "72px",
+      },
       boxShadow: {
+        liquid: "0 8px 32px 0 rgba(15, 23, 42, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.72)",
+        "liquid-dark": "0 8px 32px 0 rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.035)",
+        "liquid-blue": "0 14px 34px -18px rgba(0, 102, 255, 0.75)",
         sm: "0 0 0 0.5px rgb(0 0 0 / 0.05), 0 1px 2px rgb(0 0 0 / 0.06)",
         DEFAULT: "0 0 0 0.5px rgb(0 0 0 / 0.05), 0 1px 3px rgb(0 0 0 / 0.08)",
         md: "0 2px 8px -2px rgb(0 0 0 / 0.12), 0 0 0 0.5px rgb(0 0 0 / 0.04)",
@@ -246,9 +252,19 @@ const config: Config = {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.4" },
         },
+        "planner-in": {
+          from: { opacity: "0", transform: "translateY(8px) scale(0.995)" },
+          to: { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+        "planner-day": {
+          from: { opacity: "0", transform: "translateY(3px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "pulse-ring": "pulse-ring 1.5s ease-in-out infinite",
+        "planner-in": "planner-in 0.32s cubic-bezier(0.32, 0.72, 0, 1) both",
+        "planner-day": "planner-day 0.22s ease-out both",
       },
     },
   },
