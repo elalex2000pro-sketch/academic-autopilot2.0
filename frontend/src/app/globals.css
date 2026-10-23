@@ -813,3 +813,65 @@ html.dark .tt-tone-7 {
 html.dark .tt-tone-break {
   --tone-bg: #6e6e73;
 }
+
+/* --------------------------------------------------------------------------
+   Repaso y Transcribir: onda de grabacion y tarjetas 3D.
+   -------------------------------------------------------------------------- */
+@keyframes waveform {
+  0%,
+  100% {
+    transform: scaleY(0.32);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.animate-waveform {
+  transform-origin: center;
+  animation-name: waveform;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+/* --------------------------------------------------------------------------
+   IA Studio: aurora radial cian / morado detras del chat.
+   -------------------------------------------------------------------------- */
+@keyframes studio-aurora {
+  0% {
+    transform: translate3d(-3%, -2%, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(4%, 3%, 0) scale(1.12);
+  }
+  100% {
+    transform: translate3d(-2%, 4%, 0) scale(1.05);
+  }
+}
+
+.studio-aurora {
+  position: absolute;
+  inset: -18%;
+  pointer-events: none;
+  background:
+    radial-gradient(42% 46% at 22% 24%, rgba(0, 214, 255, 0.3) 0%, transparent 72%),
+    radial-gradient(44% 48% at 78% 26%, rgba(139, 92, 246, 0.28) 0%, transparent 74%),
+    radial-gradient(46% 48% at 62% 82%, rgba(0, 102, 255, 0.2) 0%, transparent 76%),
+    radial-gradient(40% 42% at 18% 82%, rgba(217, 70, 239, 0.16) 0%, transparent 74%);
+  filter: blur(38px) saturate(1.08);
+  opacity: 0.68;
+  animation: studio-aurora 20s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+.dark .studio-aurora {
+  opacity: 1;
+  background:
+    radial-gradient(42% 46% at 22% 24%, rgba(0, 214, 255, 0.3) 0%, transparent 72%),
+    radial-gradient(44% 48% at 78% 26%, rgba(139, 92, 246, 0.34) 0%, transparent 74%),
+    radial-gradient(46% 48% at 62% 82%, rgba(0, 102, 255, 0.26) 0%, transparent 76%),
+    radial-gradient(40% 42% at 18% 82%, rgba(217, 70, 239, 0.2) 0%, transparent 74%);
+  filter: blur(48px) saturate(1.05);
+}

@@ -17,15 +17,18 @@ class CourseRead(BaseModel):
     name: str
     code: str | None
     color: str | None
+    teacher: str | None = None
 
 
 class CourseCreate(BaseModel):
     name: str = Field(min_length=1, max_length=500)
     code: str | None = Field(default=None, max_length=120)
     color: str | None = Field(default=None, max_length=16)
+    teacher: str | None = Field(default=None, max_length=200)
 
 
 class CourseUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=500)
     code: str | None = Field(default=None, max_length=120)
     color: str | None = Field(default=None, max_length=16)
+    teacher: str | None = Field(default=None, max_length=200)

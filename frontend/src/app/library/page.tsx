@@ -68,6 +68,14 @@ function bookStatus(book: Book): "new" | "reading" | "done" {
   return "new";
 }
 
+function isScannedPdf(book: Book): boolean {
+  return (
+    book.format === "pdf" &&
+    book.status === "ready" &&
+    (book.text_available === false || book.total_chars === 0)
+  );
+}
+
 export default function LibraryPage() {
   const [books, setBooks] = useState<Book[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -210,7 +218,7 @@ export default function LibraryPage() {
       setUploadCourse("");
       setProgress(null);
       setNotice(
-        "Libro recibido. Estamos extrayendo todo el texto; aparecerá listo en unos segundos. " +
+        "Libro recibido. Estamos preparándolo; aparecerá listo en unos segundos. " +
           "El archivo original también queda en Archivos.",
       );
     } catch (error) {
@@ -304,8 +312,8 @@ export default function LibraryPage() {
             <h2 className="mt-5 text-2xl font-bold">Tu primera biblioteca empieza con un libro</h2>
             <p className="mt-2 max-w-lg text-sm leading-6 text-muted-foreground">
               Sube un PDF, EPUB, DOCX, TXT o Markdown. Extraemos el texto completo por capítulos,
-              lo guardamos en tu cuenta y recordamos tu progreso. Si un día desaparece el archivo,
-              tus apuntes y el libro siguen aquí.
+              lo guardamos en tu cuenta y recordamos tu progreso. Los PDFs escaneados se abren en
+              un visor de imagen para que puedas leerlos igualmente.
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
               <Button onClick={() => setUploadOpen(true)}>
@@ -474,6 +482,7 @@ export default function LibraryPage() {
               {filtered.map((book) => {
                 const course = book.course_id ? courseMap.get(book.course_id) : null;
                 const status = bookStatus(book);
+                const scanned = isScannedPdf(book);
                 return (
                   <Card
                     key={book.id}
@@ -491,6 +500,7 @@ export default function LibraryPage() {
                         <div className="min-w-0">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
                             {FORMAT_LABEL[book.format] || book.format}
+                            {scanned ? " · Escaneado" : ""}
                             {course ? ` · ${course.name}` : ""}
                           </p>
                           <h3 className="mt-1 line-clamp-2 text-xl font-bold leading-tight">
@@ -500,9 +510,16 @@ export default function LibraryPage() {
                             <p className="mt-1 truncate text-xs text-white/75">{book.author}</p>
                           )}
                         </div>
-                        <span className="flex h-12 w-10 shrink-0 items-center justify-center rounded-lg border border-white/25 bg-white/10">
-                          <BookOpen className="h-5 w-5" />
-                        </span>
+                        <div className="flex shrink-0 flex-col items-end gap-1.5">
+                          {scanned && (
+                            <span className="rounded-full border border-white/25 bg-white/15 px-2 py-0.5 text-[8.5px] font-semibold uppercase tracking-[0.08em] text-white/85 backdrop-blur-md">
+                              Modo imagen
+                            </span>
+                          )}
+                          <span className="flex h-12 w-10 items-center justify-center rounded-lg border border-white/25 bg-white/10">
+                            <BookOpen className="h-5 w-5" />
+                          </span>
+                        </div>
                       </div>
                     </div>
 
@@ -518,20 +535,38 @@ export default function LibraryPage() {
                         </div>
                       ) : book.status === "error" ? (
                         <div className="space-y-2">
-                          <p className="text-sm font-medium text-rose-700">No se pudo abrir</p>
+                          <p className="text-sm font-medium text-rose-700">No se pudo extraer el texto</p>
                           <p className="line-clamp-3 text-xs text-muted-foreground">
                             {book.error_message || "El archivo no contiene texto legible."}
                           </p>
-                          <Button size="sm" variant="secondary" onClick={() => void retry(book)}>
-                            <RefreshCcw className="h-3.5 w-3.5" /> Reintentar
-                          </Button>
+                          <div className="flex flex-wrap gap-1.5">
+                            {book.format === "pdf" && book.document_id && (
+                              <Link href={`/library/${book.id}`}>
+                                <Button size="sm">
+                                  <BookOpen className="h-3.5 w-3.5" /> Abrir PDF
+                                </Button>
+                              </Link>
+                            )}
+                            <Button size="sm" variant="secondary" onClick={() => void retry(book)}>
+                              <RefreshCcw className="h-3.5 w-3.5" /> Reintentar
+                            </Button>
+                          </div>
                         </div>
                       ) : (
                         <>
                           <div className="flex items-center justify-between text-xs">
                             <span className="flex items-center gap-1 text-muted-foreground">
-                              <Clock className="h-3.5 w-3.5" />
-                              {book.estimated_minutes} min
+                              {scanned ? (
+                                <>
+                                  <BookOpen className="h-3.5 w-3.5" />
+                                  Visor de imagen
+                                </>
+                              ) : (
+                                <>
+                                  <Clock className="h-3.5 w-3.5" />
+                                  {book.estimated_minutes} min
+                                </>
+                              )}
                             </span>
                             <span className="text-muted-foreground">{formatRelative(book.last_opened_at)}</span>
                           </div>
@@ -549,12 +584,18 @@ export default function LibraryPage() {
                           <div className="flex flex-wrap items-center gap-1.5">
                             <Link href={`/library/${book.id}`} className="flex-1">
                               <Button size="sm" className="w-full">
-                                {status === "new"
-                                  ? "Empezar a leer"
-                                  : status === "done"
-                                    ? "Repasar"
-                                    : "Continuar"}
-                                <ArrowRight className="h-3.5 w-3.5" />
+                                {scanned
+                                  ? "Abrir PDF"
+                                  : status === "new"
+                                    ? "Empezar a leer"
+                                    : status === "done"
+                                      ? "Repasar"
+                                      : "Continuar"}
+                                {scanned ? (
+                                  <BookOpen className="h-3.5 w-3.5" />
+                                ) : (
+                                  <ArrowRight className="h-3.5 w-3.5" />
+                                )}
                               </Button>
                             </Link>
                             <AddToNotebookButton bookId={book.id} label="" size="icon" />

@@ -163,14 +163,23 @@ function courseColor(entry: TimetableEntry, course: Course | undefined): string 
   return course?.color?.trim() || toneFor(entry.course_id || entry.title || entry.id);
 }
 
-function subjectName(entry: TimetableEntry, course: Course | undefined): string {
-  return course?.name?.trim() || entry.title?.trim() || "Clase";
+function isGenericClassTitle(value: string | null | undefined): boolean {
+  const title = (value ?? "").trim();
+  return !title || /^clase( lectiva)?$/i.test(title) || title === "Asignatura";
 }
 
-function subjectSubtitle(entry: TimetableEntry, course: Course | undefined): string {
+function subjectName(entry: TimetableEntry, course: Course | undefined): string {
+  const courseName = course?.name?.trim();
+  if (courseName) return courseName;
+  if (!isGenericClassTitle(entry.title)) return entry.title!.trim();
+  return "Asignatura";
+}
+
+function subjectSubtitle(entry: TimetableEntry, course: Course | undefined): string | null {
   const name = subjectName(entry, course);
   const title = entry.title?.trim();
-  return title && title !== name ? title : "Clase lectiva";
+  if (title && !isGenericClassTitle(title) && title !== name) return title;
+  return course?.code?.trim() || null;
 }
 
 function MonthEmpty({ weekend }: { weekend: boolean }) {
@@ -198,6 +207,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
 
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedDay, setSelectedDay] = useState(todayKey);
+  const [viewMode, setViewMode] = useState<"week" | "day">("week");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [entries, setEntries] = useState<TimetableEntry[]>([]);
@@ -323,6 +333,39 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
   const selectedWeekday = weekdayIndex(selectedDate);
   const isWeekend = selectedWeekday >= 5;
   const isToday = selectedDay === todayKey;
+
+  const weekStart = useMemo(() => {
+    const base = parseKey(selectedDay) ?? today;
+    const start = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+    start.setDate(start.getDate() - weekdayIndex(base));
+    return start;
+  }, [selectedDay, today]);
+
+  const weekDays = useMemo(
+    () =>
+      Array.from({ length: 5 }, (_, position) => {
+        const date = new Date(weekStart);
+        date.setDate(weekStart.getDate() + position);
+        return {
+          date,
+          key: keyOf(date.getFullYear(), date.getMonth(), date.getDate()),
+          weekday: position,
+        };
+      }),
+    [weekStart],
+  );
+
+  const weekLabel = useMemo(() => {
+    const first = weekDays[0]?.date;
+    const last = weekDays[4]?.date;
+    if (!first || !last) return "";
+    const format = (date: Date, withMonth: boolean) =>
+      new Intl.DateTimeFormat("es-ES", {
+        day: "numeric",
+        ...(withMonth ? { month: "short" } : {}),
+      }).format(date);
+    return `${format(first, first.getMonth() !== last.getMonth())} – ${format(last, true)}`;
+  }, [weekDays]);
 
   const selectedClasses = useMemo(
     () =>
@@ -454,14 +497,17 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
 
   async function removeTask(id: string) {
     if (busyTaskId) return;
+    const previous = tasks;
     setBusyTaskId(id);
     setNotice(null);
+    setConfirmDeleteId(null);
+    // Borrado optimista: la tarea desaparece del estado (y del DOM) al instante.
+    setTasks((current) => current.filter((task) => task.id !== id));
     try {
       await api.deleteTask(id);
-      setConfirmDeleteId(null);
-      await load(true);
       setNotice({ tone: "success", text: "Tarea quitada del planificador." });
     } catch (error) {
+      setTasks(previous);
       setNotice({ tone: "error", text: errorMessage(error) });
     } finally {
       setBusyTaskId(null);
@@ -729,36 +775,154 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
           </div>
         </section>
 
-        {/* Columna derecha: línea temporal del día seleccionado */}
+        {/* Columna derecha: semana compacta o línea temporal del día */}
         <section className="app-glass rounded-3xl p-4 sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
-                Horario del día
+                {viewMode === "week" ? "Vista semanal" : "Horario del día"}
               </p>
               <h2 className="mt-1 text-[21px] font-semibold tracking-[-0.03em] text-slate-800 dark:text-white/90">
-                {longDate(selectedDay)}
+                {viewMode === "week" ? `Semana del ${weekLabel}` : longDate(selectedDay)}
               </h2>
               <p className="mt-1 text-[11.5px] text-slate-500 dark:text-white/40">
-                {selectedClasses.length} clase{selectedClasses.length === 1 ? "" : "s"} ·{" "}
-                {selectedTasks.length} tarea{selectedTasks.length === 1 ? "" : "s"} ·{" "}
-                {selectedEvents.length} evento{selectedEvents.length === 1 ? "" : "s"}
+                {viewMode === "week"
+                  ? "Lunes a viernes · toca un día para ver su detalle"
+                  : `${selectedClasses.length} clase${selectedClasses.length === 1 ? "" : "s"} · ${selectedTasks.length} tarea${selectedTasks.length === 1 ? "" : "s"} · ${selectedEvents.length} evento${selectedEvents.length === 1 ? "" : "s"}`}
               </p>
             </div>
-            <span
-              className={cn(
-                "inline-flex h-7 items-center rounded-full px-2.5 text-[10px] font-semibold uppercase tracking-[0.08em]",
-                isToday
-                  ? "bg-[#0066FF]/12 text-[#0066FF] dark:bg-[#0066FF]/20 dark:text-[#8ab9ff]"
-                  : isWeekend
-                    ? "bg-slate-500/10 text-slate-500 dark:bg-white/10 dark:text-white/45"
-                    : "bg-white/40 text-slate-500 dark:bg-white/[0.06] dark:text-white/45",
-              )}
-            >
-              {isToday ? "Hoy" : isWeekend ? "Fin de semana" : DAYS_LONG[selectedWeekday]}
-            </span>
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-full border border-white/55 bg-white/35 p-0.5 shadow-inner backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("day")}
+                  aria-pressed={viewMode === "day"}
+                  className={cn(
+                    "rounded-full px-2.5 py-1 text-[10.5px] font-semibold transition-colors",
+                    viewMode === "day"
+                      ? "bg-white text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
+                      : "text-slate-500 hover:text-slate-800 dark:text-white/45 dark:hover:text-white/80",
+                  )}
+                >
+                  Día
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("week")}
+                  aria-pressed={viewMode === "week"}
+                  className={cn(
+                    "rounded-full px-2.5 py-1 text-[10.5px] font-semibold transition-colors",
+                    viewMode === "week"
+                      ? "bg-white text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
+                      : "text-slate-500 hover:text-slate-800 dark:text-white/45 dark:hover:text-white/80",
+                  )}
+                >
+                  Semana
+                </button>
+              </div>
+              <span
+                className={cn(
+                  "inline-flex h-7 items-center rounded-full px-2.5 text-[10px] font-semibold uppercase tracking-[0.08em]",
+                  isToday
+                    ? "bg-[#0066FF]/12 text-[#0066FF] dark:bg-[#0066FF]/20 dark:text-[#8ab9ff]"
+                    : isWeekend
+                      ? "bg-slate-500/10 text-slate-500 dark:bg-white/10 dark:text-white/45"
+                      : "bg-white/40 text-slate-500 dark:bg-white/[0.06] dark:text-white/45",
+                )}
+              >
+                {isToday ? "Hoy" : isWeekend ? "Fin de semana" : DAYS_LONG[selectedWeekday]}
+              </span>
+            </div>
           </div>
 
+          {viewMode === "week" ? (
+            <div className="animate-planner-in mt-5">
+              <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+                {weekDays.map((day) => {
+                  const dayTasks = tasksByDay.get(day.key) ?? [];
+                  const dayEvents = eventsByDay.get(day.key) ?? [];
+                  const dayClasses = entries
+                    .filter((entry) => entry.day_of_week === day.weekday)
+                    .sort((a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time));
+                  const dayIsToday = day.key === todayKey;
+                  return (
+                    <button
+                      key={day.key}
+                      type="button"
+                      onClick={() => {
+                        selectDay(day.key);
+                        setViewMode("day");
+                      }}
+                      className={cn(
+                        "group flex min-h-[280px] min-w-0 flex-col rounded-2xl border p-1.5 text-left transition-all duration-200 ease-mac sm:p-2",
+                        dayIsToday
+                          ? "border-[#0066FF]/25 bg-[#0066FF]/[0.06] dark:border-[#0066FF]/25 dark:bg-[#0066FF]/10"
+                          : "border-white/55 bg-white/25 hover:border-white/80 hover:bg-white/40 dark:border-white/[0.06] dark:bg-white/[0.025] dark:hover:border-white/15 dark:hover:bg-white/[0.05]",
+                      )}
+                    >
+                      <span className="flex items-baseline justify-between gap-1 px-0.5">
+                        <span className="text-[9.5px] font-semibold uppercase tracking-[0.08em] text-slate-400 dark:text-white/30">
+                          {WEEKDAYS[day.weekday]}
+                        </span>
+                        <span
+                          className={cn(
+                            "flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10.5px] font-semibold tabular-nums",
+                            dayIsToday
+                              ? "bg-[#0066FF] text-white"
+                              : "text-slate-500 dark:text-white/45",
+                          )}
+                        >
+                          {day.date.getDate()}
+                        </span>
+                      </span>
+                      <span className="mt-1.5 flex min-h-0 flex-1 flex-col gap-1">
+                        {dayClasses.length === 0 ? (
+                          <span className="rounded-lg border border-dashed border-white/60 px-1.5 py-2 text-center text-[9px] leading-3 text-slate-400 dark:border-white/10 dark:text-white/25">
+                            Sin clases
+                          </span>
+                        ) : (
+                          dayClasses.map((entry) => {
+                            const course = entry.course_id
+                              ? courseById.get(entry.course_id)
+                              : undefined;
+                            const color = courseColor(entry, course);
+                            return (
+                              <span
+                                key={entry.id}
+                                className="min-w-0 rounded-lg border border-white/60 bg-white/45 px-1.5 py-1 shadow-[0_4px_12px_-10px_rgba(15,23,42,0.5)] backdrop-blur-md dark:border-white/10 dark:bg-white/[0.07]"
+                                style={{ borderLeftColor: color, borderLeftWidth: 2 }}
+                              >
+                                <span className="block text-[8.5px] font-semibold tabular-nums text-slate-400 dark:text-white/30">
+                                  {timeLabel(entry.start_time)}
+                                </span>
+                                <span className="mt-0.5 line-clamp-2 block text-[9.5px] font-medium leading-3 text-slate-700 dark:text-white/75">
+                                  {subjectName(entry, course)}
+                                </span>
+                              </span>
+                            );
+                          })
+                        )}
+                      </span>
+                      {(dayTasks.length > 0 || dayEvents.length > 0) && (
+                        <span className="mt-1 flex flex-wrap items-center gap-1 border-t border-white/40 px-0.5 pt-1 text-[8.5px] font-medium text-slate-500 dark:border-white/10 dark:text-white/35">
+                          {dayTasks.length > 0 && (
+                            <span className="rounded-full bg-[#0066FF]/10 px-1.5 py-0.5 text-[#0066FF] dark:bg-[#0066FF]/20 dark:text-[#8ab9ff]">
+                              {dayTasks.length} tarea{dayTasks.length === 1 ? "" : "s"}
+                            </span>
+                          )}
+                          {dayEvents.length > 0 && (
+                            <span className="rounded-full bg-[#30B0C7]/10 px-1.5 py-0.5 text-[#1f8fa3] dark:bg-[#30B0C7]/15 dark:text-[#6ed4e5]">
+                              {dayEvents.length} evento{dayEvents.length === 1 ? "" : "s"}
+                            </span>
+                          )}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
           <div key={selectedDay} className="animate-planner-in mt-5">
             {isWeekend ? (
               <MonthEmpty weekend />
@@ -782,6 +946,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                     const course = entry.course_id ? courseById.get(entry.course_id) : undefined;
                     const color = courseColor(entry, course);
                     const name = subjectName(entry, course);
+                    const subtitle = subjectSubtitle(entry, course);
                     const current =
                       isToday &&
                       nowMinutes >= timeToMinutes(entry.start_time) &&
@@ -829,9 +994,11 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                                   </span>
                                 )}
                               </div>
-                              <p className="mt-0.5 truncate text-[10.5px] text-slate-500 dark:text-white/35">
-                                {subjectSubtitle(entry, course)}
-                              </p>
+                              {subtitle && (
+                                <p className="mt-0.5 truncate text-[10.5px] text-slate-500 dark:text-white/35">
+                                  {subtitle}
+                                </p>
+                              )}
                             </div>
                             <div className="flex shrink-0 items-center gap-1">
                               <span
@@ -1131,6 +1298,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
               )}
             </div>
           </div>
+          )}
         </section>
       </div>
 

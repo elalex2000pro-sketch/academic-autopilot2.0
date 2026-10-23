@@ -340,6 +340,12 @@ async def ask_book(
             status_code=status.HTTP_409_CONFLICT,
             detail="El libro todavía se está preparando. Inténtalo en unos segundos.",
         )
+    if not book.text_available:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Este PDF es un escaneo sin capa de texto. Puedes leerlo en el visor, "
+            "pero las preguntas y resúmenes necesitan un PDF con OCR.",
+        )
     question = payload.question.strip()
     if not question:
         raise HTTPException(
@@ -417,6 +423,12 @@ async def book_summary(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="El libro todavía se está preparando. Inténtalo en unos segundos.",
+        )
+    if not book.text_available:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Este PDF es un escaneo sin capa de texto. Puedes leerlo en el visor, "
+            "pero las preguntas y resúmenes necesitan un PDF con OCR.",
         )
     title, summary, key_points, citations, source, notice = await book_service.summarize(
         db, current_user, book, payload.scope, payload.section_index

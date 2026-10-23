@@ -261,9 +261,12 @@ export const api = {
 
   // --- Cursos y tareas ---
   courses: () => request<Course[]>("/api/v1/courses"),
-  createCourse: (body: { name: string; code?: string; color?: string }) =>
+  createCourse: (body: { name: string; code?: string; color?: string; teacher?: string | null }) =>
     request<Course>("/api/v1/courses", { method: "POST", body: JSON.stringify(body) }),
-  updateCourse: (id: string, body: { name?: string; code?: string; color?: string }) =>
+  updateCourse: (
+    id: string,
+    body: { name?: string; code?: string; color?: string; teacher?: string | null },
+  ) =>
     request<Course>(`/api/v1/courses/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteCourse: (id: string) =>
     request<void>(`/api/v1/courses/${id}`, { method: "DELETE" }),
@@ -392,14 +395,18 @@ export const api = {
   },
   deleteFile: (id: string) =>
     request<void>(`/api/v1/files/${id}`, { method: "DELETE" }),
-  // Devuelve una URL temporal (blob) para mostrar una imagen con autenticacion.
-  fileObjectUrl: async (id: string): Promise<string> => {
+  // Descarga autenticada en memoria. Se usa para renderizar PDFs en canvas.
+  fileBlob: async (id: string): Promise<Blob> => {
     const token = tokenStore.get();
     const response = await fetch(`${resolveApiBase()}/api/v1/files/${id}/download`, {
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     });
-    if (!response.ok) throw new ApiError(response.status, "No se pudo cargar la imagen");
-    const blob = await response.blob();
+    if (!response.ok) throw new ApiError(response.status, "No se pudo cargar el archivo");
+    return response.blob();
+  },
+  // Devuelve una URL temporal (blob) para mostrar una imagen con autenticacion.
+  fileObjectUrl: async (id: string): Promise<string> => {
+    const blob = await api.fileBlob(id);
     return URL.createObjectURL(blob);
   },
   downloadFile: async (id: string, filename: string) => {

@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 
 import { AddToNotebookButton } from "@/components/add-to-notebook";
+import { PdfCanvasViewer } from "@/components/pdf-canvas-viewer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -94,6 +95,8 @@ export default function BookReaderPage() {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [pdfPage, setPdfPage] = useState(1);
+  const [pdfTotal, setPdfTotal] = useState(0);
 
   const initialized = useRef(false);
   const readerRef = useRef<HTMLDivElement>(null);
@@ -132,7 +135,7 @@ export default function BookReaderPage() {
   }, [book?.status, loadBook]);
 
   useEffect(() => {
-    if (!book || book.status !== "ready") return;
+    if (!book || book.status !== "ready" || book.text_available === false) return;
     let cancelled = false;
     setSectionLoading(true);
     api
@@ -149,15 +152,15 @@ export default function BookReaderPage() {
     return () => {
       cancelled = true;
     };
-  }, [book?.id, book?.status, index]);
+  }, [book?.id, book?.status, book?.text_available, index]);
 
   useEffect(() => {
-    if (!book || book.status !== "ready") return;
+    if (!book || book.status !== "ready" || book.text_available === false) return;
     api
       .bookMessages(book.id)
       .then(setMessages)
       .catch(() => setMessages([]));
-  }, [book?.id, book?.status]);
+  }, [book?.id, book?.status, book?.text_available]);
 
   useEffect(() => {
     setSummary(null);
@@ -185,9 +188,13 @@ export default function BookReaderPage() {
   }, [messages, asking]);
 
   const progress = useMemo(() => {
-    if (!book || book.total_sections === 0) return 0;
+    if (!book) return 0;
+    if (book.text_available === false || book.status === "error") {
+      return pdfTotal ? (pdfPage / pdfTotal) * 100 : book.progress_percent;
+    }
+    if (book.total_sections === 0) return 0;
     return Math.max(book.progress_percent, ((index + 1) / book.total_sections) * 100);
-  }, [book, index]);
+  }, [book, index, pdfPage, pdfTotal]);
 
   async function goToSection(next: number) {
     if (!book || book.total_sections === 0) return;
@@ -330,6 +337,87 @@ export default function BookReaderPage() {
         <Link href="/library" className="mt-5 inline-block">
           <Button variant="secondary">Volver mientras tanto</Button>
         </Link>
+      </div>
+    );
+  }
+
+  const scannedPdf =
+    book.format === "pdf" &&
+    Boolean(book.document_id) &&
+    (book.status === "error" ||
+      book.text_available === false ||
+      (book.status === "ready" && book.total_chars === 0));
+
+  if (scannedPdf) {
+    return (
+      <div className="min-h-dvh">
+        <header className="sticky top-0 z-30 border-b border-white/40 bg-white/55 backdrop-blur-3xl dark:border-white/10 dark:bg-black/30">
+          <div className="mx-auto flex max-w-[1280px] flex-wrap items-center gap-3 px-4 py-3">
+            <Link
+              href="/library"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-white/60 hover:text-slate-900 dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white"
+              aria-label="Volver a la biblioteca"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+            <div
+              className="hidden h-11 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-lg sm:flex"
+              style={{ background: `linear-gradient(145deg, ${book.cover_color}, #0f172a)` }}
+            >
+              <BookOpen className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-sm font-bold text-slate-900 dark:text-white sm:text-base">
+                {book.title}
+              </h1>
+              <p className="truncate text-[11px] text-slate-500 dark:text-white/50">
+                {book.author || "Autor desconocido"} · PDF escaneado · visor de imagen
+              </p>
+            </div>
+            <div className="hidden min-w-[160px] max-w-[240px] flex-1 md:block">
+              <div className="flex items-center justify-between text-[10px] font-medium text-slate-500 dark:text-white/50">
+                <span>Progreso</span>
+                <span>{Math.round(progress)}%</span>
+              </div>
+              <Progress value={progress} className="mt-1 h-1.5 bg-white/35 dark:bg-white/10" />
+            </div>
+            <Badge
+              variant="secondary"
+              className="rounded-full border border-white/50 bg-white/55 text-[10px] font-semibold text-slate-600 backdrop-blur-xl dark:border-white/10 dark:bg-white/10 dark:text-white/65"
+            >
+              Modo imagen
+            </Badge>
+            <AddToNotebookButton bookId={book.id} label="Cuaderno" />
+          </div>
+        </header>
+
+        <main className="mx-auto max-w-[1280px] px-4 py-5">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-white/50">
+            <span>
+              Vista de imagen: el PDF se dibuja directamente en canvas y puedes leerlo con
+              normalidad. Las herramientas que necesitan texto seleccionable no están disponibles
+              en este archivo.
+            </span>
+            <span className="rounded-full border border-white/40 bg-white/45 px-2.5 py-1 font-medium backdrop-blur-xl dark:border-white/10 dark:bg-white/10">
+              {pdfTotal ? `Página ${pdfPage} de ${pdfTotal}` : "Preparando visor"}
+            </span>
+          </div>
+          <PdfCanvasViewer
+            documentId={book.document_id as string}
+            initialPage={Math.max(1, book.current_section_index + 1)}
+            title={book.title}
+            onPageChange={(page, total) => {
+              setPdfPage(page);
+              setPdfTotal(total);
+              api
+                .updateBookProgress(book.id, {
+                  section_index: Math.max(0, page - 1),
+                  percent: total ? (page / total) * 100 : undefined,
+                })
+                .catch(() => undefined);
+            }}
+          />
+        </main>
       </div>
     );
   }

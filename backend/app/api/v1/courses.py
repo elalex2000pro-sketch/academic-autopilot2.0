@@ -35,6 +35,7 @@ async def create_course(
         name=payload.name,
         code=payload.code,
         color=payload.color,
+        teacher=payload.teacher,
     )
     db.add(course)
     await db.commit()

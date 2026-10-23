@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
+import { AcademicsView } from "@/components/academics-view";
 
-// La antigua pagina "Academico" se dividio en Asignaturas, Horario y Examenes.
-export default function AcademicsRedirect() {
-  redirect("/subjects");
+export default function AcademicsPage() {
+  return <AcademicsView />;
 }

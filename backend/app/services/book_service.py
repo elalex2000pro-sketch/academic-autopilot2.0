@@ -70,6 +70,9 @@ class ExtractedBook:
     title: str
     author: str | None = None
     sections: list[ExtractedSection] = field(default_factory=list)
+    # False cuando el PDF es un escaneo sin capa de texto. El visor dibuja las
+    # paginas originales en canvas y desactiva las herramientas de lectura.
+    text_available: bool = True
 
 
 # --------------------------------------------------------------------------- #
@@ -239,9 +242,25 @@ def _extract_pdf(path: str, fallback_title: str) -> ExtractedBook:
         pages.append((index, text))
 
     if sum(len(text.strip()) for _, text in pages) < 80:
-        raise ValueError(
-            "El PDF no tiene texto seleccionable (puede ser un escaneo). "
-            "La biblioteca necesita texto: usa un PDF con OCR o un EPUB."
+        # PDF escaneado: no hay capa de texto. Guardamos una seccion por pagina
+        # para conservar el indice y el progreso; el frontend dibuja el archivo
+        # original con pdf.js en lugar de intentar mostrar texto inexistente.
+        fallback_sections = [
+            ExtractedSection(
+                title=f"Página {number}",
+                content=f"[Página escaneada {number}]",
+                page_start=number,
+                page_end=number,
+            )
+            for number, _ in pages[: settings.book_max_sections]
+        ]
+        if not fallback_sections:
+            raise ValueError("El PDF no contiene páginas legibles.")
+        return ExtractedBook(
+            title=title[:500],
+            author=author,
+            sections=fallback_sections,
+            text_available=False,
         )
 
     sections: list[ExtractedSection] = []
@@ -497,7 +516,9 @@ def extract_book(path: str, filename: str) -> ExtractedBook:
 
     if not book.sections:
         raise ValueError("No se encontró texto legible en el libro.")
-    if sum(len(section.content) for section in book.sections) > settings.book_max_chars:
+    if book.text_available and sum(
+        len(section.content) for section in book.sections
+    ) > settings.book_max_chars:
         raise ValueError(
             "El libro supera el límite de texto de la biblioteca "
             f"({settings.book_max_chars:,} caracteres). Divide el archivo en volúmenes."
@@ -552,7 +573,12 @@ async def process_book(book_id: uuid.UUID) -> None:
                 book.author = extracted.author[:300]
             book.format = Path(document.filename).suffix.lower().lstrip(".") or "txt"
             book.total_sections = len(extracted.sections)
-            book.total_chars = sum(len(section.content) for section in extracted.sections)
+            book.total_chars = (
+                sum(len(section.content) for section in extracted.sections)
+                if extracted.text_available
+                else 0
+            )
+            book.text_available = extracted.text_available
             book.current_section_index = 0
             book.progress_percent = 0.0
             book.status = "ready"

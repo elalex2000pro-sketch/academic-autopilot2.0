@@ -22,6 +22,7 @@ export interface Course {
   name: string;
   code: string | null;
   color: string | null;
+  teacher?: string | null;
 }
 
 export interface Grade {
@@ -404,6 +405,7 @@ export interface Book {
   error_message: string | null;
   total_sections: number;
   total_chars: number;
+  text_available?: boolean;
   current_section_index: number;
   progress_percent: number;
   last_opened_at: string | null;

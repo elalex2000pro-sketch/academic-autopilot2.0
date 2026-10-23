@@ -35,6 +35,8 @@ class Course(UUIDPkMixin, TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(500), nullable=False)
     code: Mapped[str | None] = mapped_column(String(120))
     color: Mapped[str | None] = mapped_column(String(16))
+    # Profesor/a de la asignatura. Puede venir vacio en cursos sincronizados.
+    teacher: Mapped[str | None] = mapped_column(String(200))
 
     user: Mapped["User"] = relationship(back_populates="courses")
     tasks: Mapped[list["Task"]] = relationship(back_populates="course")

@@ -16,18 +16,14 @@ import {
   XCircle,
 } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { api, ApiError } from "@/lib/api";
-import type {
-  Flashcard,
-  FlashcardStats,
-  Notebook,
-  Quiz,
-  QuizResult,
-} from "@/lib/types";
+import type { Flashcard, FlashcardStats, Notebook, Quiz, QuizResult } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-type Tab = "cards" | "exams";
+type Tab = "decks" | "exams";
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
@@ -35,81 +31,176 @@ function errorMessage(error: unknown): string {
   return "Error inesperado";
 }
 
+function isDue(card: Flashcard, now = Date.now()): boolean {
+  const due = new Date(card.due_at).getTime();
+  return !Number.isFinite(due) || due <= now;
+}
+
+function learnedCount(cards: Flashcard[]): number {
+  return cards.filter((card) => !isDue(card)).length;
+}
+
+function ReviewRing({
+  value,
+  total,
+  label,
+  color,
+  size = 82,
+}: {
+  value: number;
+  total: number;
+  label: string;
+  color: string;
+  size?: number;
+}) {
+  const stroke = 8;
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const percent = total > 0 ? Math.min(100, (value / total) * 100) : 0;
+  return (
+    <div className="flex items-center gap-3">
+      <div className="relative inline-flex shrink-0" style={{ width: size, height: size }}>
+        <svg width={size} height={size} className="-rotate-90">
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            strokeWidth={stroke}
+            className="text-slate-900/[0.07] dark:text-white/10"
+            stroke="currentColor"
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            stroke={color}
+            strokeDasharray={circumference}
+            strokeDashoffset={circumference - (percent / 100) * circumference}
+            style={{ transition: "stroke-dashoffset 500ms cubic-bezier(0.22,1,0.36,1)" }}
+          />
+        </svg>
+        <span className="absolute inset-0 flex items-center justify-center text-[18px] font-semibold tabular-nums tracking-[-0.04em] text-slate-800 dark:text-white/90">
+          {value}
+        </span>
+      </div>
+      <div>
+        <p className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
+          {label}
+        </p>
+        <p className="mt-0.5 text-[12px] font-medium text-slate-600 dark:text-white/55">
+          {total > 0 ? `${Math.round(percent)}% del total` : "Sin tarjetas"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function ReviewPage() {
-  const [tab, setTab] = useState<Tab>("cards");
+  const [tab, setTab] = useState<Tab>("decks");
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
-  const [notebookId, setNotebookId] = useState("");
+  const [cards, setCards] = useState<Flashcard[]>([]);
+  const [stats, setStats] = useState<FlashcardStats>({ total: 0, due: 0 });
+  const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    api
-      .notebooks()
-      .then((data) => {
-        setNotebooks(data);
-        if (data.length > 0) setNotebookId(data[0].id);
-      })
-      .catch((error) => setNotice(errorMessage(error)));
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const [notebookList, cardList, statsData] = await Promise.all([
+        api.notebooks(),
+        api.flashcards(),
+        api.flashcardStats(),
+      ]);
+      setNotebooks(notebookList);
+      setCards(cardList);
+      setStats(statsData);
+    } catch (error) {
+      setNotice(errorMessage(error));
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    void load();
+  }, [load]);
+
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-6 animate-fade-up">
-      <header className="space-y-2">
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <Brain className="h-6 w-6 text-violet-600" />
-          Repaso inteligente
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Flashcards con repaso espaciado y exámenes tipo test corregidos al instante, generados a
-          partir de tus cuadernos.
-        </p>
+    <div className="mx-auto max-w-6xl space-y-4 pb-10">
+      <header className="app-glass rounded-3xl p-5 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#0066FF] dark:text-[#8ab9ff]">
+              Memoria a largo plazo
+            </p>
+            <h1 className="mt-1 flex items-center gap-2 text-[28px] font-semibold tracking-[-0.045em] text-slate-900 dark:text-white/95">
+              <Brain className="h-7 w-7 text-[#0066FF]" />
+              Repaso
+            </h1>
+            <p className="mt-1 max-w-xl text-[12px] leading-5 text-slate-500 dark:text-white/40">
+              Mazos de tarjetas con repaso espaciado. Abre un mazo, gira la tarjeta y decide cuándo
+              quieres volver a verla.
+            </p>
+          </div>
+          <div className="flex rounded-full border border-white/55 bg-white/35 p-0.5 shadow-inner backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
+            <button
+              type="button"
+              onClick={() => setTab("decks")}
+              aria-pressed={tab === "decks"}
+              className={cn(
+                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors",
+                tab === "decks"
+                  ? "bg-white text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
+                  : "text-slate-500 hover:text-slate-800 dark:text-white/45 dark:hover:text-white/80",
+              )}
+            >
+              <Layers className="h-3.5 w-3.5" /> Mazos
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("exams")}
+              aria-pressed={tab === "exams"}
+              className={cn(
+                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors",
+                tab === "exams"
+                  ? "bg-white text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
+                  : "text-slate-500 hover:text-slate-800 dark:text-white/45 dark:hover:text-white/80",
+              )}
+            >
+              <GraduationCap className="h-3.5 w-3.5" /> Modo examen
+            </button>
+          </div>
+        </div>
       </header>
 
-      <div className="flex gap-2 rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-sm dark:border-border dark:bg-card">
-        <button
-          type="button"
-          onClick={() => setTab("cards")}
-          className={cn(
-            "flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all",
-            tab === "cards"
-              ? "bg-violet-600 text-white shadow-sm"
-              : "text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200",
-          )}
-        >
-          <Layers className="h-4 w-4" /> Flashcards
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("exams")}
-          className={cn(
-            "flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all",
-            tab === "exams"
-              ? "bg-indigo-600 text-white shadow-sm"
-              : "text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200",
-          )}
-        >
-          <GraduationCap className="h-4 w-4" /> Modo examen
-        </button>
-      </div>
-
       {notice && (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
-          {notice}
-        </p>
+        <div className="flex items-start gap-2 rounded-2xl border border-amber-300/40 bg-amber-500/10 px-4 py-3 text-[12px] text-amber-800 backdrop-blur-2xl dark:text-amber-200">
+          <span className="min-w-0 flex-1">{notice}</span>
+          <button type="button" onClick={() => setNotice(null)} aria-label="Cerrar aviso">
+            <XCircle className="h-3.5 w-3.5 opacity-60" />
+          </button>
+        </div>
       )}
 
-      {tab === "cards" ? (
-        <FlashcardsTab
+      {tab === "decks" ? (
+        <DecksView
           notebooks={notebooks}
-          notebookId={notebookId}
-          setNotebookId={setNotebookId}
+          cards={cards}
+          stats={stats}
+          loading={loading}
+          busy={busy}
+          setBusy={setBusy}
           notify={setNotice}
+          reload={load}
         />
       ) : (
         <ExamsTab
           notebooks={notebooks}
-          notebookId={notebookId}
-          setNotebookId={setNotebookId}
           notify={setNotice}
           busy={busy}
           setBusy={setBusy}
@@ -119,91 +210,137 @@ export default function ReviewPage() {
   );
 }
 
-// --------------------------------------------------------------------------- //
-// Flashcards
-// --------------------------------------------------------------------------- //
-function FlashcardsTab({
+function DecksView({
   notebooks,
-  notebookId,
-  setNotebookId,
+  cards,
+  stats,
+  loading,
+  busy,
+  setBusy,
   notify,
+  reload,
 }: {
   notebooks: Notebook[];
-  notebookId: string;
-  setNotebookId: (id: string) => void;
+  cards: Flashcard[];
+  stats: FlashcardStats;
+  loading: boolean;
+  busy: boolean;
+  setBusy: (value: boolean) => void;
   notify: (message: string | null) => void;
+  reload: (silent?: boolean) => Promise<void>;
 }) {
+  const [activeDeck, setActiveDeck] = useState<string | null>(null);
+  const [dueOnly, setDueOnly] = useState(true);
   const [queue, setQueue] = useState<Flashcard[]>([]);
-  const [allCards, setAllCards] = useState<Flashcard[]>([]);
-  const [stats, setStats] = useState<FlashcardStats>({ total: 0, due: 0 });
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
-  const [dueOnly, setDueOnly] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
+  const [sessionBusy, setSessionBusy] = useState(false);
   const [front, setFront] = useState("");
   const [back, setBack] = useState("");
+  const [generateNotebook, setGenerateNotebook] = useState(notebooks[0]?.id ?? "");
+  const [adding, setAdding] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  useEffect(() => {
+    if (!generateNotebook && notebooks[0]) setGenerateNotebook(notebooks[0].id);
+  }, [generateNotebook, notebooks]);
+
+  const decks = useMemo(() => {
+    const list = [
+      {
+        id: "all",
+        name: "Todos los mazos",
+        color: "#0066FF",
+        cards,
+      },
+      ...notebooks.map((notebook) => ({
+        id: notebook.id,
+        name: notebook.title,
+        color: notebook.color || "#AF52DE",
+        cards: cards.filter((card) => card.notebook_id === notebook.id),
+      })),
+    ];
+    const withoutNotebook = cards.filter((card) => !card.notebook_id);
+    if (withoutNotebook.length > 0) {
+      list.push({
+        id: "none",
+        name: "Sin cuaderno",
+        color: "#8E8E93",
+        cards: withoutNotebook,
+      });
+    }
+    return list;
+  }, [cards, notebooks]);
+
+  const activeDeckData = decks.find((deck) => deck.id === activeDeck) ?? null;
+
+  const learned = Math.max(0, stats.total - stats.due);
+  const duePercent = stats.total > 0 ? (stats.due / stats.total) * 100 : 0;
+
+  function openDeck(deckId: string, onlyDue = dueOnly) {
+    const deck = decks.find((item) => item.id === deckId);
+    if (!deck) return;
+    const source = onlyDue ? deck.cards.filter((card) => isDue(card)) : deck.cards;
+    setActiveDeck(deckId);
+    setDueOnly(onlyDue);
+    setQueue(source);
+    setIndex(0);
+    setFlipped(false);
+  }
+
+  function changeDueOnly(value: boolean) {
+    if (!activeDeck) return;
+    openDeck(activeDeck, value);
+  }
+
+  async function review(quality: number) {
+    const current = queue[index];
+    if (!current || sessionBusy) return;
+    setSessionBusy(true);
     try {
-      const [cards, statsData] = await Promise.all([
-        api.flashcards({ due_only: dueOnly }),
-        api.flashcardStats(),
-      ]);
-      setQueue(cards);
-      setStats(statsData);
-      setIndex(0);
+      const result = await api.reviewFlashcard(current.id, quality);
+      setQueue((previous) => {
+        const next = previous.map((card) => (card.id === current.id ? result.card : card));
+        return quality < 3 ? [...next, result.card] : next;
+      });
       setFlipped(false);
-      if (!dueOnly) setAllCards(cards);
+      setIndex((value) => value + 1);
+      const updatedStats = await api.flashcardStats();
+      notify(null);
+      await reload(true);
+      if (updatedStats.total === 0) setActiveDeck(null);
     } catch (error) {
       notify(errorMessage(error));
     } finally {
-      setLoading(false);
+      setSessionBusy(false);
     }
-  }, [dueOnly, notify]);
+  }
 
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const current = queue[index] ?? null;
-  const progress = queue.length > 0 ? Math.round((index / queue.length) * 100) : 0;
+  async function removeCard(id: string) {
+    if (!window.confirm("¿Eliminar esta tarjeta?")) return;
+    try {
+      await api.deleteFlashcard(id);
+      setQueue((previous) => previous.filter((card) => card.id !== id));
+      await reload(true);
+    } catch (error) {
+      notify(errorMessage(error));
+    }
+  }
 
   async function generate() {
-    if (!notebookId) {
+    if (!generateNotebook) {
       notify("Primero crea un cuaderno con apuntes.");
       return;
     }
     setBusy(true);
     notify(null);
     try {
-      const result = await api.generateFlashcards(notebookId);
+      const result = await api.generateFlashcards(generateNotebook);
       notify(
         `${result.created} tarjetas creadas${
           result.source === "heuristic" ? " (modo local, sin IA)" : " con IA"
         }.`,
       );
-      await load();
-    } catch (error) {
-      notify(errorMessage(error));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function review(quality: number) {
-    if (!current) return;
-    setBusy(true);
-    try {
-      await api.reviewFlashcard(current.id, quality);
-      setFlipped(false);
-      if (index + 1 >= queue.length) {
-        setIndex(queue.length);
-      } else {
-        setIndex(index + 1);
-      }
-      setStats(await api.flashcardStats());
+      await reload(true);
     } catch (error) {
       notify(errorMessage(error));
     } finally {
@@ -216,63 +353,319 @@ function FlashcardsTab({
       notify("Escribe la pregunta y la respuesta.");
       return;
     }
-    setBusy(true);
+    setAdding(true);
     try {
       await api.createFlashcard({
         front: front.trim(),
         back: back.trim(),
-        notebook_id: notebookId || null,
+        notebook_id: generateNotebook || null,
       });
       setFront("");
       setBack("");
       notify("Tarjeta añadida.");
-      await load();
+      await reload(true);
     } catch (error) {
       notify(errorMessage(error));
     } finally {
-      setBusy(false);
+      setAdding(false);
     }
   }
 
-  async function removeCard(id: string) {
-    if (!window.confirm("¿Eliminar esta tarjeta?")) return;
-    try {
-      await api.deleteFlashcard(id);
-      await load();
-    } catch (error) {
-      notify(errorMessage(error));
-    }
+  if (activeDeckData) {
+    const current = queue[index] ?? null;
+    const progress = queue.length > 0 ? Math.round((index / queue.length) * 100) : 0;
+    return (
+      <div className="space-y-4">
+        <section className="app-glass rounded-3xl p-4 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setActiveDeck(null)}
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-white/50 dark:text-white/50 dark:hover:bg-white/10"
+                aria-label="Volver a los mazos"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+              <div className="min-w-0">
+                <p className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
+                  Sesión de repaso
+                </p>
+                <h2 className="truncate text-[19px] font-semibold tracking-[-0.03em] text-slate-900 dark:text-white/90">
+                  {activeDeckData.name}
+                </h2>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-full border border-white/55 bg-white/35 p-0.5 dark:border-white/10 dark:bg-white/[0.06]">
+                <button
+                  type="button"
+                  onClick={() => changeDueOnly(true)}
+                  className={cn(
+                    "rounded-full px-2.5 py-1 text-[10px] font-semibold",
+                    dueOnly
+                      ? "bg-white text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
+                      : "text-slate-500 dark:text-white/45",
+                  )}
+                >
+                  Pendientes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => changeDueOnly(false)}
+                  className={cn(
+                    "rounded-full px-2.5 py-1 text-[10px] font-semibold",
+                    !dueOnly
+                      ? "bg-white text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
+                      : "text-slate-500 dark:text-white/45",
+                  )}
+                >
+                  Todas
+                </button>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => openDeck(activeDeckData.id)} aria-label="Reiniciar sesión">
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center gap-2">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-900/[0.06] dark:bg-white/10">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-[#0066FF] to-[#AF52DE] transition-all duration-500"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <span className="text-[10px] tabular-nums text-slate-400 dark:text-white/30">
+              {Math.min(index, queue.length)} / {queue.length}
+            </span>
+          </div>
+        </section>
+
+        {queue.length === 0 ? (
+          <section className="app-glass rounded-3xl p-8 text-center">
+            <CheckCircle2 className="mx-auto h-10 w-10 text-[#34C759]" />
+            <h3 className="mt-3 text-[18px] font-semibold text-slate-800 dark:text-white/90">
+              {dueOnly ? "No quedan tarjetas pendientes" : "Este mazo está vacío"}
+            </h3>
+            <p className="mt-1 text-[12px] text-slate-500 dark:text-white/40">
+              {dueOnly
+                ? "Cambia a «Todas» para repasar también las que ya están aprendidas."
+                : "Genera tarjetas desde un cuaderno o añade una manualmente."}
+            </p>
+            <Button className="mt-4" variant="secondary" onClick={() => setActiveDeck(null)}>
+              <ArrowLeft className="h-4 w-4" /> Volver a los mazos
+            </Button>
+          </section>
+        ) : index >= queue.length ? (
+          <section className="app-glass rounded-3xl p-8 text-center">
+            <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#34C759]/12 text-[#34C759]">
+              <CheckCircle2 className="h-7 w-7" />
+            </span>
+            <h3 className="mt-3 text-[20px] font-semibold tracking-[-0.03em] text-slate-800 dark:text-white/90">
+              Sesión completada
+            </h3>
+            <p className="mt-1 text-[12px] text-slate-500 dark:text-white/40">
+              Has repasado {queue.length} tarjeta{queue.length === 1 ? "" : "s"}. El repaso espaciado
+              volverá a traerlas en el momento adecuado.
+            </p>
+            <div className="mt-4 flex justify-center gap-2">
+              <Button variant="secondary" onClick={() => openDeck(activeDeckData.id)}>
+                <RotateCcw className="h-4 w-4" /> Repetir
+              </Button>
+              <Button onClick={() => setActiveDeck(null)}>Volver a los mazos</Button>
+            </div>
+          </section>
+        ) : current ? (
+          <section className="app-glass rounded-3xl p-4 sm:p-6">
+            <div className="flex items-center justify-between gap-3">
+              <Badge variant="secondary" className="rounded-full text-[10px]">
+                Tarjeta {index + 1} de {queue.length}
+              </Badge>
+              <button
+                type="button"
+                onClick={() => void removeCard(current.id)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 dark:text-white/30"
+                aria-label="Eliminar tarjeta actual"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <div className="mx-auto mt-4 max-w-2xl [perspective:1400px]">
+              <button
+                type="button"
+                onClick={() => setFlipped((value) => !value)}
+                className="group relative min-h-[250px] w-full rounded-3xl text-left transition-transform duration-500 [transform-style:preserve-3d] sm:min-h-[290px]"
+                style={{ transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)" }}
+                aria-label={flipped ? "Ver pregunta" : "Ver respuesta"}
+              >
+                <span className="absolute inset-0 flex flex-col items-center justify-center rounded-3xl border border-white/60 bg-white/55 p-6 text-center shadow-[0_28px_70px_-35px_rgba(15,23,42,0.75)] backdrop-blur-3xl [backface-visibility:hidden] dark:border-white/10 dark:bg-white/[0.08]">
+                  <span className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#0066FF] dark:text-[#8ab9ff]">
+                    Pregunta
+                  </span>
+                  <span className="mt-4 whitespace-pre-wrap text-[20px] font-semibold leading-relaxed tracking-[-0.02em] text-slate-800 dark:text-white/90 sm:text-[24px]">
+                    {current.front}
+                  </span>
+                  <span className="mt-5 text-[10.5px] text-slate-400 dark:text-white/30">
+                    Toca para girar la tarjeta
+                  </span>
+                </span>
+                <span className="absolute inset-0 flex flex-col items-center justify-center rounded-3xl border border-[#0066FF]/25 bg-[#0066FF]/[0.08] p-6 text-center shadow-[0_28px_70px_-35px_rgba(0,102,255,0.7)] backdrop-blur-3xl [backface-visibility:hidden] [transform:rotateY(180deg)] dark:border-[#0066FF]/30 dark:bg-[#0066FF]/15">
+                  <span className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#0066FF] dark:text-[#8ab9ff]">
+                    Respuesta
+                  </span>
+                  <span className="mt-4 whitespace-pre-wrap text-[18px] font-medium leading-relaxed text-slate-800 dark:text-white/90 sm:text-[22px]">
+                    {current.back}
+                  </span>
+                  <span className="mt-5 text-[10.5px] text-slate-500 dark:text-white/35">
+                    ¿La recordabas?
+                  </span>
+                </span>
+              </button>
+            </div>
+
+            {flipped && (
+              <div className="mx-auto mt-5 grid max-w-2xl grid-cols-2 gap-2 sm:grid-cols-4">
+                <Button variant="secondary" onClick={() => void review(1)} disabled={sessionBusy}>
+                  Otra vez
+                </Button>
+                <Button variant="secondary" onClick={() => void review(3)} disabled={sessionBusy}>
+                  Difícil
+                </Button>
+                <Button onClick={() => void review(4)} disabled={sessionBusy}>
+                  Bien
+                </Button>
+                <Button variant="secondary" onClick={() => void review(5)} disabled={sessionBusy}>
+                  Fácil
+                </Button>
+              </div>
+            )}
+            <p className="mt-4 text-center text-[10.5px] text-slate-400 dark:text-white/30">
+              SM-2 calcula la próxima fecha según tu respuesta. No hay que memorizar el calendario.
+            </p>
+          </section>
+        ) : null}
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
-      <section className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="label-caps">Para repasar hoy</p>
-          <p className="mt-1 text-3xl font-semibold tabular text-foreground">{stats.due}</p>
+    <div className="space-y-4">
+      <section className="app-glass rounded-3xl p-5 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
+              Tu progreso
+            </p>
+            <h2 className="mt-1 text-[20px] font-semibold tracking-[-0.03em] text-slate-900 dark:text-white/90">
+              {stats.total} tarjeta{stats.total === 1 ? "" : "s"} en total
+            </h2>
+          </div>
+          <div className="flex flex-wrap items-center gap-5">
+            <ReviewRing value={learned} total={stats.total} label="Aprendidas" color="#34C759" />
+            <ReviewRing value={stats.due} total={stats.total} label="Para repasar" color="#FF9500" />
+          </div>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="label-caps">Totales</p>
-          <p className="mt-1 text-3xl font-semibold tabular text-foreground">{stats.total}</p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Repasadas en esta sesión
-          </p>
-          <p className="mt-1 text-3xl font-bold text-slate-800">
-            {Math.min(index, queue.length)}
-          </p>
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-900/[0.06] dark:bg-white/10">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-[#34C759] to-[#0066FF] transition-all duration-500"
+            style={{ width: `${100 - duePercent}%` }}
+          />
         </div>
       </section>
 
-      <section className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="min-w-[220px] flex-1 text-sm">
-            <span className="mb-1 block font-medium text-slate-600">Cuaderno de origen</span>
+      <section className="app-glass rounded-3xl p-4 sm:p-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
+              Mazos
+            </p>
+            <h2 className="mt-1 text-[18px] font-semibold tracking-[-0.02em] text-slate-800 dark:text-white/90">
+              Elige un mazo para empezar
+            </h2>
+          </div>
+          <span className="text-[10.5px] text-slate-400 dark:text-white/30">
+            {decks.length} mazo{decks.length === 1 ? "" : "s"}
+          </span>
+        </div>
+
+        {loading ? (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2].map((item) => (
+              <div key={item} className="h-40 animate-pulse rounded-3xl border border-white/40 bg-white/20 dark:border-white/5 dark:bg-white/[0.03]" />
+            ))}
+          </div>
+        ) : (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {decks.map((deck) => {
+              const deckDue = deck.cards.filter((card) => isDue(card)).length;
+              const deckLearned = learnedCount(deck.cards);
+              const percent = deck.cards.length > 0 ? (deckLearned / deck.cards.length) * 100 : 0;
+              return (
+                <button
+                  key={deck.id}
+                  type="button"
+                  onClick={() => openDeck(deck.id)}
+                  className="group relative overflow-hidden rounded-3xl border border-white/55 bg-white/35 p-4 text-left shadow-[0_18px_45px_-32px_rgba(15,23,42,0.7)] backdrop-blur-3xl transition-all duration-200 ease-mac hover:-translate-y-0.5 hover:border-white/80 hover:bg-white/45 dark:border-white/10 dark:bg-black/25 dark:hover:border-white/20 dark:hover:bg-white/[0.06]"
+                >
+                  <span
+                    className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full opacity-20 blur-2xl"
+                    style={{ backgroundColor: deck.color }}
+                  />
+                  <div className="relative flex items-start justify-between gap-3">
+                    <span
+                      className="flex h-10 w-10 items-center justify-center rounded-2xl text-white shadow-lg"
+                      style={{ background: `linear-gradient(145deg, ${deck.color}, ${deck.color}aa)` }}
+                    >
+                      <Layers className="h-4 w-4" />
+                    </span>
+                    <span className="rounded-full border border-white/50 bg-white/45 px-2 py-1 text-[9.5px] font-medium text-slate-500 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06] dark:text-white/45">
+                      {deck.cards.length} tarjeta{deck.cards.length === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  <p className="relative mt-4 line-clamp-2 text-[15px] font-semibold leading-tight tracking-[-0.02em] text-slate-900 dark:text-white/90">
+                    {deck.name}
+                  </p>
+                  <div className="relative mt-3 flex items-center justify-between gap-2 text-[10.5px]">
+                    <span className="text-[#1a9e3a] dark:text-[#7ee69a]">
+                      {deckLearned} aprendida{deckLearned === 1 ? "" : "s"}
+                    </span>
+                    <span className="text-[#c27400] dark:text-[#ffc266]">
+                      {deckDue} pendiente{deckDue === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  <div className="relative mt-2 h-1.5 overflow-hidden rounded-full bg-slate-900/[0.07] dark:bg-white/10">
+                    <div
+                      className="h-full rounded-full transition-[width] duration-500"
+                      style={{ width: `${percent}%`, backgroundColor: deck.color }}
+                    />
+                  </div>
+                  <span className="relative mt-3 flex items-center justify-end text-[10px] font-semibold text-[#0066FF] dark:text-[#8ab9ff]">
+                    Abrir mazo
+                    <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="grid gap-3 lg:grid-cols-2">
+        <div className="app-glass rounded-3xl p-4 sm:p-5">
+          <h2 className="flex items-center gap-2 text-[13px] font-semibold text-slate-800 dark:text-white/85">
+            <Sparkles className="h-4 w-4 text-[#AF52DE]" /> Generar desde un cuaderno
+          </h2>
+          <p className="mt-1 text-[10.5px] leading-4 text-slate-500 dark:text-white/35">
+            La IA crea las tarjetas; si no hay modelo configurado, se extraen del texto del cuaderno.
+          </p>
+          <div className="mt-3 flex gap-2">
             <select
-              value={notebookId}
-              onChange={(event) => setNotebookId(event.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-violet-300"
+              value={generateNotebook}
+              onChange={(event) => setGenerateNotebook(event.target.value)}
+              className="h-9 min-w-0 flex-1 rounded-xl border border-white/60 bg-white/40 px-3 text-[12px] text-slate-800 shadow-inner backdrop-blur-xl outline-none focus:border-[#0066FF] dark:border-white/10 dark:bg-white/[0.055] dark:text-white/90"
+              aria-label="Cuaderno de origen"
             >
               <option value="">Selecciona un cuaderno</option>
               {notebooks.map((notebook) => (
@@ -281,178 +674,35 @@ function FlashcardsTab({
                 </option>
               ))}
             </select>
-          </label>
-          <Button onClick={generate} disabled={busy || !notebookId}>
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            Generar tarjetas
-          </Button>
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          La IA crea las tarjetas; si no tienes una configurada, se extraen automáticamente del
-          texto del cuaderno.
-        </p>
-      </section>
-
-      <section className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
-            Sesión de repaso
-          </h2>
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <button
-              type="button"
-              onClick={() => setDueOnly(true)}
-              className={cn(
-                "rounded-full px-3 py-1 font-medium",
-                dueOnly ? "bg-violet-100 text-violet-700" : "bg-slate-100 text-slate-500",
-              )}
-            >
-              Pendientes
-            </button>
-            <button
-              type="button"
-              onClick={() => setDueOnly(false)}
-              className={cn(
-                "rounded-full px-3 py-1 font-medium",
-                !dueOnly ? "bg-violet-100 text-violet-700" : "bg-slate-100 text-slate-500",
-              )}
-            >
-              Todas
-            </button>
-            <Button variant="ghost" size="icon" onClick={() => void load()} aria-label="Recargar">
-              <RotateCcw className="h-4 w-4" />
+            <Button onClick={() => void generate()} disabled={busy || !generateNotebook} className="shrink-0">
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              Generar
             </Button>
           </div>
         </div>
 
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
-          </div>
-        ) : queue.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-violet-200 bg-violet-50/40 p-8 text-center">
-            <CheckCircle2 className="mx-auto h-9 w-9 text-emerald-500" />
-            <p className="mt-2 font-semibold">
-              {dueOnly ? "No tienes tarjetas pendientes hoy" : "Todavía no hay tarjetas"}
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Genera flashcards desde un cuaderno o cambia a «Todas» para repasar igualmente.
-            </p>
-          </div>
-        ) : index >= queue.length ? (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-8 text-center">
-            <CheckCircle2 className="mx-auto h-9 w-9 text-emerald-500" />
-            <p className="mt-2 font-semibold">Sesión completada</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Has repasado {queue.length} tarjetas. Vuelve mañana para consolidar.
-            </p>
-            <Button variant="secondary" className="mt-4" onClick={() => void load()}>
-              <RotateCcw className="h-4 w-4" /> Empezar otra vez
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <p className="text-xs text-slate-500">
-              Tarjeta {index + 1} de {queue.length}
-            </p>
-            <button
-              type="button"
-              onClick={() => setFlipped((value) => !value)}
-              className="flex min-h-[220px] w-full flex-col items-center justify-center rounded-xl border border-border bg-card p-6 text-center transition-colors hover:border-foreground/20"
-            >
-              <span className="label-caps">
-                {flipped ? "Respuesta" : "Pregunta"}
-              </span>
-              <span className="mt-3 whitespace-pre-wrap text-lg font-semibold leading-relaxed text-slate-800">
-                {flipped ? current.back : current.front}
-              </span>
-              {!flipped && (
-                <span className="mt-4 text-xs text-slate-400">Pulsa la tarjeta para ver la respuesta</span>
-              )}
-            </button>
-
-            {flipped && (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <Button variant="secondary" onClick={() => review(1)} disabled={busy}>
-                  Otra vez
-                </Button>
-                <Button variant="secondary" onClick={() => review(3)} disabled={busy}>
-                  Difícil
-                </Button>
-                <Button onClick={() => review(4)} disabled={busy}>
-                  Bien
-                </Button>
-                <Button variant="secondary" onClick={() => review(5)} disabled={busy}>
-                  Fácil
-                </Button>
-              </div>
-            )}
-            <p className="text-center text-xs text-muted-foreground">
-              La tarjeta volverá justo cuando estés a punto de olvidarla (repaso espaciado SM-2).
-            </p>
-          </div>
-        )}
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm">
-          <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500">
-            <Plus className="h-4 w-4" /> Añadir tarjeta manual
+        <div className="app-glass rounded-3xl p-4 sm:p-5">
+          <h2 className="flex items-center gap-2 text-[13px] font-semibold text-slate-800 dark:text-white/85">
+            <Plus className="h-4 w-4 text-[#0066FF]" /> Añadir tarjeta manual
           </h2>
           <div className="mt-3 space-y-2">
-            <input
+            <Input
               value={front}
               onChange={(event) => setFront(event.target.value)}
               placeholder="Pregunta o concepto"
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-violet-300"
+              aria-label="Pregunta de la tarjeta"
             />
             <textarea
               value={back}
               onChange={(event) => setBack(event.target.value)}
               placeholder="Respuesta o definición"
-              className="min-h-[80px] w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-violet-300"
+              className="min-h-[70px] w-full rounded-xl border border-white/60 bg-white/40 px-3 py-2 text-[12px] text-slate-800 shadow-inner backdrop-blur-xl outline-none placeholder:text-slate-400 focus:border-[#0066FF] dark:border-white/10 dark:bg-white/[0.055] dark:text-white/90 dark:placeholder:text-white/25"
+              aria-label="Respuesta de la tarjeta"
             />
-            <Button onClick={addCard} disabled={busy} className="w-full">
-              <Plus className="h-4 w-4" /> Añadir
+            <Button onClick={() => void addCard()} disabled={adding} className="w-full">
+              {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              Añadir al mazo
             </Button>
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
-            Mis tarjetas ({allCards.length || stats.total})
-          </h2>
-          <div className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1">
-            {(allCards.length > 0 ? allCards : queue).map((card) => (
-              <div
-                key={card.id}
-                className="flex items-start gap-2 rounded-xl border border-slate-100 bg-slate-50/60 p-2.5"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-semibold text-slate-700">{card.front}</p>
-                  <p className="truncate text-xs text-muted-foreground">{card.back}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeCard(card.id)}
-                  className="rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-500"
-                  aria-label="Eliminar tarjeta"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))}
-            {(allCards.length > 0 ? allCards : queue).length === 0 && (
-              <p className="py-6 text-center text-xs text-muted-foreground">
-                Aún no hay tarjetas. Genera algunas desde un cuaderno.
-              </p>
-            )}
           </div>
         </div>
       </section>
@@ -461,27 +711,28 @@ function FlashcardsTab({
 }
 
 // --------------------------------------------------------------------------- //
-// Exámenes
+// Modo examen
 // --------------------------------------------------------------------------- //
 function ExamsTab({
   notebooks,
-  notebookId,
-  setNotebookId,
   notify,
   busy,
   setBusy,
 }: {
   notebooks: Notebook[];
-  notebookId: string;
-  setNotebookId: (id: string) => void;
   notify: (message: string | null) => void;
   busy: boolean;
   setBusy: (value: boolean) => void;
 }) {
+  const [notebookId, setNotebookId] = useState(notebooks[0]?.id ?? "");
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [active, setActive] = useState<Quiz | null>(null);
   const [answers, setAnswers] = useState<number[]>([]);
   const [result, setResult] = useState<QuizResult | null>(null);
+
+  useEffect(() => {
+    if (!notebookId && notebooks[0]) setNotebookId(notebooks[0].id);
+  }, [notebookId, notebooks]);
 
   const load = useCallback(async () => {
     try {
@@ -555,15 +806,17 @@ function ExamsTab({
   }
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm">
+    <div className="space-y-4">
+      <section className="app-glass rounded-3xl p-4 sm:p-5">
         <div className="flex flex-wrap items-end gap-3">
-          <label className="min-w-[220px] flex-1 text-sm">
-            <span className="mb-1 block font-medium text-slate-600">Cuaderno para el examen</span>
+          <label className="min-w-[220px] flex-1 text-[12px]">
+            <span className="mb-1 block font-medium text-slate-500 dark:text-white/40">
+              Cuaderno para el examen
+            </span>
             <select
               value={notebookId}
               onChange={(event) => setNotebookId(event.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-300"
+              className="h-9 w-full rounded-xl border border-white/60 bg-white/40 px-3 text-[12px] text-slate-800 shadow-inner backdrop-blur-xl outline-none focus:border-[#0066FF] dark:border-white/10 dark:bg-white/[0.055] dark:text-white/90"
             >
               <option value="">Selecciona un cuaderno</option>
               {notebooks.map((notebook) => (
@@ -573,22 +826,24 @@ function ExamsTab({
               ))}
             </select>
           </label>
-          <Button onClick={generate} disabled={busy || !notebookId}>
+          <Button onClick={() => void generate()} disabled={busy || !notebookId}>
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             Crear examen
           </Button>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="mt-2 text-[10.5px] text-slate-500 dark:text-white/35">
           Preguntas tipo test con cuatro opciones y explicación de cada respuesta.
         </p>
       </section>
 
       {active && (
-        <section className="space-y-4 rounded-xl border border-border bg-card p-5">
+        <section className="app-glass space-y-4 rounded-3xl p-4 sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <h2 className="text-lg font-bold">{active.title}</h2>
-              <p className="text-xs text-muted-foreground">
+              <h2 className="text-[17px] font-semibold tracking-[-0.02em] text-slate-900 dark:text-white/90">
+                {active.title}
+              </h2>
+              <p className="text-[10.5px] text-slate-500 dark:text-white/35">
                 {active.questions.length} preguntas
                 {result ? ` · Nota: ${result.score}/${result.total}` : ""}
               </p>
@@ -605,15 +860,15 @@ function ExamsTab({
             </Button>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {active.questions.map((question, questionIndex) => {
               const detail = result?.details[questionIndex];
               return (
                 <div
                   key={questionIndex}
-                  className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                  className="rounded-2xl border border-white/55 bg-white/35 p-4 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04]"
                 >
-                  <p className="font-semibold text-slate-800">
+                  <p className="text-[13px] font-semibold text-slate-800 dark:text-white/85">
                     {questionIndex + 1}. {question.question}
                   </p>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -632,14 +887,14 @@ function ExamsTab({
                             setAnswers(next);
                           }}
                           className={cn(
-                            "flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm transition-all",
+                            "flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-[12px] transition-all",
                             correct
-                              ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                              ? "border-[#34C759]/40 bg-[#34C759]/10 text-[#1a7f3a] dark:text-[#7ee69a]"
                               : wrong
-                                ? "border-rose-300 bg-rose-50 text-rose-800"
+                                ? "border-rose-300/40 bg-rose-500/10 text-rose-700 dark:text-rose-200"
                                 : selected
-                                  ? "border-indigo-300 bg-indigo-50 text-indigo-800"
-                                  : "border-slate-200 hover:border-indigo-200 hover:bg-slate-50",
+                                  ? "border-[#0066FF]/35 bg-[#0066FF]/10 text-[#004fcc] dark:text-[#9cc4ff]"
+                                  : "border-white/55 bg-white/25 hover:border-[#0066FF]/25 hover:bg-white/40 dark:border-white/10 dark:bg-white/[0.03]",
                           )}
                         >
                           {correct ? (
@@ -657,12 +912,12 @@ function ExamsTab({
                     })}
                   </div>
                   {result && question.explanation && (
-                    <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                    <p className="mt-2 rounded-lg bg-slate-900/[0.04] px-3 py-2 text-[10.5px] text-slate-600 dark:bg-white/[0.05] dark:text-white/45">
                       {question.explanation}
                     </p>
                   )}
                   {result && detail === false && (
-                    <p className="mt-1 text-xs font-medium text-rose-600">
+                    <p className="mt-1 text-[10.5px] font-medium text-rose-600 dark:text-rose-300">
                       Respuesta correcta: {question.options[question.answer]}
                     </p>
                   )}
@@ -673,21 +928,21 @@ function ExamsTab({
 
           {!result ? (
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs text-slate-500">
+              <p className="text-[10.5px] text-slate-500 dark:text-white/35">
                 {answered} de {active.questions.length} respondidas
               </p>
-              <Button onClick={submit} disabled={busy || answered < active.questions.length}>
+              <Button onClick={() => void submit()} disabled={busy || answered < active.questions.length}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                 Corregir examen
               </Button>
             </div>
           ) : (
-            <div className="rounded-2xl border border-indigo-200 bg-white p-4 text-center">
-              <p className="text-sm text-muted-foreground">Resultado</p>
-              <p className="text-3xl font-bold text-indigo-700">
+            <div className="rounded-2xl border border-[#0066FF]/20 bg-[#0066FF]/[0.06] p-4 text-center">
+              <p className="text-[10.5px] text-slate-500 dark:text-white/35">Resultado</p>
+              <p className="text-[28px] font-semibold tracking-[-0.05em] text-[#0066FF] dark:text-[#8ab9ff]">
                 {result.score} / {result.total}
               </p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-[11px] text-slate-500 dark:text-white/35">
                 {Math.round((result.score / Math.max(result.total, 1)) * 100)}% de aciertos
               </p>
             </div>
@@ -695,27 +950,29 @@ function ExamsTab({
         </section>
       )}
 
-      <section className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+      <section className="app-glass rounded-3xl p-4 sm:p-5">
+        <h2 className="text-[13px] font-semibold text-slate-800 dark:text-white/85">
           Historial de exámenes
         </h2>
         <div className="mt-3 space-y-2">
           {quizzes.length === 0 && (
-            <p className="py-6 text-center text-sm text-muted-foreground">
+            <p className="py-6 text-center text-[12px] text-slate-500 dark:text-white/35">
               Todavía no has creado ningún examen.
             </p>
           )}
           {quizzes.map((quiz) => (
             <div
               key={quiz.id}
-              className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/60 p-3"
+              className="flex items-center gap-3 rounded-2xl border border-white/55 bg-white/30 p-3 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04]"
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#0066FF]/10 text-[#0066FF] dark:bg-[#0066FF]/15 dark:text-[#8ab9ff]">
                 <GraduationCap className="h-4 w-4" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{quiz.title}</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="truncate text-[12px] font-semibold text-slate-800 dark:text-white/80">
+                  {quiz.title}
+                </p>
+                <p className="text-[10px] text-slate-500 dark:text-white/35">
                   {quiz.completed_at
                     ? `Nota: ${quiz.score}/${quiz.total} · ${new Date(
                         quiz.completed_at,
@@ -724,7 +981,7 @@ function ExamsTab({
                 </p>
               </div>
               {quiz.completed_at && (
-                <span className="hidden items-center gap-1 text-xs font-semibold text-indigo-600 sm:flex">
+                <span className="hidden items-center gap-1 text-[10.5px] font-semibold text-[#0066FF] dark:text-[#8ab9ff] sm:flex">
                   {Math.round(((quiz.score ?? 0) / Math.max(quiz.total, 1)) * 100)}%
                   <ChevronRight className="h-3 w-3" />
                 </span>
@@ -737,14 +994,14 @@ function ExamsTab({
                   setResult(null);
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
-                className="rounded-lg px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
+                className="rounded-lg px-2 py-1 text-[10.5px] font-medium text-[#0066FF] hover:bg-[#0066FF]/10 dark:text-[#8ab9ff]"
               >
                 Abrir
               </button>
               <button
                 type="button"
-                onClick={() => removeQuiz(quiz.id)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-500"
+                onClick={() => void removeQuiz(quiz.id)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 dark:text-white/30"
                 aria-label="Eliminar examen"
               >
                 <Trash2 className="h-4 w-4" />

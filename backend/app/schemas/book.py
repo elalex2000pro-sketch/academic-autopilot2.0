@@ -37,6 +37,7 @@ class BookRead(BaseModel):
     error_message: str | None = None
     total_sections: int
     total_chars: int
+    text_available: bool = True
     current_section_index: int
     progress_percent: float
     last_opened_at: datetime | None = None

@@ -56,6 +56,8 @@ class Book(UUIDPkMixin, TimestampMixin, Base):
 
     total_sections: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     total_chars: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # False para PDFs escaneados: se leen dibujando las paginas en canvas.
+    text_available: Mapped[bool] = mapped_column(default=True, nullable=False)
     current_section_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     progress_percent: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     last_opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

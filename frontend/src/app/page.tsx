@@ -69,7 +69,7 @@ const QUICK_LINKS: QuickLink[] = [
   { href: "/studio", label: "IA Studio", icon: Wand2, tone: "from-[#c47dff] to-[#7b2fe0]" },
   { href: "/notebooks", label: "Cuadernos", icon: NotebookPen, tone: "from-[#ffb340] to-[#e07800]" },
   { href: "/planner", label: "Planificador", icon: CalendarRange, tone: "from-[#ff7b72] to-[#d62b23]" },
-  { href: "/subjects", label: "Asignaturas", icon: Library, tone: "from-[#5ddc82] to-[#1a9e3a]" },
+  { href: "/academics", label: "Académico", icon: Library, tone: "from-[#5ddc82] to-[#1a9e3a]" },
   { href: "/focus", label: "Enfoque", icon: Target, tone: "from-[#5fe0d5] to-[#0a8a83]" },
   { href: "/review", label: "Repaso", icon: Brain, tone: "from-[#8f8dff] to-[#4a48d6]" },
   { href: "/classes", label: "Clases", icon: Users, tone: "from-[#ff7ba6] to-[#d61a5b]" },

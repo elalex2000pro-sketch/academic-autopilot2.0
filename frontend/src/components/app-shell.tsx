@@ -9,10 +9,9 @@ import {
   Brain,
   CalendarCheck,
   CalendarRange,
-  ClipboardList,
   FolderOpen,
+  GraduationCap,
   LayoutDashboard,
-  Library,
   Loader2,
   LogOut,
   NotebookPen,
@@ -46,8 +45,7 @@ const NAV_GROUPS = [
     label: "Estudia",
     items: [
       { href: "/library", label: "Biblioteca", icon: BookOpen },
-      { href: "/subjects", label: "Asignaturas", icon: Library },
-      { href: "/exams", label: "Exámenes", icon: ClipboardList },
+      { href: "/academics", label: "Académico", icon: GraduationCap },
       { href: "/notebooks", label: "Cuadernos", icon: NotebookPen },
       { href: "/review", label: "Repaso", icon: Brain },
       { href: "/transcribe", label: "Transcribir", icon: AudioLines },
@@ -77,6 +75,13 @@ function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   if (href === "/planner") {
     return pathname.startsWith("/planner") || pathname.startsWith("/calendar") || pathname.startsWith("/schedule");
+  }
+  if (href === "/academics") {
+    return (
+      pathname.startsWith("/academics") ||
+      pathname.startsWith("/subjects") ||
+      pathname.startsWith("/exams")
+    );
   }
   return pathname.startsWith(href);
 }
