@@ -137,7 +137,9 @@ class GoogleClassroomConnector(BaseConnector):
                     lambda kw=kwargs: service.courses().courseWork().list(**kw).execute()
                 )
                 for work in response.get("courseWork", []):
-                    completed = await self._is_completed(service, course_id, work.get("id"))
+                    completed, completion_known = await self._submission_state(
+                        service, course_id, work.get("id")
+                    )
                     tasks.append(
                         NormalizedTask(
                             external_id=str(work.get("id")),
@@ -146,6 +148,7 @@ class GoogleClassroomConnector(BaseConnector):
                             description=work.get("description"),
                             due_at=self._parse_due(work.get("dueDate"), work.get("dueTime")),
                             completed=completed,
+                            completion_known=completion_known,
                             url=work.get("alternateLink"),
                             extra={
                                 "max_points": work.get("maxPoints"),
@@ -158,10 +161,16 @@ class GoogleClassroomConnector(BaseConnector):
                     break
         return tasks
 
-    async def _is_completed(self, service, course_id: str, coursework_id: str | None) -> bool:
-        """Consulta el estado de la entrega del alumno ('me')."""
+    async def _submission_state(
+        self, service, course_id: str, coursework_id: str | None
+    ) -> tuple[bool, bool]:
+        """Devuelve (entregada, estado_fiable) para el alumno actual ('me').
+
+        `completion_known=False` evita que un fallo de permisos se interprete
+        como "no entregada" y reabra una tarea que el usuario completo.
+        """
         if not coursework_id:
-            return False
+            return False, False
         try:
             response = await self._run(
                 lambda: service.courses()
@@ -173,9 +182,14 @@ class GoogleClassroomConnector(BaseConnector):
         except ConnectorError as exc:
             # La falta de permiso para ver submissions no debe romper el sync.
             logger.debug("No se pudo leer submission %s: %s", coursework_id, exc)
-            return False
+            return False, False
         submissions = response.get("studentSubmissions", [])
-        return any(s.get("state") in _COMPLETED_STATES for s in submissions)
+        return any(self._submission_is_completed(item) for item in submissions), True
+
+    @staticmethod
+    def _submission_is_completed(submission: dict[str, Any]) -> bool:
+        """Una entrega cuenta como hecha si se entrego o ya se devolvio."""
+        return submission.get("state") in _COMPLETED_STATES
 
     @staticmethod
     def _parse_due(due_date: dict | None, due_time: dict | None) -> datetime | None:

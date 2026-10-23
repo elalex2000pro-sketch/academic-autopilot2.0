@@ -9,8 +9,6 @@ import {
   CalendarClock,
   CalendarRange,
   Check,
-  CheckCircle2,
-  FileSpreadsheet,
   FolderOpen,
   Library,
   ListTodo,
@@ -27,34 +25,17 @@ import {
 import { useAuth } from "@/components/auth-provider";
 import { usePreferences } from "@/components/preferences-provider";
 import { SyncStatus } from "@/components/sync-status";
+import { TaskList } from "@/components/task-list";
 import { useRealtime } from "@/components/realtime-provider";
+import { useTaskManager } from "@/hooks/use-task-manager";
 import { api } from "@/lib/api";
-import { formatDueLabel, isTaskOverdue, taskTitleClass } from "@/lib/task-utils";
-import type { Book, DailyAgenda, DailyAgendaItem, OptimizedPlan, Task } from "@/lib/types";
+import type { Book, DailyAgenda, DailyAgendaItem, OptimizedPlan } from "@/lib/types";
 import { cn, formatMinutes } from "@/lib/utils";
 
 const PRIORITY_COLOR: Record<string, string> = {
   urgent: "#ff453a",
   long_project: "#bf5af2",
   short_task: "#0a84ff",
-};
-
-const PRIORITY_LABEL: Record<string, string> = {
-  urgent: "Urgente",
-  long_project: "Proyecto",
-  short_task: "Corta",
-};
-
-const PRIORITY_RANK: Record<string, number> = {
-  urgent: 0,
-  long_project: 1,
-  short_task: 2,
-};
-
-const SOURCE_LABEL: Record<string, string> = {
-  moodle: "Moodle",
-  google_classroom: "Classroom",
-  manual: "Manual",
 };
 
 type QuickLink = {
@@ -182,31 +163,36 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { autoStrikeOverdue } = usePreferences();
   const [plan, setPlan] = useState<OptimizedPlan | null>(null);
-  const [tasks, setTasks] = useState<Task[]>([]);
   const [agenda, setAgenda] = useState<DailyAgenda | null>(null);
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [, setTick] = useState(0);
 
+  const {
+    activeTasks,
+    overdueTasks,
+    loading: tasksLoading,
+    error: tasksError,
+    refresh: refreshTasks,
+    completeTask,
+    deleteTask,
+  } = useTaskManager({ autoLoad: false });
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [optimized, pending, today, library] = await Promise.all([
-        api.optimizedPlan(),
-        api.tasks({ status: "pending" }),
-        api.today(),
-        api.books().catch(() => []),
+      await Promise.all([
+        api.optimizedPlan().then(setPlan),
+        api.today().then(setAgenda),
+        api.books().then(setBooks).catch(() => setBooks([])),
+        refreshTasks({ silent: true }).catch(() => undefined),
       ]);
-      setPlan(optimized);
-      setTasks(pending);
-      setAgenda(today);
-      setBooks(library);
     } catch (error) {
       console.error(error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [refreshTasks]);
 
   useEffect(() => {
     load();
@@ -225,12 +211,17 @@ export default function DashboardPage() {
 
   const handleComplete = useCallback(
     async (id: string) => {
-      await api.completeTask(id);
-      await load();
+      try {
+        await completeTask(id);
+        await load();
+      } catch (error) {
+        console.error(error);
+      }
     },
-    [load],
+    [completeTask, load],
   );
 
+  const tasks = activeTasks;
   const name = user?.full_name?.trim() || user?.email.split("@")[0] || "estudiante";
   const now = new Date();
   const dateLabel = capitalize(
@@ -288,14 +279,6 @@ export default function DashboardPage() {
   const projectCount = tasks.filter((task) => task.priority === "long_project").length;
   const shortCount = tasks.filter((task) => task.priority === "short_task").length;
   const taskTotal = Math.max(1, tasks.length);
-  const overdueCount = autoStrikeOverdue ? tasks.filter((task) => isTaskOverdue(task)).length : 0;
-  const sortedTasks = [...tasks].sort((a, b) => {
-    const priority = (PRIORITY_RANK[a.priority] ?? 3) - (PRIORITY_RANK[b.priority] ?? 3);
-    if (priority !== 0) return priority;
-    const aDue = a.due_at ? new Date(a.due_at).getTime() : Number.POSITIVE_INFINITY;
-    const bDue = b.due_at ? new Date(b.due_at).getTime() : Number.POSITIVE_INFINITY;
-    return aDue - bDue;
-  });
 
   return (
     <div className="relative mx-auto max-w-[1500px] px-5 pb-12 pt-6 sm:px-7 lg:pt-8">
@@ -314,7 +297,7 @@ export default function DashboardPage() {
             {tasks.length > 0
               ? `Tienes ${tasks.length} tarea${tasks.length === 1 ? "" : "s"} pendiente${
                   tasks.length === 1 ? "" : "s"
-                }${overdueCount > 0 ? `, ${overdueCount} vencida${overdueCount === 1 ? "" : "s"}` : ""}. Tu plan de hoy ya está repartido en huecos.`
+                }. Tu plan de hoy ya está repartido en huecos.`
               : "No tienes tareas pendientes. Buen momento para adelantar apuntes o crear un cuaderno nuevo."}
           </p>
 
@@ -357,9 +340,7 @@ export default function DashboardPage() {
               <p className="mt-1.5 text-[10.5px] text-slate-500 dark:text-white/35">
                 {tasks.length === 0
                   ? "Todo al día"
-                  : overdueCount > 0
-                    ? `${overdueCount} vencida${overdueCount === 1 ? "" : "s"}`
-                    : `${urgentCount} urgente${urgentCount === 1 ? "" : "s"}`}
+                  : `${urgentCount} urgente${urgentCount === 1 ? "" : "s"}`}
               </p>
             </div>
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-900/[0.04] text-slate-500 ring-1 ring-slate-900/[0.05] dark:bg-white/[0.055] dark:text-white/45 dark:ring-white/[0.05]">
@@ -675,118 +656,16 @@ export default function DashboardPage() {
         </section>
 
         <div className="min-w-0 space-y-4">
-          {/* ---- Tareas compactas ---- */}
-          <section className="app-glass rounded-3xl p-4 sm:p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-slate-800 dark:text-white/90">
-                  Tareas pendientes
-                </h2>
-                <p className="mt-0.5 text-[10.5px] text-slate-500 dark:text-white/35">
-                  {tasks.length} activa{tasks.length === 1 ? "" : "s"}
-                  {overdueCount > 0 ? ` · ${overdueCount} vencida${overdueCount === 1 ? "" : "s"}` : ""}
-                </p>
-              </div>
-              <button
-                type="button"
-                title="Descargar todas las tareas en Excel"
-                aria-label="Descargar todas las tareas en Excel"
-                onClick={() => api.exportTasksExcel().catch(() => undefined)}
-                className="app-glass-soft flex h-8 w-8 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-white/45 hover:text-slate-800 dark:text-white/35 dark:hover:bg-white/[0.08] dark:hover:text-white/75"
-              >
-                <FileSpreadsheet className="h-3.5 w-3.5" />
-              </button>
-            </div>
-
-            <div className="mt-3 space-y-0.5">
-              {loading && (
-                <div className="space-y-1.5">
-                  {[0, 1, 2, 3].map((item) => (
-                    <div key={item} className="flex animate-pulse items-center gap-2.5 py-2">
-                      <span className="h-3 w-[2px] rounded-full bg-slate-900/[0.07] dark:bg-white/[0.08]" />
-                      <span className="h-4 w-4 rounded-full bg-slate-900/[0.06] dark:bg-white/[0.07]" />
-                      <span className="h-3 flex-1 rounded-full bg-slate-900/[0.05] dark:bg-white/[0.06]" />
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {!loading && sortedTasks.length === 0 && (
-                <div className="flex flex-col items-center py-8 text-center">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#30d158]/10 text-[#1a9e3a] ring-1 ring-[#30d158]/15 dark:text-[#30d158]/80">
-                    <CheckCircle2 className="h-4 w-4" strokeWidth={1.9} />
-                  </span>
-                  <p className="mt-2 text-[12px] font-medium text-slate-600 dark:text-white/65">
-                    Todo al día
-                  </p>
-                  <p className="mt-0.5 text-[10.5px] text-slate-400 dark:text-white/30">
-                    No hay tareas pendientes.
-                  </p>
-                </div>
-              )}
-
-              {!loading &&
-                sortedTasks.map((task) => {
-                  const color = PRIORITY_COLOR[task.priority] ?? "#8e8e93";
-                  const completed = task.status === "completed";
-                  const overdue = autoStrikeOverdue && isTaskOverdue(task);
-                  return (
-                    <div
-                      key={task.id}
-                      className="group flex items-center gap-2.5 rounded-xl px-1.5 py-2 transition-colors hover:bg-slate-900/[0.035] dark:hover:bg-white/[0.045]"
-                    >
-                      <span
-                        className="h-7 w-[2px] shrink-0 rounded-full"
-                        style={{ backgroundColor: color }}
-                      />
-                      <button
-                        type="button"
-                        aria-label={`Completar ${task.title}`}
-                        title="Completar tarea"
-                        onClick={() => void handleComplete(task.id)}
-                        className={cn(
-                          "flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-full border transition-colors",
-                          completed
-                            ? "border-[#30d158]/60 bg-[#30d158]/15 text-[#1a9e3a] dark:text-[#30d158]"
-                            : "border-slate-300 text-transparent hover:border-[#30d158]/70 hover:bg-[#30d158]/10 hover:text-[#1a9e3a] dark:border-white/20 dark:hover:text-[#30d158]",
-                        )}
-                      >
-                        <Check className="h-2.5 w-2.5" strokeWidth={3} />
-                      </button>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex min-w-0 items-center gap-1.5">
-                          <p
-                            className={cn(
-                              "truncate text-[12.5px]",
-                              taskTitleClass(task, autoStrikeOverdue),
-                            )}
-                          >
-                            {task.title}
-                          </p>
-                          {overdue && (
-                            <span className="shrink-0 rounded-full bg-rose-500/10 px-1.5 py-0.5 text-[8.5px] font-semibold uppercase tracking-[0.05em] text-rose-600 dark:text-rose-300">
-                              Vencida
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-0.5 truncate text-[10px] text-slate-400 dark:text-white/30">
-                          {formatDueLabel(task.due_at)} · {formatMinutes(task.estimated_minutes)} ·{" "}
-                          {SOURCE_LABEL[task.source] ?? task.source}
-                        </p>
-                      </div>
-
-                      <span
-                        className="shrink-0 text-[9px] font-medium uppercase tracking-[0.05em] opacity-80"
-                        style={{ color }}
-                      >
-                        {PRIORITY_LABEL[task.priority] ?? task.priority}
-                      </span>
-                    </div>
-                  );
-                })}
-            </div>
-          </section>
+          {/* ---- Tareas pendientes: activas + historial de vencidas ---- */}
+          <TaskList
+            tasks={tasks}
+            historyTasks={overdueTasks}
+            loading={tasksLoading}
+            error={tasksError}
+            strikeHistory={autoStrikeOverdue}
+            onComplete={completeTask}
+            onDelete={deleteTask}
+          />
 
           {/* ---- Continuar leyendo ---- */}
           {continueBook ? (

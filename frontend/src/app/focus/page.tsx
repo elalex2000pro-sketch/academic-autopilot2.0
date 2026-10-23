@@ -18,6 +18,7 @@ import {
 import { DailyFocus } from "@/components/daily-focus";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api";
+import { markTaskCompleted, restoreTaskExclusion } from "@/lib/task-store";
 import type { DailyAgenda, FocusStats } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -145,8 +146,14 @@ export default function FocusPage() {
 
   const handleComplete = useCallback(
     async (id: string) => {
-      await api.completeTask(id);
-      await load();
+      markTaskCompleted(id);
+      try {
+        await api.completeTask(id);
+        await load();
+      } catch (error) {
+        restoreTaskExclusion("completed", id);
+        setNotice(errorMessage(error));
+      }
     },
     [load],
   );

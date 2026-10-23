@@ -32,7 +32,7 @@ _REQUIRED_FUNCTIONS = {
 }
 
 # Estados de entrega que consideramos "hecho". Un borrador no cuenta.
-_SUBMITTED_STATUSES = {"submitted"}
+_SUBMITTED_STATUSES = {"submitted", "graded"}
 
 
 class MoodleConnector(BaseConnector):
@@ -252,6 +252,11 @@ class MoodleConnector(BaseConnector):
         """Devuelve los IDs de asignaciones entregadas y si el dato es fiable."""
         if not assignment_ids:
             return set(), True
+        if self.user_id is None:
+            # Sin el id del alumno no se puede distinguir su entrega de la de
+            # otros companeros. Mejor no afirmar nada que marcar tareas ajenas.
+            logger.info("Moodle sin userid: no se puede verificar el estado de entrega")
+            return set(), False
 
         try:
             raw = await self._call(
@@ -281,7 +286,7 @@ class MoodleConnector(BaseConnector):
                     user_id = int(submission.get("userid"))
                 except (TypeError, ValueError):
                     user_id = None
-                if self.user_id is not None and user_id != self.user_id:
+                if user_id != self.user_id:
                     continue
                 status = str(submission.get("status") or "").lower()
                 if status in _SUBMITTED_STATUSES:

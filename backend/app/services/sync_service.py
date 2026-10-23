@@ -261,6 +261,11 @@ async def _upsert_tasks(
             created += 1
             continue
 
+        # Una tarea archivada es una eliminacion del usuario. Aunque el origen
+        # la siga devolviendo, no debe resucitar en la lista.
+        if current.status == TaskStatus.archived:
+            continue
+
         # Actualizacion de campos relevantes.
         changed = False
         if current.title != item.title:
@@ -272,12 +277,11 @@ async def _upsert_tasks(
         if course and current.course_id != course.id:
             current.course_id, changed = course.id, True
 
-        if item.completion_known:
-            if item.completed and current.status != TaskStatus.completed:
-                current.status, changed = TaskStatus.completed, True
-            elif not item.completed and current.status == TaskStatus.completed:
-                # Reabierta en origen.
-                current.status, changed = TaskStatus.pending, True
+        # El estado de entrega solo puede avanzar a completada. Nunca se
+        # reabre una tarea que el usuario ya completo en la app: la fuente
+        # externa puede no reflejar esa accion (o no permitir leer entregas).
+        if item.completion_known and item.completed and current.status != TaskStatus.completed:
+            current.status, changed = TaskStatus.completed, True
 
         if changed:
             updated += 1

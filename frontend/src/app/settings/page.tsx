@@ -362,11 +362,11 @@ function SettingsInner() {
           <div className="flex flex-col gap-4 rounded-2xl border border-white/60 bg-white/30 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-white/[0.06] dark:bg-white/[0.03]">
             <div className="min-w-0">
               <p id="auto-strike-label" className="text-[13px] font-semibold text-slate-800 dark:text-white/90">
-                Tachar automáticamente actividades vencidas
+                Atenuar actividades vencidas en el historial
               </p>
               <p className="mt-1 max-w-xl text-xs leading-5 text-muted-foreground">
-                Si una entrega ha pasado de fecha y sigue sin completarse, se mostrará tachada, con
-                opacidad reducida y un tono apagado. Puedes desactivarlo cuando quieras.
+                Las entregas vencidas ya no se acumulan en la lista activa: se mueven a
+                «Historial / Vencidas». Este ajuste solo cambia su aspecto dentro de ese historial.
               </p>
             </div>
             <Switch

@@ -22,13 +22,13 @@ import {
   X,
 } from "lucide-react";
 
-import { usePreferences } from "@/components/preferences-provider";
 import { useRealtime } from "@/components/realtime-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useTaskManager } from "@/hooks/use-task-manager";
 import { api, ApiError } from "@/lib/api";
-import { formatDueLabel, isTaskOverdue, taskTitleClass } from "@/lib/task-utils";
+import { formatDueLabel } from "@/lib/task-utils";
 import type { ClassEvent, Course, Task, TimetableEntry } from "@/lib/types";
 import { cn, formatMinutes } from "@/lib/utils";
 
@@ -208,12 +208,19 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedDay, setSelectedDay] = useState(todayKey);
   const [viewMode, setViewMode] = useState<"week" | "day">("week");
-  const [tasks, setTasks] = useState<Task[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [entries, setEntries] = useState<TimetableEntry[]>([]);
   const [events, setEvents] = useState<EnrichedClassEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<Notice | null>(null);
+
+  const {
+    activeTasks,
+    refresh: refreshTasks,
+    completeTask: completeManagedTask,
+    deleteTask: deleteManagedTask,
+  } = useTaskManager({ autoLoad: false });
+  const tasks = activeTasks;
 
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -239,19 +246,16 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
   const [replace, setReplace] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { autoStrikeOverdue } = usePreferences();
-
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const [taskList, courseList, timetableList, classList] = await Promise.all([
-        api.tasks(),
+      const [, courseList, timetableList, classList] = await Promise.all([
+        refreshTasks({ silent: true }),
         api.courses(),
         api.timetable(),
         api.classes().catch(() => []),
       ]);
 
-      setTasks(taskList);
       setCourses(courseList);
       setEntries(timetableList);
 
@@ -276,7 +280,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
     } finally {
       if (!silent) setLoading(false);
     }
-  }, []);
+  }, [refreshTasks]);
 
   useEffect(() => {
     load().catch(() => undefined);
@@ -378,8 +382,6 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
   const selectedTasks = useMemo(() => {
     const list = tasksByDay.get(selectedDay) ?? [];
     return [...list].sort((a, b) => {
-      const completed = Number(a.status === "completed") - Number(b.status === "completed");
-      if (completed !== 0) return completed;
       const aDue = a.due_at ? new Date(a.due_at).getTime() : Number.POSITIVE_INFINITY;
       const bDue = b.due_at ? new Date(b.due_at).getTime() : Number.POSITIVE_INFINITY;
       return aDue - bDue;
@@ -393,7 +395,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
     );
   }, [eventsByDay, selectedDay]);
 
-  const pendingSelected = selectedTasks.filter((task) => task.status !== "completed").length;
+  const pendingSelected = selectedTasks.length;
 
   const monthCells = useMemo(() => {
     const year = cursor.getFullYear();
@@ -412,9 +414,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
 
   const monthPending = useMemo(() => {
     const prefix = `${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}`;
-    return tasks.filter(
-      (task) => task.status !== "completed" && task.due_at && dayKey(task.due_at)?.startsWith(prefix),
-    ).length;
+    return tasks.filter((task) => task.due_at && dayKey(task.due_at)?.startsWith(prefix)).length;
   }, [cursor, tasks]);
 
   const monthEventCount = useMemo(() => {
@@ -486,8 +486,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
     setBusyTaskId(id);
     setNotice(null);
     try {
-      await api.completeTask(id);
-      await load(true);
+      await completeManagedTask(id);
     } catch (error) {
       setNotice({ tone: "error", text: errorMessage(error) });
     } finally {
@@ -497,17 +496,13 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
 
   async function removeTask(id: string) {
     if (busyTaskId) return;
-    const previous = tasks;
     setBusyTaskId(id);
     setNotice(null);
     setConfirmDeleteId(null);
-    // Borrado optimista: la tarea desaparece del estado (y del DOM) al instante.
-    setTasks((current) => current.filter((task) => task.id !== id));
     try {
-      await api.deleteTask(id);
+      await deleteManagedTask(id);
       setNotice({ tone: "success", text: "Tarea quitada del planificador." });
     } catch (error) {
-      setTasks(previous);
       setNotice({ tone: "error", text: errorMessage(error) });
     } finally {
       setBusyTaskId(null);
@@ -607,7 +602,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
           </h1>
           <p className="mt-2 max-w-2xl text-[12.5px] leading-5 text-slate-500 dark:text-white/45">
             Calendario y horario en una sola vista. Pulsa un día para ver sus clases, entregas y
-            exámenes; las tareas vencidas se marcan automáticamente.
+            exámenes; las tareas entregadas o vencidas dejan de ocupar tu lista.
           </p>
         </div>
 
@@ -1186,7 +1181,6 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                   {selectedTasks.map((task) => {
                     const course = task.course_id ? courseById.get(task.course_id) : undefined;
                     const completed = task.status === "completed";
-                    const overdue = autoStrikeOverdue && isTaskOverdue(task, now.getTime());
                     const busy = busyTaskId === task.id;
                     const confirming = confirmDeleteId === task.id;
                     return (
@@ -1214,19 +1208,9 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
 
                           <div className="min-w-0 flex-1">
                             <div className="flex min-w-0 items-center gap-2">
-                              <p
-                                className={cn(
-                                  "truncate text-[12.5px] font-medium",
-                                  taskTitleClass(task, autoStrikeOverdue),
-                                )}
-                              >
+                              <p className="truncate text-[12.5px] font-medium text-slate-700 dark:text-white/80">
                                 {task.title}
                               </p>
-                              {overdue && (
-                                <span className="shrink-0 rounded-full bg-rose-500/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.05em] text-rose-600 dark:text-rose-300">
-                                  Vencida
-                                </span>
-                              )}
                             </div>
                             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10.5px] text-slate-500 dark:text-white/35">
                               <span className="inline-flex items-center gap-1">

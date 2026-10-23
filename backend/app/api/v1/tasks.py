@@ -130,8 +130,25 @@ async def complete_task(task_id: uuid.UUID, current_user: CurrentUser, db: DbSes
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def delete_task(task_id: uuid.UUID, current_user: CurrentUser, db: DbSession) -> None:
+    """Archiva la tarea en lugar de borrarla.
+
+    El sync vuelve a encontrar el mismo `external_id` en Moodle/Classroom. Si
+    se borrara fisicamente, el siguiente sync la recrearia con un id nuevo y
+    volveria a aparecer. `archived` es un borrado logico persistente.
+    """
     task = await _get_owned_task(db, current_user.id, task_id)
-    await db.delete(task)
+    task.status = TaskStatus.archived
+
+    # Las subtareas del planificador dejan de tener sentido sin su tarea padre.
+    result = await db.execute(
+        select(Task).where(
+            Task.parent_task_id == task.id,
+            Task.status.in_([TaskStatus.pending, TaskStatus.in_progress]),
+        )
+    )
+    for subtask in result.scalars().all():
+        subtask.status = TaskStatus.archived
+
     await db.commit()
     notify(current_user.id, "tasks", {"action": "deleted", "id": str(task_id)})
 

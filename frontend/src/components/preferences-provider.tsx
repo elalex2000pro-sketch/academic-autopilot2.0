@@ -13,7 +13,7 @@ import {
 const STORAGE_KEY = "academic-autopilot-preferences";
 
 export interface Preferences {
-  /** Aplica tachado y tono apagado a las tareas vencidas sin completar. */
+  /** Aplica tachado y tono apagado a las vencidas dentro del historial. */
   autoStrikeOverdue: boolean;
 }
 

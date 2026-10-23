@@ -21,7 +21,7 @@ async def test_completed_assignments_filters_by_user(monkeypatch: pytest.MonkeyP
 
     async def fake_call(function: str, params: dict | None = None) -> object:
         assert function == "mod_assign_get_submissions"
-        assert params == {"assignmentids": [1, 2]}
+        assert params == {"assignmentids": [1, 2, 3]}
         return {
             "assignments": [
                 {
@@ -35,14 +35,18 @@ async def test_completed_assignments_filters_by_user(monkeypatch: pytest.MonkeyP
                         {"userid": 42, "status": "draft"},
                     ],
                 },
+                {
+                    "assignmentid": 3,
+                    "submissions": [{"userid": 42, "status": "graded"}],
+                },
             ],
             "warnings": [],
         }
 
     monkeypatch.setattr(connector, "_call", fake_call)
 
-    completed, known = await connector._completed_assignments([1, 2])
-    assert completed == {1}
+    completed, known = await connector._completed_assignments([1, 2, 3])
+    assert completed == {1, 3}
     assert known is True
 
 
@@ -56,6 +60,19 @@ async def test_completed_assignments_are_unknown_without_permission(
         raise ConnectorError("moodle", "accessexception: sin permiso", retriable=False)
 
     monkeypatch.setattr(connector, "_call", fake_call)
+
+    completed, known = await connector._completed_assignments([1])
+    assert completed == set()
+    assert known is False
+
+
+@pytest.mark.asyncio
+async def test_completed_assignments_are_unknown_without_user_id() -> None:
+    connector = MoodleConnector(
+        base_url="https://moodle.universidad.edu",
+        token="test-token-123",
+        user_id=None,
+    )
 
     completed, known = await connector._completed_assignments([1])
     assert completed == set()

@@ -86,7 +86,7 @@ const TUTORIALS: { match: RegExp; tutorial: Tutorial }[] = [
         "Calendario y horario en una sola vista: pulsa un día para ver sus clases y entregas.",
         "Los puntos de colores indican tareas, exámenes y eventos; el día de hoy queda resaltado.",
         "Añade tareas o clases desde la propia vista, o importa una foto o PDF de tu horario.",
-        "Las tareas vencidas se tachan automáticamente; puedes desactivarlo en «Ajustes».",
+        "Las tareas entregadas o vencidas dejan de ocupar la lista activa; las vencidas quedan en «Historial / Vencidas».",
       ],
     },
   },
