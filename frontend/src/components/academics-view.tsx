@@ -518,7 +518,7 @@ export function AcademicsView() {
                       </p>
                     </div>
                     <span className="flex items-center gap-1 rounded-full border border-white/50 bg-white/45 px-2 py-1 text-[9.5px] font-medium text-slate-500 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06] dark:text-white/45">
-                      {count} evaluación{count === 1 ? "" : "es"}
+                      {count} {count === 1 ? "evaluación" : "evaluaciones"}
                       <ChevronRight className="h-3 w-3 opacity-50 transition-transform group-hover:translate-x-0.5" />
                     </span>
                   </div>
@@ -680,8 +680,8 @@ export function AcademicsView() {
                       <span className="ml-1 text-[11px] font-medium text-slate-400 dark:text-white/30">/10</span>
                     </p>
                     <p className="mt-1 text-[10px] text-slate-500 dark:text-white/35">
-                      {selectedSummary?.graded_count ?? 0} evaluación
-                      {(selectedSummary?.graded_count ?? 0) === 1 ? "" : "es"}
+                      {selectedSummary?.graded_count ?? 0}{" "}
+                      {(selectedSummary?.graded_count ?? 0) === 1 ? "evaluación" : "evaluaciones"}
                       {selectedSummary?.total_weight
                         ? ` · peso ${selectedSummary.total_weight}`
                         : ""}
