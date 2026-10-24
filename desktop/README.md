@@ -23,15 +23,22 @@ Get-Content $env:AUTOPILOT_SMOKE_FILE
 
 También se puede apuntar a otro despliegue con `AUTOPILOT_APP_URL`.
 
-## Ventana transparente
+## Ventana transparente y marco nativo
 
 La interfaz está pensada para un escritorio real, no para una página con fondo propio:
 
-- `transparent: true` y `backgroundColor: "#00000000"` dejan ver el escritorio.
-- `frame: false` elimina la barra nativa; la ventana se arrastra desde la franja superior de la barra lateral.
+- Con «Modo Marco Transparente» activo (por defecto): `transparent: true`, `backgroundColor: "#00000000"` y `frame: false` dejan ver el escritorio y eliminan la barra nativa.
+- La ventana se arrastra desde la franja superior de la barra lateral (`-webkit-app-region: drag`); los semáforos y controles usan `no-drag`.
 - En macOS se usa `vibrancy: "under-window"`.
 - En Windows 11 se usa `backgroundMaterial: "acrylic"`. En Windows 10 la transparencia sigue funcionando, pero sin desenfoque nativo.
-- Los semáforos de la barra lateral son reales: `preload.js` expone minimizar, maximizar y cerrar por IPC.
+- Los semáforos de la barra lateral son reales: `preload.js` expone minimizar, maximizar/restaurar y cerrar por IPC.
+
+En **Ajustes → Apariencia** se puede desactivar «Modo Marco Transparente (Estilo macOS / Sin barra de Windows)»:
+
+- Se guarda en `localStorage` (`useCustomTitlebar`) y en `%APPDATA%\Academic Autopilot\window-preferences.json`.
+- Al cambiarlo, Electron crea una ventana nueva con `frame: true` o `frame: false` y conserva tamaño, posición y estado maximizado. La ventana anterior se cierra cuando la nueva está lista.
+- Con el marco nativo activo, los semáforos personalizados se ocultan y Windows dibuja su barra de título habitual.
+- En el navegador el ajuste solo oculta o muestra los semáforos decorativos; no puede cambiar el marco del navegador.
 
 El HTML no pinta ningún fondo. Si algún día se añade un fondo opaco en CSS, la transparencia del sistema dejará de verse.
 

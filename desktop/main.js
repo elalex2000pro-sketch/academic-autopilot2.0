@@ -1,11 +1,20 @@
 "use strict";
 
-const { app, BrowserWindow, Menu, Notification, session, shell, ipcMain } = require("electron");
+const {
+  app,
+  BrowserWindow,
+  Menu,
+  Notification,
+  ipcMain,
+  nativeTheme,
+  session,
+  shell,
+} = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 
 const APP_URL = (
-  process.env.AUTOPILOT_APP_URL || "https://academic-autopilot2-0.vercel.app"
+  process.env.AUTOPILOT_APP_URL || "https://academicautopilot.vercel.app"
 ).replace(/\/+$/, "");
 const APP_ORIGIN = new URL(APP_URL).origin;
 const PARTITION = "persist:academic-autopilot";
@@ -41,26 +50,38 @@ if (!gotTheLock) {
   });
 }
 
-function createWindow() {
+function createWindow(options = {}) {
   const isMac = process.platform === "darwin";
   const isWindows = process.platform === "win32";
+  const { useCustomTitlebar } = readWindowPreferences();
+  const { bounds, maximized = false, fullScreen = false } = options;
 
-  mainWindow = new BrowserWindow({
-    width: 1360,
-    height: 900,
+  const win = new BrowserWindow({
+    width: bounds?.width ?? 1360,
+    height: bounds?.height ?? 900,
+    ...(Number.isFinite(bounds?.x) ? { x: bounds.x } : {}),
+    ...(Number.isFinite(bounds?.y) ? { y: bounds.y } : {}),
     minWidth: 1024,
     minHeight: 680,
     show: false,
     // La página pinta su propio cristal; el SO aporta el escritorio y el blur.
-    transparent: true,
-    backgroundColor: "#00000000",
-    frame: false,
+    // Con marco nativo la ventana debe ser opaca para que Windows dibuje bien
+    // la barra de título y los bordes.
+    transparent: useCustomTitlebar,
+    backgroundColor: useCustomTitlebar
+      ? "#00000000"
+      : nativeTheme.shouldUseDarkColors
+        ? "#10131a"
+        : "#eef3fa",
+    frame: !useCustomTitlebar,
     hasShadow: true,
     title: "Academic Autopilot",
     icon: ICON_PATH,
     autoHideMenuBar: true,
-    ...(isMac ? { vibrancy: "under-window", visualEffectState: "active" } : {}),
-    ...(isWindows ? { backgroundMaterial: "acrylic" } : {}),
+    ...(useCustomTitlebar && isMac
+      ? { vibrancy: "under-window", visualEffectState: "active" }
+      : {}),
+    ...(useCustomTitlebar && isWindows ? { backgroundMaterial: "acrylic" } : {}),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       partition: PARTITION,
@@ -71,29 +92,32 @@ function createWindow() {
     },
   });
 
-  mainWindow.setMenuBarVisibility(false);
+  mainWindow = win;
+  win.setMenuBarVisibility(false);
   Menu.setApplicationMenu(null);
-  mainWindow.webContents.setUserAgent(CHROME_UA);
+  win.webContents.setUserAgent(CHROME_UA);
 
-  mainWindow.once("ready-to-show", () => {
-    if (!SMOKE && mainWindow) mainWindow.show();
+  win.once("ready-to-show", () => {
+    if (maximized) win.maximize();
+    if (fullScreen) win.setFullScreen(true);
+    if (!SMOKE) win.show();
   });
 
-  mainWindow.webContents.on("did-finish-load", () => {
+  win.webContents.on("did-finish-load", () => {
     if (SMOKE) runSmokeTest();
   });
 
-  mainWindow.webContents.on(
+  win.webContents.on(
     "did-fail-load",
     (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
-      if (!isMainFrame || !mainWindow) return;
+      if (!isMainFrame || win.isDestroyed()) return;
       // -3 = ERR_ABORTED, suele ocurrir en redirecciones normales.
       if (errorCode === -3) return;
       if (SMOKE) {
         finishSmoke(false, `No se pudo cargar ${validatedURL}: ${errorDescription}`);
         return;
       }
-      mainWindow.loadFile(path.join(__dirname, "offline.html"), {
+      win.loadFile(path.join(__dirname, "offline.html"), {
         query: { target: APP_URL, error: errorDescription || `Error ${errorCode}` },
       });
     },
@@ -101,13 +125,13 @@ function createWindow() {
 
   // Los enlaces de otras webs se abren en el navegador del sistema, no dentro
   // de la app. Las rutas internas siguen funcionando con normalidad.
-  mainWindow.webContents.on("will-navigate", (event, targetUrl) => {
+  win.webContents.on("will-navigate", (event, targetUrl) => {
     if (isAppUrl(targetUrl) || targetUrl.startsWith("file:")) return;
     event.preventDefault();
     openExternal(targetUrl);
   });
 
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+  win.webContents.setWindowOpenHandler(({ url }) => {
     if (isAppUrl(url)) {
       return {
         action: "allow",
@@ -130,26 +154,77 @@ function createWindow() {
   });
 
   // Atajos utiles sin depender de la barra de menus.
-  mainWindow.webContents.on("before-input-event", (event, input) => {
+  win.webContents.on("before-input-event", (event, input) => {
     if (input.type !== "keyDown") return;
     const ctrl = input.control || input.meta;
     if (input.key === "F5" || (ctrl && input.key.toLowerCase() === "r")) {
       event.preventDefault();
-      mainWindow?.webContents.reload();
+      win.webContents.reload();
     } else if (input.key === "F11") {
       event.preventDefault();
-      if (mainWindow) mainWindow.setFullScreen(!mainWindow.isFullScreen());
+      win.setFullScreen(!win.isFullScreen());
     } else if (ctrl && input.shift && input.key.toLowerCase() === "i" && !app.isPackaged) {
       event.preventDefault();
-      mainWindow?.webContents.toggleDevTools();
+      win.webContents.toggleDevTools();
     }
   });
 
-  mainWindow.on("closed", () => {
-    mainWindow = null;
+  win.on("closed", () => {
+    if (mainWindow === win) mainWindow = null;
   });
 
-  mainWindow.loadURL(APP_URL);
+  win.loadURL(APP_URL);
+  return win;
+}
+
+function windowPreferencesPath() {
+  return path.join(app.getPath("userData"), "window-preferences.json");
+}
+
+function readWindowPreferences() {
+  try {
+    const raw = fs.readFileSync(windowPreferencesPath(), "utf8");
+    const parsed = JSON.parse(raw);
+    return { useCustomTitlebar: parsed.useCustomTitlebar !== false };
+  } catch {
+    // Primera ejecución (o archivo dañado): se conserva la ventana frameless.
+    return { useCustomTitlebar: true };
+  }
+}
+
+function writeWindowPreferences(preferences) {
+  try {
+    fs.writeFileSync(windowPreferencesPath(), JSON.stringify(preferences, null, 2), "utf8");
+  } catch (error) {
+    console.error("No se pudo guardar la preferencia de la ventana:", error);
+  }
+}
+
+/**
+ * `frame` no se puede cambiar en caliente en Electron. Guardamos la
+ * preferencia y creamos una ventana nueva con el marco correcto; la anterior
+ * se destruye cuando la nueva ya está lista para mostrarse.
+ */
+function applyCustomTitlebar(event, enabled) {
+  const useCustomTitlebar = enabled !== false;
+  writeWindowPreferences({ useCustomTitlebar });
+
+  const current = BrowserWindow.fromWebContents(event.sender);
+  if (!current || current.isDestroyed()) {
+    return { ok: false, useCustomTitlebar };
+  }
+
+  const next = createWindow({
+    bounds: current.getNormalBounds(),
+    maximized: current.isMaximized(),
+    fullScreen: current.isFullScreen(),
+  });
+
+  next.once("ready-to-show", () => {
+    if (!current.isDestroyed()) current.destroy();
+  });
+
+  return { ok: true, useCustomTitlebar };
 }
 
 function registerWindowControls() {
@@ -165,6 +240,15 @@ function registerWindowControls() {
   ipcMain.on("window:close", (event) => {
     BrowserWindow.fromWebContents(event.sender)?.close();
   });
+
+  ipcMain.handle("window:get-preferences", () => readWindowPreferences());
+  ipcMain.handle("window:set-custom-titlebar", (event, enabled) =>
+    applyCustomTitlebar(event, enabled),
+  );
+  // Alias con el nombre que usa la integración (setFrameless).
+  ipcMain.handle("window:set-frameless", (event, enabled) =>
+    applyCustomTitlebar(event, enabled),
+  );
 }
 
 function configureSession(appSession) {

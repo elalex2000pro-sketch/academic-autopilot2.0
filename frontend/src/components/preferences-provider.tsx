@@ -15,14 +15,22 @@ const STORAGE_KEY = "academic-autopilot-preferences";
 export interface Preferences {
   /** Aplica tachado y tono apagado a las vencidas dentro del historial. */
   autoStrikeOverdue: boolean;
+  /**
+   * Ventana sin marco nativo con semáforos de macOS. En el navegador solo
+   * controla si se muestran los semáforos decorativos; en Electron además
+   * reinicia la ventana con `frame: false`.
+   */
+  useCustomTitlebar: boolean;
 }
 
 const DEFAULT_PREFERENCES: Preferences = {
   autoStrikeOverdue: true,
+  useCustomTitlebar: true,
 };
 
 interface PreferencesContextValue extends Preferences {
   setAutoStrikeOverdue: (value: boolean) => void;
+  setUseCustomTitlebar: (value: boolean) => void;
   resetPreferences: () => void;
 }
 
@@ -41,6 +49,10 @@ function readPreferences(): Preferences {
         typeof parsed.autoStrikeOverdue === "boolean"
           ? parsed.autoStrikeOverdue
           : DEFAULT_PREFERENCES.autoStrikeOverdue,
+      useCustomTitlebar:
+        typeof parsed.useCustomTitlebar === "boolean"
+          ? parsed.useCustomTitlebar
+          : DEFAULT_PREFERENCES.useCustomTitlebar,
     };
   } catch {
     return DEFAULT_PREFERENCES;
@@ -55,11 +67,50 @@ function persistPreferences(preferences: Preferences) {
   }
 }
 
+/**
+ * Pide a Electron que reconstruya la ventana con o sin marco nativo. El proceso
+ * principal guarda además la preferencia en disco para aplicarla al arrancar.
+ */
+function applyTitlebarToDesktop(value: boolean) {
+  if (typeof window === "undefined") return;
+  const bridge = window.autopilotDesktop;
+  if (!bridge?.setCustomTitlebar) return;
+  void bridge.setCustomTitlebar(value).catch(() => {
+    /* Si el escritorio es antiguo o falla, la web sigue funcionando. */
+  });
+}
+
 export function PreferencesProvider({ children }: { children: ReactNode }) {
   const [preferences, setPreferences] = useState<Preferences>(DEFAULT_PREFERENCES);
 
   useEffect(() => {
     setPreferences(readPreferences());
+
+    // En Electron el proceso principal manda: la ventana ya se creó con un
+    // marco concreto antes de que exista el renderer. Sincronizamos el estado
+    // para que el interruptor y los semáforos reflejen la ventana real.
+    const bridge = window.autopilotDesktop;
+    if (!bridge?.getWindowPreferences) return;
+    let cancelled = false;
+    void bridge
+      .getWindowPreferences()
+      .then((desktopPreferences) => {
+        if (cancelled || typeof desktopPreferences?.useCustomTitlebar !== "boolean") return;
+        setPreferences((current) => {
+          const next = {
+            ...current,
+            useCustomTitlebar: desktopPreferences.useCustomTitlebar,
+          };
+          persistPreferences(next);
+          return next;
+        });
+      })
+      .catch(() => {
+        /* Sin puente de escritorio seguimos con localStorage. */
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const setAutoStrikeOverdue = useCallback((value: boolean) => {
@@ -70,14 +121,32 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const resetPreferences = useCallback(() => {
-    setPreferences(DEFAULT_PREFERENCES);
-    persistPreferences(DEFAULT_PREFERENCES);
+  const setUseCustomTitlebar = useCallback((value: boolean) => {
+    setPreferences((current) => {
+      const next = { ...current, useCustomTitlebar: value };
+      persistPreferences(next);
+      return next;
+    });
+    applyTitlebarToDesktop(value);
   }, []);
 
+  const resetPreferences = useCallback(() => {
+    const next = { ...DEFAULT_PREFERENCES };
+    setPreferences(next);
+    persistPreferences(next);
+    if (preferences.useCustomTitlebar !== next.useCustomTitlebar) {
+      applyTitlebarToDesktop(next.useCustomTitlebar);
+    }
+  }, [preferences.useCustomTitlebar]);
+
   const value = useMemo(
-    () => ({ ...preferences, setAutoStrikeOverdue, resetPreferences }),
-    [preferences, resetPreferences, setAutoStrikeOverdue],
+    () => ({
+      ...preferences,
+      setAutoStrikeOverdue,
+      setUseCustomTitlebar,
+      resetPreferences,
+    }),
+    [preferences, resetPreferences, setAutoStrikeOverdue, setUseCustomTitlebar],
   );
 
   return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;

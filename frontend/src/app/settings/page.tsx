@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
+  AppWindow,
   BellRing,
   BookOpen,
   CheckCircle2,
@@ -89,7 +90,12 @@ const AI_PROVIDER_INFO: Record<string, { keyLabel: string; keyHelp: string }> = 
 
 function SettingsInner() {
   const searchParams = useSearchParams();
-  const { autoStrikeOverdue, setAutoStrikeOverdue } = usePreferences();
+  const {
+    autoStrikeOverdue,
+    setAutoStrikeOverdue,
+    useCustomTitlebar,
+    setUseCustomTitlebar,
+  } = usePreferences();
 
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [blocks, setBlocks] = useState<ScheduleBlock[]>([]);
@@ -347,6 +353,33 @@ function SettingsInner() {
           </p>
           <div className="border-t border-separator pt-3">
             <WallpaperPicker />
+          </div>
+
+          <div className="border-t border-separator pt-3">
+            <div className="flex flex-col gap-4 rounded-2xl border border-white/60 bg-white/30 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-white/[0.06] dark:bg-white/[0.03]">
+              <div className="min-w-0">
+                <p
+                  id="custom-titlebar-label"
+                  className="flex items-center gap-1.5 text-[13px] font-semibold text-slate-800 dark:text-white/90"
+                >
+                  <AppWindow className="h-3.5 w-3.5 text-[#0066FF] dark:text-[#8ab9ff]" />
+                  Modo Marco Transparente (Estilo macOS / Sin barra de Windows)
+                </p>
+                <p className="mt-1 max-w-xl text-xs leading-5 text-muted-foreground">
+                  Oculta la barra de título nativa del sistema operativo y activa los controles de
+                  ventana de cristal.
+                </p>
+                <p className="mt-1.5 text-[11px] leading-4 text-muted-foreground/80">
+                  En la app de escritorio, la ventana se reinicia para aplicar el cambio. En el
+                  navegador los semáforos son decorativos.
+                </p>
+              </div>
+              <Switch
+                checked={useCustomTitlebar}
+                onCheckedChange={setUseCustomTitlebar}
+                aria-labelledby="custom-titlebar-label"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>

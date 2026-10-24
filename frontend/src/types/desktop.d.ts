@@ -7,6 +7,16 @@ declare global {
       minimize: () => void;
       toggleMaximize: () => void;
       close: () => void;
+      /** Reconstruye la ventana con marco nativo (`false`) o frameless (`true`). */
+      setCustomTitlebar?: (
+        enabled: boolean,
+      ) => Promise<{ ok: boolean; useCustomTitlebar: boolean }>;
+      /** Alias explícito solicitado por la integración. */
+      setFrameless?: (
+        enabled: boolean,
+      ) => Promise<{ ok: boolean; useCustomTitlebar: boolean }>;
+      /** Preferencia que el proceso principal aplicó al crear la ventana. */
+      getWindowPreferences?: () => Promise<{ useCustomTitlebar: boolean }>;
     };
   }
 }

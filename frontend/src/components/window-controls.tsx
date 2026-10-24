@@ -3,16 +3,24 @@
 import { useEffect, useState } from "react";
 import { Maximize2, Minus, X } from "lucide-react";
 
+import { usePreferences } from "@/components/preferences-provider";
+
 /**
  * Semáforos de macOS. En Electron controlan la ventana frameless mediante el
  * puente de `desktop/preload.js`; en el navegador son decorativos.
+ *
+ * Si el usuario desactiva «Modo Marco Transparente» se ocultan por completo:
+ * la ventana vuelve a usar la barra de título nativa del sistema.
  */
 export function WindowControls() {
+  const { useCustomTitlebar } = usePreferences();
   const [desktop, setDesktop] = useState(false);
 
   useEffect(() => {
     setDesktop(Boolean(window.autopilotDesktop));
   }, []);
+
+  if (!useCustomTitlebar) return null;
 
   if (!desktop) {
     return (
@@ -46,8 +54,8 @@ export function WindowControls() {
       </button>
       <button
         type="button"
-        aria-label="Maximizar ventana"
-        title="Maximizar"
+        aria-label="Maximizar o restaurar ventana"
+        title="Maximizar / Restaurar"
         onClick={() => window.autopilotDesktop?.toggleMaximize()}
         className="group flex h-3 w-3 items-center justify-center rounded-full bg-[#28c840] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.16)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
       >
