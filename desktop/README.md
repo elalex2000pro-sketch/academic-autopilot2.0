@@ -35,7 +35,7 @@ La interfaz está pensada para un escritorio real, no para una página con fondo
 
 En **Ajustes → Apariencia** se puede desactivar «Modo Marco Transparente (Estilo macOS / Sin barra de Windows)»:
 
-- Se guarda en `localStorage` (`useCustomTitlebar`) y en `%APPDATA%\Academic Autopilot\window-preferences.json`.
+- Se guarda en `localStorage` (`useCustomTitlebar`) y en `%APPDATA%\academic-autopilot-desktop\window-preferences.json`.
 - Al cambiarlo, Electron crea una ventana nueva con `frame: true` o `frame: false` y conserva tamaño, posición y estado maximizado. La ventana anterior se cierra cuando la nueva está lista.
 - Con el marco nativo activo, los semáforos personalizados se ocultan y Windows dibuja su barra de título habitual.
 - En el navegador el ajuste solo oculta o muestra los semáforos decorativos; no puede cambiar el marco del navegador.
