@@ -48,7 +48,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-[#e9e9ee] px-3 py-6 sm:px-6 sm:py-10 dark:bg-[#101011]">
+    <div className="flex min-h-dvh items-center justify-center bg-[#e7e8ec] px-3 py-6 sm:px-6 sm:py-10 dark:bg-[#101011]">
       <div className="mac-window w-full max-w-[880px] overflow-hidden bg-card">
         {/* Barra de título de la ventana */}
         <div className="app-drag relative flex h-11 items-center border-b border-separator bg-card px-4">

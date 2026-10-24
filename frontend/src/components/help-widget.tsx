@@ -218,7 +218,7 @@ export function HelpWidget() {
   return (
     <div className="fixed bottom-5 right-24 z-50 flex flex-col items-end gap-3">
       {open && (
-        <div className="animate-pop w-72 max-w-[calc(100vw-2.5rem)] rounded-3xl border border-white/60 bg-white/55 p-4 text-slate-800 shadow-[0_24px_60px_-30px_rgba(15,23,42,0.45)] backdrop-blur-3xl dark:border-white/[0.08] dark:bg-black/75 dark:text-white/90 dark:shadow-[0_24px_60px_-30px_rgba(0,0,0,0.9)]">
+        <div className="animate-pop w-72 max-w-[calc(100vw-2.5rem)] rounded-3xl border border-slate-300/45 bg-slate-100/70 p-4 text-slate-800 shadow-[0_24px_60px_-30px_rgba(36,36,38,0.35)] backdrop-blur-3xl dark:border-white/[0.08] dark:bg-black/75 dark:text-white/90 dark:shadow-[0_24px_60px_-30px_rgba(0,0,0,0.9)]">
           <div className="flex items-start justify-between gap-2">
             <p className="text-sm font-semibold text-slate-800 dark:text-white/90">
               💡 {tutorial.title}
@@ -247,7 +247,7 @@ export function HelpWidget() {
         onClick={() => setOpen((value) => !value)}
         title="Ayuda y tutoriales"
         aria-label="Ayuda y tutoriales"
-        className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/60 bg-white/40 text-slate-600 shadow-[0_18px_40px_-24px_rgba(15,23,42,0.45)] backdrop-blur-3xl transition-colors hover:bg-white/55 hover:text-slate-900 dark:border-white/[0.08] dark:bg-black/30 dark:text-white/70 dark:shadow-[0_18px_40px_-24px_rgba(0,0,0,0.9)] dark:hover:bg-black/45 dark:hover:text-white"
+        className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-300/45 bg-slate-100/60 text-slate-600 shadow-[0_18px_40px_-24px_rgba(36,36,38,0.35)] backdrop-blur-3xl transition-colors hover:bg-slate-100/80 hover:text-slate-900 dark:border-white/[0.08] dark:bg-black/30 dark:text-white/70 dark:shadow-[0_18px_40px_-24px_rgba(0,0,0,0.9)] dark:hover:bg-black/45 dark:hover:text-white"
       >
         <CircleHelp className="h-5 w-5" />
       </button>

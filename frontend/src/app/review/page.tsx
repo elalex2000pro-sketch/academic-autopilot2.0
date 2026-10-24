@@ -593,7 +593,7 @@ function DecksView({
         {loading ? (
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[0, 1, 2].map((item) => (
-              <div key={item} className="h-40 animate-pulse rounded-3xl border border-white/40 bg-white/20 dark:border-white/5 dark:bg-white/[0.03]" />
+              <div key={item} className="h-40 animate-pulse rounded-3xl border border-slate-300/40 bg-slate-200/45 dark:border-white/5 dark:bg-white/[0.03]" />
             ))}
           </div>
         ) : (

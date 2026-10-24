@@ -73,7 +73,7 @@ const SUBJECT_TONES = [
 ];
 
 const selectClass =
-  "flex h-9 w-full rounded-xl border border-white/60 bg-white/40 px-3 text-[13px] text-slate-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.62)] backdrop-blur-xl transition-[border-color,box-shadow,background-color] duration-150 focus-visible:border-[#0066FF] focus-visible:bg-white/55 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#0066FF]/20 dark:border-white/10 dark:bg-white/[0.055] dark:text-white/90 dark:focus-visible:bg-white/[0.08]";
+  "flex h-9 w-full rounded-xl border border-slate-300/45 bg-slate-100/55 px-3 text-[13px] text-slate-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.32)] backdrop-blur-xl transition-[border-color,box-shadow,background-color] duration-150 focus-visible:border-[#0066FF] focus-visible:bg-slate-100/75 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#0066FF]/20 dark:border-white/10 dark:bg-white/[0.055] dark:text-white/90 dark:focus-visible:bg-white/[0.08]";
 
 type Notice = { tone: "success" | "error" | "info"; text: string };
 type EnrichedClassEvent = ClassEvent & { class_name?: string };
@@ -184,7 +184,7 @@ function subjectSubtitle(entry: TimetableEntry, course: Course | undefined): str
 
 function MonthEmpty({ weekend }: { weekend: boolean }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-white/70 bg-white/20 px-6 py-10 text-center dark:border-white/10 dark:bg-white/[0.02]">
+    <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-400/35 bg-slate-100/30 px-6 py-10 text-center dark:border-white/10 dark:bg-white/[0.02]">
       <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0066FF]/10 text-[#0066FF] ring-1 ring-[#0066FF]/15 dark:bg-[#0066FF]/15 dark:text-[#7fb2ff] dark:ring-[#0066FF]/20">
         {weekend ? <Coffee className="h-6 w-6" strokeWidth={1.7} /> : <CalendarDays className="h-6 w-6" strokeWidth={1.7} />}
       </span>
@@ -787,7 +787,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex rounded-full border border-white/55 bg-white/35 p-0.5 shadow-inner backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
+              <div className="flex rounded-full border border-slate-300/40 bg-slate-100/45 p-0.5 shadow-inner backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
                 <button
                   type="button"
                   onClick={() => setViewMode("day")}
@@ -795,7 +795,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                   className={cn(
                     "rounded-full px-2.5 py-1 text-[10.5px] font-semibold transition-colors",
                     viewMode === "day"
-                      ? "bg-white text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
+                      ? "bg-slate-100/90 text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
                       : "text-slate-500 hover:text-slate-800 dark:text-white/45 dark:hover:text-white/80",
                   )}
                 >
@@ -808,7 +808,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                   className={cn(
                     "rounded-full px-2.5 py-1 text-[10.5px] font-semibold transition-colors",
                     viewMode === "week"
-                      ? "bg-white text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
+                      ? "bg-slate-100/90 text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
                       : "text-slate-500 hover:text-slate-800 dark:text-white/45 dark:hover:text-white/80",
                   )}
                 >
@@ -822,7 +822,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                     ? "bg-[#0066FF]/12 text-[#0066FF] dark:bg-[#0066FF]/20 dark:text-[#8ab9ff]"
                     : isWeekend
                       ? "bg-slate-500/10 text-slate-500 dark:bg-white/10 dark:text-white/45"
-                      : "bg-white/40 text-slate-500 dark:bg-white/[0.06] dark:text-white/45",
+                      : "bg-slate-100/50 text-slate-500 dark:bg-white/[0.06] dark:text-white/45",
                 )}
               >
                 {isToday ? "Hoy" : isWeekend ? "Fin de semana" : DAYS_LONG[selectedWeekday]}
@@ -1305,7 +1305,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
               Añade una clase a mano o importa una foto o un PDF de tu horario.
             </p>
           </div>
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/60 bg-white/35 text-slate-500 dark:border-white/10 dark:bg-white/[0.05] dark:text-white/50">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-300/45 bg-slate-100/50 text-slate-500 dark:border-white/10 dark:bg-white/[0.05] dark:text-white/50">
             <ChevronDown
               className={cn("h-4 w-4 transition-transform duration-200", showTools && "rotate-180")}
             />
@@ -1316,7 +1316,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
           <div className="mt-5 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
             <form
               onSubmit={addClass}
-              className="rounded-2xl border border-white/60 bg-white/30 p-3.5 dark:border-white/[0.07] dark:bg-white/[0.03]"
+              className="rounded-2xl border border-slate-300/45 bg-slate-100/45 p-3.5 dark:border-white/[0.07] dark:bg-white/[0.03]"
             >
               <div className="flex items-center gap-2">
                 <Plus className="h-4 w-4 text-[#0066FF]" />
@@ -1405,7 +1405,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
               </Button>
             </form>
 
-            <div className="rounded-2xl border border-dashed border-white/70 bg-white/20 p-3.5 dark:border-white/10 dark:bg-white/[0.02]">
+            <div className="rounded-2xl border border-dashed border-slate-400/35 bg-slate-100/30 p-3.5 dark:border-white/10 dark:bg-white/[0.02]">
               <div className="flex items-center gap-2">
                 <FileUp className="h-4 w-4 text-[#0066FF]" />
                 <p className="text-[13px] font-semibold text-slate-800 dark:text-white/90">
@@ -1421,7 +1421,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                 type="file"
                 accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,.xlsx"
                 onChange={(event) => setImportFile(event.target.files?.[0] ?? null)}
-                className="mt-3 block w-full text-[11.5px] text-slate-500 file:mr-3 file:rounded-xl file:border file:border-white/60 file:bg-white/50 file:px-3 file:py-1.5 file:text-[11px] file:font-medium file:text-slate-700 hover:file:bg-white/70 dark:text-white/40 dark:file:border-white/10 dark:file:bg-white/[0.06] dark:file:text-white/70"
+                className="mt-3 block w-full text-[11.5px] text-slate-500 file:mr-3 file:rounded-xl file:border file:border-slate-300/45 file:bg-slate-100/60 file:px-3 file:py-1.5 file:text-[11px] file:font-medium file:text-slate-700 hover:file:bg-slate-100/80 dark:text-white/40 dark:file:border-white/10 dark:file:bg-white/[0.06] dark:file:text-white/70"
               />
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <label className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-white/40">

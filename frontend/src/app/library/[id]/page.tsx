@@ -719,7 +719,7 @@ export default function BookReaderPage() {
 
         <aside id="book-panel" className="min-w-0 scroll-mt-24">
           <div className="space-y-3 xl:sticky xl:top-24">
-            <div className="flex rounded-xl bg-slate-200/60 p-1 text-xs font-semibold">
+            <div className="flex rounded-xl bg-slate-200/60 p-1 text-xs font-semibold dark:bg-white/[0.06]">
               <button
                 type="button"
                 onClick={() => setPanelTab("ask")}

@@ -310,7 +310,7 @@ export default function DashboardPage() {
         <div className="flex shrink-0 items-center gap-2">
           <Link
             href="/planner"
-            className="app-glass-soft flex h-9 items-center gap-1.5 rounded-xl px-3 text-[12px] font-medium text-slate-600 transition-colors hover:bg-white/45 hover:text-slate-900 dark:text-white/65 dark:hover:bg-white/[0.08] dark:hover:text-white"
+            className="app-glass-soft flex h-9 items-center gap-1.5 rounded-xl px-3 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-100/65 hover:text-slate-900 dark:text-white/65 dark:hover:bg-white/[0.08] dark:hover:text-white"
           >
             <CalendarRange className="h-3.5 w-3.5" strokeWidth={1.8} />
             Planificador
@@ -446,7 +446,7 @@ export default function DashboardPage() {
               type="button"
               onClick={load}
               disabled={loading}
-              className="app-glass-soft flex h-8 items-center gap-1.5 rounded-xl px-2.5 text-[11.5px] font-medium text-slate-600 transition-colors hover:bg-white/45 hover:text-slate-900 disabled:opacity-50 dark:text-white/55 dark:hover:bg-white/[0.08] dark:hover:text-white/85"
+              className="app-glass-soft flex h-8 items-center gap-1.5 rounded-xl px-2.5 text-[11.5px] font-medium text-slate-600 transition-colors hover:bg-slate-100/65 hover:text-slate-900 disabled:opacity-50 dark:text-white/55 dark:hover:bg-white/[0.08] dark:hover:text-white/85"
             >
               <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} />
               Replanificar
@@ -486,7 +486,7 @@ export default function DashboardPage() {
                 </p>
                 <Link
                   href="/planner"
-                  className="app-glass-soft mt-4 flex h-8 items-center gap-1.5 rounded-xl px-3 text-[11.5px] font-medium text-slate-600 transition-colors hover:bg-white/45 hover:text-slate-900 dark:text-white/65 dark:hover:bg-white/[0.08] dark:hover:text-white"
+                  className="app-glass-soft mt-4 flex h-8 items-center gap-1.5 rounded-xl px-3 text-[11.5px] font-medium text-slate-600 transition-colors hover:bg-slate-100/65 hover:text-slate-900 dark:text-white/65 dark:hover:bg-white/[0.08] dark:hover:text-white"
                 >
                   Abrir planificador
                   <ArrowUpRight className="h-3.5 w-3.5" />
@@ -671,7 +671,7 @@ export default function DashboardPage() {
           {continueBook ? (
             <Link
               href={`/library/${continueBook.id}`}
-              className="app-glass group flex items-center gap-3 rounded-3xl p-3.5 transition-colors hover:bg-white/45 dark:hover:bg-black/30"
+              className="app-glass group flex items-center gap-3 rounded-3xl p-3.5 transition-colors hover:bg-slate-100/65 dark:hover:bg-black/30"
             >
               <div
                 className="relative flex h-[76px] w-[54px] shrink-0 flex-col justify-between overflow-hidden rounded-xl p-2.5 text-white shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)]"
@@ -679,7 +679,7 @@ export default function DashboardPage() {
                   background: `linear-gradient(150deg, ${continueBook.cover_color}, #0f172a)`,
                 }}
               >
-                <span className="absolute inset-x-0 top-0 h-px bg-white/20" />
+                <span className="absolute inset-x-0 top-0 h-px bg-slate-400/20 dark:bg-white/10" />
                 <BookOpen className="h-4 w-4 text-white/80" strokeWidth={1.8} />
                 <span className="text-[8px] font-semibold uppercase tracking-wider text-white/55">
                   {continueBook.format}
@@ -711,7 +711,7 @@ export default function DashboardPage() {
           ) : (
             <Link
               href="/library"
-              className="app-glass group flex items-center gap-3 rounded-3xl p-3.5 transition-colors hover:bg-white/45 dark:hover:bg-black/30"
+              className="app-glass group flex items-center gap-3 rounded-3xl p-3.5 transition-colors hover:bg-slate-100/65 dark:hover:bg-black/30"
             >
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#0a84ff]/15 text-[#0066FF] ring-1 ring-[#0a84ff]/15 dark:text-[#64a8ff]">
                 <BookOpen className="h-4 w-4" strokeWidth={1.8} />

@@ -34,7 +34,7 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
       <span
         aria-hidden
         className={cn(
-          "pointer-events-none block h-[24px] w-[24px] rounded-full bg-white shadow-[0_2px_6px_rgba(15,23,42,0.28),inset_0_1px_0_rgba(255,255,255,0.9)] transition-transform duration-200 ease-mac",
+          "pointer-events-none block h-[24px] w-[24px] rounded-full bg-white keep-white shadow-[0_2px_6px_rgba(15,23,42,0.28),inset_0_1px_0_rgba(255,255,255,0.9)] transition-transform duration-200 ease-mac",
           checked ? "translate-x-[25px]" : "translate-x-[2px]",
         )}
       />

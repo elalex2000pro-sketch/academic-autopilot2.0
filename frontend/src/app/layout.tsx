@@ -37,7 +37,7 @@ export const metadata: Metadata = {
 };
 
 // Se ejecuta antes de pintar para evitar el destello del tema claro.
-const THEME_SCRIPT = `(function(){try{var k="academic-autopilot-theme";var s=localStorage.getItem(k);var d=s==="dark"||((!s||s==="system")&&window.matchMedia("(prefers-color-scheme: dark)").matches);var r=document.documentElement;r.classList.toggle("dark",d);r.dataset.theme=d?"dark":"light";r.style.colorScheme=d?"dark":"light";var m=document.querySelector('meta[name="theme-color"]');if(m){m.setAttribute("content",d?"#10131a":"#eef3fa");}}catch(e){}})();`;
+const THEME_SCRIPT = `(function(){try{var k="academic-autopilot-theme";var s=localStorage.getItem(k);var d=s==="dark"||((!s||s==="system")&&window.matchMedia("(prefers-color-scheme: dark)").matches);var r=document.documentElement;r.classList.toggle("dark",d);r.dataset.theme=d?"dark":"light";r.style.colorScheme=d?"dark":"light";var m=document.querySelector('meta[name="theme-color"]');if(m){m.setAttribute("content",d?"#10131a":"#e7e8ec");}}catch(e){}})();`;
 
 // Captura el aviso de instalación en cuanto llega. Si se espera a que React
 // hidrate, algunos navegadores pueden emitirlo antes y perder la oportunidad
@@ -48,7 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
-        <meta name="theme-color" content="#eef3fa" />
+        <meta name="theme-color" content="#e7e8ec" />
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: INSTALL_SCRIPT }} />
       </head>

@@ -89,7 +89,7 @@ const red = {
   950: "#3d0806",
 };
 
-/** Grises del sistema: neutros fríos, sin tinte cálido. */
+/** Grises tiza del tema claro: neutros fríos, sin tinte cálido ni blancos puros. */
 const gray = {
   50: "#f7f7f9",
   100: "#efeff2",
@@ -230,7 +230,10 @@ const config: Config = {
         "4xl": "72px",
       },
       boxShadow: {
-        liquid: "0 8px 32px 0 rgba(15, 23, 42, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.72)",
+        liquid:
+          "0 12px 32px -16px rgba(36, 36, 38, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.32)",
+        "liquid-soft":
+          "0 10px 28px -18px rgba(36, 36, 38, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.28)",
         "liquid-dark": "0 8px 32px 0 rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.035)",
         "liquid-blue": "0 14px 34px -18px rgba(0, 102, 255, 0.75)",
         sm: "0 0 0 0.5px rgb(0 0 0 / 0.05), 0 1px 2px rgb(0 0 0 / 0.06)",

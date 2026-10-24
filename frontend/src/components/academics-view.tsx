@@ -457,7 +457,7 @@ export function AcademicsView() {
             {[0, 1, 2, 3, 4, 5].map((item) => (
               <div
                 key={item}
-                className="h-48 animate-pulse rounded-3xl border border-white/40 bg-white/20 dark:border-white/5 dark:bg-white/[0.03]"
+                className="h-48 animate-pulse rounded-3xl border border-slate-300/40 bg-slate-200/45 dark:border-white/5 dark:bg-white/[0.03]"
               />
             ))}
           </div>
@@ -483,7 +483,7 @@ export function AcademicsView() {
                   key={course.id}
                   type="button"
                   onClick={() => setSelectedCourseId(course.id)}
-                  className="group relative overflow-hidden rounded-3xl border border-white/55 bg-white/35 p-4 text-left shadow-[0_18px_45px_-32px_rgba(15,23,42,0.7)] backdrop-blur-3xl transition-all duration-200 ease-mac hover:-translate-y-0.5 hover:border-white/80 hover:bg-white/45 dark:border-white/10 dark:bg-black/25 dark:hover:border-white/20 dark:hover:bg-white/[0.06]"
+                  className="group relative overflow-hidden rounded-3xl border border-slate-300/45 bg-slate-100/45 p-4 text-left shadow-[0_18px_45px_-32px_rgba(15,23,42,0.7)] backdrop-blur-3xl transition-all duration-200 ease-mac hover:-translate-y-0.5 hover:border-white/80 hover:bg-white/45 dark:border-white/10 dark:bg-black/25 dark:hover:border-white/20 dark:hover:bg-white/[0.06]"
                 >
                   <span
                     className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full opacity-20 blur-2xl"
@@ -546,7 +546,7 @@ export function AcademicsView() {
           <form
             onSubmit={createCourse}
             onClick={(event) => event.stopPropagation()}
-            className="animate-pop w-full max-w-lg rounded-3xl border border-white/50 bg-white/80 p-5 shadow-2xl backdrop-blur-3xl dark:border-white/10 dark:bg-[#0b0f18]/85"
+            className="animate-pop w-full max-w-lg rounded-3xl border border-slate-300/45 bg-slate-100/85 p-5 shadow-2xl backdrop-blur-3xl dark:border-white/10 dark:bg-[#0b0f18]/85"
           >
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -561,7 +561,7 @@ export function AcademicsView() {
                 type="button"
                 onClick={() => setShowCourseForm(false)}
                 disabled={savingCourse}
-                className="rounded-xl p-1.5 text-slate-400 hover:bg-white/60 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white"
+                className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100/70 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white"
                 aria-label="Cerrar"
               >
                 <X className="h-4 w-4" />
@@ -607,7 +607,7 @@ export function AcademicsView() {
                     type="color"
                     value={courseColor}
                     onChange={(event) => setCourseColor(event.target.value)}
-                    className="mt-1 h-9 w-full cursor-pointer rounded-xl border border-white/60 bg-white/40 p-1 dark:border-white/10 dark:bg-white/[0.06]"
+                    className="mt-1 h-9 w-full cursor-pointer rounded-xl border border-slate-300/45 bg-slate-100/55 p-1 dark:border-white/10 dark:bg-white/[0.06]"
                     aria-label="Color de la asignatura"
                   />
                 </label>
@@ -633,10 +633,10 @@ export function AcademicsView() {
           onClick={() => setSelectedCourseId(null)}
         >
           <div
-            className="animate-pop my-4 w-full max-w-5xl rounded-3xl border border-white/50 bg-white/80 shadow-2xl backdrop-blur-3xl dark:border-white/10 dark:bg-[#0b0f18]/90"
+            className="animate-pop my-4 w-full max-w-5xl rounded-3xl border border-slate-300/45 bg-slate-100/85 shadow-2xl backdrop-blur-3xl dark:border-white/10 dark:bg-[#0b0f18]/90"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/50 p-5 dark:border-white/10">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-300/40 p-5 dark:border-white/10">
               <div className="flex min-w-0 items-start gap-3">
                 <span
                   className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg"
@@ -660,7 +660,7 @@ export function AcademicsView() {
               <button
                 type="button"
                 onClick={() => setSelectedCourseId(null)}
-                className="rounded-xl p-1.5 text-slate-400 hover:bg-white/60 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white"
+                className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100/70 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white"
                 aria-label="Cerrar asignatura"
               >
                 <X className="h-4 w-4" />
@@ -669,7 +669,7 @@ export function AcademicsView() {
 
             <div className="grid gap-5 p-5 lg:grid-cols-[270px_minmax(0,1fr)]">
               <aside className="space-y-3">
-                <div className="flex items-center gap-4 rounded-3xl border border-white/55 bg-white/35 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                <div className="flex items-center gap-4 rounded-3xl border border-slate-300/45 bg-slate-100/45 p-4 dark:border-white/10 dark:bg-white/[0.04]">
                   <ProgressRing value={selectedSummary?.average_percent ?? null} size={88} stroke={8} label="media" />
                   <div>
                     <p className="text-[9.5px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-white/30">
@@ -689,7 +689,7 @@ export function AcademicsView() {
                   </div>
                 </div>
 
-                <div className="rounded-3xl border border-white/55 bg-white/35 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                <div className="rounded-3xl border border-slate-300/45 bg-slate-100/45 p-4 dark:border-white/10 dark:bg-white/[0.04]">
                   <p className="text-[9.5px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-white/30">
                     Profesor/a
                   </p>
@@ -715,7 +715,7 @@ export function AcademicsView() {
                   </div>
                 </div>
 
-                <div className="rounded-3xl border border-white/55 bg-white/35 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                <div className="rounded-3xl border border-slate-300/45 bg-slate-100/45 p-4 dark:border-white/10 dark:bg-white/[0.04]">
                   <p className="text-[9.5px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-white/30">
                     Resumen
                   </p>
@@ -757,7 +757,7 @@ export function AcademicsView() {
               <div className="min-w-0 space-y-4">
                 <form
                   onSubmit={addGrade}
-                  className="rounded-3xl border border-white/55 bg-white/35 p-4 dark:border-white/10 dark:bg-white/[0.04]"
+                  className="rounded-3xl border border-slate-300/45 bg-slate-100/45 p-4 dark:border-white/10 dark:bg-white/[0.04]"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div>
@@ -855,7 +855,7 @@ export function AcademicsView() {
                   </div>
                 </form>
 
-                <div className="rounded-3xl border border-white/55 bg-white/35 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                <div className="rounded-3xl border border-slate-300/45 bg-slate-100/45 p-4 dark:border-white/10 dark:bg-white/[0.04]">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-[9.5px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-white/30">
                       Historial

@@ -138,7 +138,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app-shell flex min-h-dvh flex-col bg-transparent lg:flex-row">
-      <aside className="sticky top-0 hidden h-dvh w-[236px] shrink-0 flex-col border-r border-white/60 bg-white/40 shadow-[18px_0_60px_-48px_rgba(15,23,42,0.28)] backdrop-blur-3xl dark:border-white/5 dark:bg-black/20 dark:shadow-[18px_0_60px_-48px_rgba(0,0,0,0.9)] lg:flex">
+      <aside className="sticky top-0 hidden h-dvh w-[236px] shrink-0 flex-col border-r border-slate-300/40 bg-slate-100/55 shadow-[18px_0_60px_-48px_rgba(36,36,38,0.28)] backdrop-blur-3xl dark:border-white/5 dark:bg-black/20 dark:shadow-[18px_0_60px_-48px_rgba(0,0,0,0.9)] lg:flex">
         <div className="app-drag flex h-12 shrink-0 items-center px-4">
           <WindowControls />
         </div>
@@ -181,7 +181,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        <div className="shrink-0 space-y-2 border-t border-white/50 px-2.5 py-3 dark:border-white/[0.06]">
+        <div className="shrink-0 space-y-2 border-t border-slate-300/40 px-2.5 py-3 dark:border-white/[0.06]">
           <InstallAppButton
             variant="ghost"
             className="h-9 w-full justify-start rounded-xl px-3 text-[12.5px] font-normal text-slate-600 hover:bg-slate-900/[0.05] hover:text-slate-900 dark:text-white/55 dark:hover:bg-white/[0.06] dark:hover:text-white/90 [&_svg]:text-slate-400 dark:[&_svg]:text-white/40"
@@ -209,7 +209,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <ThemeCycleButton className="text-slate-500 hover:bg-slate-900/[0.05] hover:text-slate-900 dark:text-white/45 dark:hover:bg-white/[0.06] dark:hover:text-white/90" />
           </div>
 
-          <div className="flex items-center gap-2 rounded-2xl border border-white/50 bg-white/30 px-2 py-2 dark:border-white/[0.04] dark:bg-white/[0.025]">
+          <div className="flex items-center gap-2 rounded-2xl border border-slate-300/40 bg-slate-100/40 px-2 py-2 dark:border-white/[0.04] dark:bg-white/[0.025]">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0066FF]/10 text-[10px] font-semibold text-[#0066FF] ring-1 ring-[#0066FF]/15 dark:bg-white/10 dark:text-white/90 dark:ring-white/10">
               {initials}
             </span>
@@ -237,7 +237,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col bg-transparent">
         {/* Barra superior móvil, con la translucidez de una toolbar. */}
-        <header className="sticky top-0 z-40 border-b border-white/60 bg-white/45 backdrop-blur-3xl dark:border-white/[0.06] dark:bg-black/40 lg:hidden">
+        <header className="sticky top-0 z-40 border-b border-slate-300/40 bg-slate-100/60 backdrop-blur-3xl dark:border-white/[0.06] dark:bg-black/40 lg:hidden">
           <div className="flex items-center justify-between gap-2 px-3 py-2">
             <Logo />
             <div className="flex shrink-0 items-center gap-0.5">

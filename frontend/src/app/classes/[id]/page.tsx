@@ -1079,7 +1079,7 @@ export default function ClassDetailPage() {
                 </span>
                 <span className="text-indigo-700/70">{myAssignmentProgress}%</span>
               </div>
-              <Progress value={myAssignmentProgress} className="mt-2 h-1.5 bg-white" />
+              <Progress value={myAssignmentProgress} className="mt-2 h-1.5 bg-white keep-white" />
             </div>
 
             {showAssignmentForm && isOwner && (

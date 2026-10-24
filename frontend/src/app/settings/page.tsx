@@ -331,7 +331,7 @@ function SettingsInner() {
       </header>
 
       {notice && (
-        <div className="rounded-2xl border border-white/60 bg-white/35 px-4 py-3 text-[13px] text-slate-700 shadow-sm backdrop-blur-2xl dark:border-white/[0.07] dark:bg-white/[0.05] dark:text-white/75">
+        <div className="rounded-2xl border border-slate-300/45 bg-slate-100/55 px-4 py-3 text-[13px] text-slate-700 shadow-lg shadow-slate-900/5 backdrop-blur-2xl dark:border-white/[0.07] dark:bg-white/[0.05] dark:text-white/75">
           {notice}
         </div>
       )}
@@ -356,7 +356,7 @@ function SettingsInner() {
           </div>
 
           <div className="border-t border-separator pt-3">
-            <div className="flex flex-col gap-4 rounded-2xl border border-white/60 bg-white/30 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-white/[0.06] dark:bg-white/[0.03]">
+            <div className="flex flex-col gap-4 rounded-2xl border border-slate-300/45 bg-slate-100/45 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-white/[0.06] dark:bg-white/[0.03]">
               <div className="min-w-0">
                 <p
                   id="custom-titlebar-label"
@@ -777,12 +777,12 @@ function SettingsInner() {
             Recibe cada día un mensaje con las tareas que vencen y los exámenes de tus clases. Usa
             tu propio bot de Telegram: es gratis y no necesitas servidor de correo.
           </p>
-          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-xs text-slate-600">
+          <div className="rounded-xl border border-slate-300/45 bg-slate-200/45 p-3 text-xs text-slate-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/60">
             <p className="font-semibold text-slate-700">Cómo conseguir los datos (2 minutos):</p>
             <ol className="mt-1 list-decimal space-y-0.5 pl-4">
               <li>
                 Abre Telegram y habla con <strong>@BotFather</strong>; envía{" "}
-                <code className="rounded bg-white px-1">/newbot</code> y copia el token.
+                <code className="rounded bg-slate-200/70 px-1 dark:bg-white/10">/newbot</code> y copia el token.
               </li>
               <li>
                 Habla con tu bot nuevo y envíale cualquier mensaje (así puede responder).

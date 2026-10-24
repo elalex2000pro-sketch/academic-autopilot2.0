@@ -244,7 +244,7 @@ export function PdfCanvasViewer({
           <div className="flex justify-center">
             <canvas
               ref={canvasRef}
-              className="max-w-full rounded-xl bg-white shadow-[0_18px_60px_-22px_rgba(15,23,42,0.55)]"
+              className="max-w-full rounded-xl bg-white keep-white shadow-[0_18px_60px_-22px_rgba(15,23,42,0.55)]"
             />
           </div>
         )}

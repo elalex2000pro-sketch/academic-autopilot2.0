@@ -182,7 +182,7 @@ export default function FocusPage() {
       )}
 
       <section className="grid gap-5 lg:grid-cols-[1fr_260px]">
-        <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm">
+        <div className="rounded-3xl border border-slate-300/45 bg-slate-100/65 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.04]">
           <div className="flex justify-center gap-2">
             <button
               type="button"
@@ -306,7 +306,7 @@ export default function FocusPage() {
         </div>
       </section>
 
-      <section className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm">
+      <section className="rounded-3xl border border-slate-300/45 bg-slate-100/65 p-6 shadow-lg shadow-slate-900/5 backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.04]">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
             Últimos 7 días
@@ -367,10 +367,10 @@ function StatCard({
   tone: "indigo" | "orange" | "violet" | "emerald";
 }) {
   const tones: Record<string, string> = {
-    indigo: "from-indigo-50 to-white border-indigo-100",
-    orange: "from-orange-50 to-white border-orange-100",
-    violet: "from-violet-50 to-white border-violet-100",
-    emerald: "from-emerald-50 to-white border-emerald-100",
+    indigo: "from-indigo-50 to-slate-100 border-indigo-100",
+    orange: "from-orange-50 to-slate-100 border-orange-100",
+    violet: "from-violet-50 to-slate-100 border-violet-100",
+    emerald: "from-emerald-50 to-slate-100 border-emerald-100",
   };
   return (
     <div className={cn("rounded-2xl border bg-gradient-to-br p-4 shadow-sm", tones[tone])}>

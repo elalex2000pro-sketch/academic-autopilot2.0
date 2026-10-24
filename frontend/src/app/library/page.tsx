@@ -305,7 +305,7 @@ export default function LibraryPage() {
         </div>
       ) : books.length === 0 ? (
         <div className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="rounded-3xl border border-dashed border-indigo-200 bg-gradient-to-br from-white via-indigo-50/40 to-violet-50/60 p-8 sm:p-12">
+          <div className="rounded-3xl border border-dashed border-indigo-200 bg-gradient-to-br from-slate-100/80 via-indigo-50/40 to-violet-50/60 p-8 sm:p-12 dark:border-indigo-900/60 dark:from-[#0b0f18] dark:via-[#0b0f18]/70 dark:to-[#0b0f18]">
             <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-indigo-600 shadow-md shadow-indigo-500/10">
               <BookOpen className="h-7 w-7" />
             </span>
@@ -407,13 +407,13 @@ export default function LibraryPage() {
                   </p>
                   <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/20">
                     <div
-                      className="h-full rounded-full bg-white transition-all"
+                      className="h-full rounded-full bg-white keep-white transition-all"
                       style={{ width: `${Math.max(2, continueBook.progress_percent)}%` }}
                     />
                   </div>
                 </div>
                 <Link href={`/library/${continueBook.id}`} className="shrink-0">
-                  <Button className="bg-white text-indigo-700 hover:bg-indigo-50">
+                  <Button className="bg-white keep-white text-indigo-700 hover:bg-indigo-50">
                     Seguir leyendo <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
