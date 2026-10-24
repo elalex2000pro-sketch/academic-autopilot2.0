@@ -1,4 +1,4 @@
-"""Modelo de mensajes del asistente de IA (historial de conversacion)."""
+"""Modelo de mensajes de IA Studio (historial de conversacion)."""
 from __future__ import annotations
 
 import uuid

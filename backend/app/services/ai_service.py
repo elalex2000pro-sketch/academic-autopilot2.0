@@ -1,4 +1,4 @@
-"""Servicio del asistente de IA (organizacion del estudio).
+"""Servicio de IA Studio (chat tutor y organizacion del estudio).
 
 Se conecta a un modelo servido por una API compatible con la de OpenAI (Ollama,
 LM Studio, OpenAI, Groq...). Si el modelo no esta disponible, cae a un motor de
@@ -38,7 +38,8 @@ _APP_KNOWLEDGE = (
     "CONOCES LA APLICACION 'Academic Autopilot' (gestion academica personal). "
     "Sus secciones son: Panel (resumen y plan del dia), Asignaturas (cursos y sus notas), "
     "Horario (clases semanales), Calendario (vista mensual de entregas y tareas), Examenes, "
-    "IA Studio (resumenes e infografias a partir de apuntes), Asistente (este chat), "
+    "IA Studio (chat tutor, transcripcion de audio, analisis de documentos, resumenes, "
+    "infografias y mapas mentales), "
     "Clases compartidas (grupos con un codigo permanente, chat, calendario en comun y "
     "archivos compartidos hasta 20 GB), "
     "Archivos (apuntes por asignatura), Enfoque/Focus (temporizador de estudio) y Ajustes "
@@ -330,9 +331,14 @@ async def generate_reply(
     message: str,
     history: list[dict[str, str]],
     image_data_url: str | None = None,
+    document_text: str | None = None,
+    document_name: str | None = None,
 ) -> AiResult:
     """Responde al usuario. Usa el modelo (con herramientas y vision) si esta
     disponible; si no, cae al motor heuristico.
+
+    `document_text` permite chatear con apuntes y examenes en PDF, Word, Excel o
+    texto. Las imagenes siguen enviandose al modelo de vision como data URL.
 
     Devuelve un AiResult con el texto, la fuente, una posible accion pendiente de
     confirmacion (borrados) y los eventos de tiempo real generados.
@@ -340,22 +346,37 @@ async def generate_reply(
     ctx = await build_context(db, user)
     system = f"{_SYSTEM_PROMPT}\n\nCONTEXTO DEL ESTUDIANTE:\n{render_context_text(ctx)}"
 
+    if document_text:
+        label = document_name or "documento adjunto"
+        system = (
+            f"{system}\n\nDOCUMENTO ADJUNTO ({label}):\n"
+            f"{document_text[: settings.ai_studio_max_chars]}\n\n"
+            "Usa el contenido del documento como fuente principal para responder. "
+            "Si la pregunta no se puede responder con el documento, dilo y ofrece lo que si aparece."
+        )
+
+    prompt = message.strip()
+    if not prompt and document_text:
+        prompt = "Analiza el documento adjunto y dime lo mas importante."
+
     profile = resolve_profile(user)
     if profile.configured:
         try:
             result = await _run_model(
-                db, user, profile, system, history, message, image_data_url
+                db, user, profile, system, history, prompt, image_data_url
             )
             if result.reply:
                 return result
             logger.warning("El modelo devolvio una respuesta vacia; usando heuristico")
         except Exception as exc:  # noqa: BLE001 - degradacion controlada
             logger.warning(
-                "Asistente IA (%s) no disponible (%s); usando heuristico",
+                "IA Studio (%s) no disponible (%s); usando heuristico",
                 profile.provider,
                 exc,
             )
 
+    if document_text:
+        return AiResult(heuristic_document_reply(document_name, document_text), "heuristic")
     return AiResult(heuristic_reply(ctx, message), "heuristic")
 
 
@@ -473,6 +494,24 @@ async def _post_chat(
     return choices[0].get("message", {}) or {}
 
 
+def heuristic_document_reply(document_name: str | None, text: str) -> str:
+    """Resumen extractivo de emergencia cuando no hay motor de IA configurado."""
+    lines: list[str] = []
+    for raw in text.splitlines():
+        line = raw.strip()
+        if line:
+            lines.append(line[:240])
+        if len(lines) >= 6:
+            break
+    preview = "\n".join(f"- {line}" for line in lines) or "- (sin texto legible)"
+    label = document_name or "el documento"
+    return (
+        f"He leido «{label}». Esto es lo mas destacado que encuentro:\n{preview}\n\n"
+        "Para responder preguntas concretas sobre el documento, configura un motor de IA "
+        "en Ajustes. Mientras tanto, puedo darte este resumen por reglas."
+    )
+
+
 def heuristic_reply(ctx: dict[str, Any], message: str) -> str:
     """Recomendaciones por reglas: cuando empezar y que priorizar."""
     tasks = ctx["tasks"]
@@ -507,8 +546,8 @@ def heuristic_reply(ctx: dict[str, Any], message: str) -> str:
         )
 
     lines.append(
-        "\nNota: te respondo con el motor de reglas porque el asistente de IA no "
-        "esta disponible ahora mismo (revisa Ajustes, seccion Motor del asistente IA)."
+        "\nNota: te respondo con el motor de reglas porque IA Studio no "
+        "esta disponible ahora mismo (revisa Ajustes, seccion Motor de IA Studio)."
     )
     return "\n".join(lines)
 

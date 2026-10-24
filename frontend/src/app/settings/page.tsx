@@ -270,7 +270,7 @@ function SettingsInner() {
       });
       setAiProfile(updated);
       setAiKey("");
-      setNotice(`Asistente configurado con ${AI_PROVIDER_LABEL[updated.provider] ?? updated.provider}`);
+      setNotice(`IA Studio configurado con ${AI_PROVIDER_LABEL[updated.provider] ?? updated.provider}`);
     } catch (e) {
       setNotice(e instanceof ApiError ? e.message : "Error al guardar la IA");
     } finally {
@@ -506,16 +506,16 @@ function SettingsInner() {
         </CardContent>
       </Card>
 
-      {/* ---- Asistente IA (multi-proveedor) ---- */}
+      {/* ---- IA Studio (multi-proveedor) ---- */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Cpu className="h-4 w-4" /> Motor del asistente IA
+            <Cpu className="h-4 w-4" /> Motor de IA Studio
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Elige con qué IA responde tu asistente: <strong>Gemini</strong> o{" "}
+            Elige con qué IA responde IA Studio: <strong>Gemini</strong> o{" "}
             <strong>ChatGPT</strong> (gratis con límite diario en sus planes básicos),{" "}
             <strong>Claude</strong>, <strong>OpenRouter</strong> (una clave para casi todas) o
             cualquier otra API compatible. Tu clave se guarda cifrada.
@@ -633,7 +633,7 @@ function SettingsInner() {
           <p className="text-sm text-muted-foreground">
             Google todavía no ofrece una API pública de NotebookLM, así que se conecta de forma
             manual y sencilla: genera tus resúmenes e infografías en <strong>IA Studio</strong> (o
-            exporta tus chats desde el <strong>Asistente</strong>) y súbelos a un cuaderno de
+            exporta tus chats desde <strong>IA Studio</strong>) y súbelos a un cuaderno de
             NotebookLM para estudiar con sus explicaciones, mapas y preguntas guiadas.
           </p>
           <div className="flex flex-wrap gap-2">

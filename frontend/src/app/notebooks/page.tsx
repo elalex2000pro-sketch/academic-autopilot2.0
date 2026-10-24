@@ -556,7 +556,7 @@ export default function NotebooksPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href="/transcribe">
+          <Link href="/studio?mode=audio">
             <Button variant="secondary">
               <AudioLines className="h-4 w-4" /> Transcribir audio
             </Button>
@@ -582,7 +582,7 @@ export default function NotebooksPage() {
           <NotebookPen className="mx-auto h-10 w-10 text-indigo-400" />
           <h2 className="mt-3 text-lg font-semibold">Todavía no tienes cuadernos</h2>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-            Crea tu primer cuaderno para organizar apuntes, pegar resúmenes del Asistente IA o
+            Crea tu primer cuaderno para organizar apuntes, pegar resúmenes de IA Studio o
             preparar un examen.
           </p>
           <Button className="mt-4" onClick={() => setShowTemplates(true)}>

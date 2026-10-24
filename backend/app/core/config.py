@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     max_session_minutes: int = 90
     min_session_minutes: int = 30
 
-    # --- Asistente IA (compatible con la API de OpenAI; por defecto Ollama local) ---
+    # --- IA Studio (compatible con la API de OpenAI; por defecto Ollama local) ---
     ai_enabled: bool = True
     ai_base_url: str = "http://host.docker.internal:11434/v1"
     ai_api_key: str = ""  # Ollama no requiere clave

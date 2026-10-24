@@ -13,7 +13,7 @@ const DEFAULT_TUTORIAL: Tutorial = {
   title: "Guía rápida",
   steps: [
     "Usa el menú de la izquierda para moverte entre secciones.",
-    "La burbuja ✨ de abajo a la derecha es el asistente IA: pídele que te organice.",
+    "Abre «IA Studio» para chatear con el tutor, transcribir audio o analizar tus apuntes.",
     "Pulsa este botón «?» en cualquier sección para ver su tutorial paso a paso.",
   ],
 };
@@ -97,7 +97,7 @@ const TUTORIALS: { match: RegExp; tutorial: Tutorial }[] = [
       steps: [
         "Añade tus clases de la semana: día, hora, asignatura y aula.",
         "Pulsa «Importar» y sube una foto o un PDF del horario para rellenarlo de golpe.",
-        "El asistente IA usa tu horario para decirte cuándo estudiar.",
+        "IA Studio usa tu horario para decirte cuándo estudiar.",
         "Define también tu disponibilidad (tardes, fines de semana) en «Ajustes».",
       ],
     },
@@ -129,9 +129,10 @@ const TUTORIALS: { match: RegExp; tutorial: Tutorial }[] = [
     tutorial: {
       title: "IA Studio",
       steps: [
-        "Sube tus apuntes (PDF, Word, Excel, PowerPoint o fotos) y elige el documento.",
-        "Pulsa «Resumen», «Infografía» o «Mapa mental»: se genera un PDF en segundos.",
-        "Descarga el PDF, pásalo a Word o pulsa «Canva» para editarlo con tus colores.",
+        "Elige un modo arriba: «Chat Tutor SMR», «Transcribir Audio» o «Analizar Documento».",
+        "En el chat resuelve dudas y pide cambios en tus tareas, notas u horario.",
+        "En Audio sube una grabación o graba la clase; después guárdala en Cuadernos o resúmela.",
+        "En Documento sube apuntes o exámenes y pregúntale; también genera resumen, infografía o mapa mental.",
       ],
     },
   },
@@ -156,30 +157,6 @@ const TUTORIALS: { match: RegExp; tutorial: Tutorial }[] = [
         "Repasa: pulsa la tarjeta para ver la respuesta y valora del 1 al 5. El sistema la programará cuando estés a punto de olvidarla.",
         "En «Modo examen», genera un test de 4 opciones desde un cuaderno y se corrige al instante con explicaciones.",
         "Cuanto más repases, más sube tu racha y menos tarjetas tendrás pendientes.",
-      ],
-    },
-  },
-  {
-    match: /^\/transcribe/,
-    tutorial: {
-      title: "Transcribir una clase",
-      steps: [
-        "Sube la grabación (MP3, M4A, WAV...) de hasta 24 MB.",
-        "Pulsa «Transcribir audio»: se usa Whisper de OpenAI (configura tu clave en Ajustes).",
-        "Revisa el texto, ponle un título y guárdalo como cuaderno.",
-        "Después puedes resumirlo en IA Studio o generar flashcards en Repaso.",
-      ],
-    },
-  },
-  {
-    match: /^\/assistant/,
-    tutorial: {
-      title: "Asistente IA",
-      steps: [
-        "Pídele lo que necesites: «organiza mi semana», «¿qué priorizo hoy?».",
-        "Puede crear y editar tareas, notas, horario y asignaturas por ti.",
-        "Con «Exportar» e «Importar» llevas tu conversación a otro dispositivo.",
-        "Cambia la IA que responde (Gemini, ChatGPT, Claude...) en «Ajustes».",
       ],
     },
   },

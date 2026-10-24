@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import {
-  AudioLines,
   BookOpen,
   Brain,
   CalendarCheck,
@@ -16,14 +15,12 @@ import {
   LogOut,
   NotebookPen,
   Settings,
-  Sparkles,
   Target,
   Users,
   Wand2,
 } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
-import { AssistantFab } from "@/components/assistant-fab";
 import { HelpWidget } from "@/components/help-widget";
 import { InstallAppButton } from "@/components/install-app-button";
 import { OfflineStatus } from "@/components/offline-status";
@@ -48,15 +45,11 @@ const NAV_GROUPS = [
       { href: "/academics", label: "Académico", icon: GraduationCap },
       { href: "/notebooks", label: "Cuadernos", icon: NotebookPen },
       { href: "/review", label: "Repaso", icon: Brain },
-      { href: "/transcribe", label: "Transcribir", icon: AudioLines },
     ],
   },
   {
     label: "Crea",
-    items: [
-      { href: "/studio", label: "IA Studio", icon: Wand2 },
-      { href: "/assistant", label: "Asistente IA", icon: Sparkles },
-    ],
+    items: [{ href: "/studio", label: "IA Studio", icon: Wand2 }],
   },
   {
     label: "Comparte",
@@ -288,7 +281,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <main className="min-w-0 flex-1 overflow-x-hidden bg-transparent">
           {children}
-          <AssistantFab />
           <HelpWidget />
         </main>
       </div>

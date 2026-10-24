@@ -1,4 +1,4 @@
-"""Endpoints del asistente de IA (chat de organizacion del estudio).
+"""Endpoints del chat de IA Studio (tutor y organizacion del estudio).
 
 El asistente puede ademas OPERAR la app mediante herramientas (crear/editar
 elementos). Las operaciones destructivas se devuelven como accion pendiente y
@@ -13,6 +13,7 @@ from datetime import timedelta, timezone
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import delete, select
+from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import CurrentUser, DbSession
 from app.core import crypto
@@ -31,7 +32,7 @@ from app.schemas.assistant import (
     ConfirmRequest,
     PendingAction,
 )
-from app.services import ai_service, ai_tools
+from app.services import ai_service, ai_studio_service, ai_tools
 from app.services.realtime import notify
 
 logger = get_logger(__name__)
@@ -105,12 +106,16 @@ async def chat(
     if not payload.message.strip() and payload.document_id is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Escribe un mensaje o adjunta una imagen",
+            detail="Escribe un mensaje o adjunta un documento",
         )
 
     image_data_url: str | None = None
+    document_text: str | None = None
+    document_name: str | None = None
     if payload.document_id is not None:
-        image_data_url = await _image_data_url(db, current_user.id, payload.document_id)
+        image_data_url, document_text, document_name = await _load_attachment(
+            db, current_user.id, payload.document_id
+        )
 
     # Historial reciente (orden cronologico) para dar contexto al modelo.
     result = await db.execute(
@@ -129,7 +134,7 @@ async def chat(
     user_message = AssistantMessage(
         user_id=current_user.id,
         role="user",
-        content=payload.message.strip() or "(imagen adjunta)",
+        content=payload.message.strip() or "(documento adjunto)",
         document_id=payload.document_id,
     )
     db.add(user_message)
@@ -137,7 +142,13 @@ async def chat(
 
     try:
         result_ai = await ai_service.generate_reply(
-            db, current_user, payload.message, history, image_data_url=image_data_url
+            db,
+            current_user,
+            payload.message,
+            history,
+            image_data_url=image_data_url,
+            document_text=document_text,
+            document_name=document_name,
         )
     except Exception as exc:  # noqa: BLE001 - el usuario siempre debe recibir respuesta
         logger.error("Fallo inesperado del asistente: %s", exc)
@@ -252,23 +263,40 @@ async def import_messages(
     return {"imported": len(payload.messages)}
 
 
-async def _image_data_url(
+async def _load_attachment(
     db: DbSession, user_id: uuid.UUID, document_id: uuid.UUID
-) -> str:
-    """Carga un documento de imagen y lo devuelve como data URL base64."""
+) -> tuple[str | None, str | None, str]:
+    """Prepara un archivo adjunto para el chat.
+
+    Devuelve (imagen como data URL, texto extraido, nombre). Las imagenes usan el
+    modelo de vision; los apuntes y examenes en PDF/Word/Excel/texto se extraen y
+    se inyectan en el prompt para poder responder preguntas sobre ellos.
+    """
     result = await db.execute(
         select(Document).where(Document.id == document_id, Document.user_id == user_id)
     )
     document = result.scalar_one_or_none()
     if document is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Imagen no encontrada")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado")
 
     content_type = (document.content_type or "").lower()
-    if content_type not in _IMAGE_TYPES:
+    if content_type in _IMAGE_TYPES:
+        return _image_data_url(document), None, document.filename
+
+    try:
+        text = await run_in_threadpool(ai_studio_service.extract_text, document)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if not text.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El archivo adjunto no es una imagen compatible",
+            detail="El documento no contiene texto que se pueda analizar.",
         )
+    return None, text, document.filename
+
+
+def _image_data_url(document: Document) -> str:
+    """Carga un documento de imagen y lo devuelve como data URL base64."""
     if document.size_bytes > settings.ai_max_image_mb * 1024 * 1024:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
@@ -288,4 +316,4 @@ async def _image_data_url(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="No se pudo leer la imagen"
         ) from exc
 
-    return f"data:{content_type};base64,{encoded}"
+    return f"data:{document.content_type.lower()};base64,{encoded}"

@@ -1,4 +1,4 @@
-"""Esquemas del asistente de IA."""
+"""Esquemas del chat de IA Studio."""
 from __future__ import annotations
 
 import uuid
