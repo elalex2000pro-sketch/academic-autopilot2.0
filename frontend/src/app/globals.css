@@ -550,6 +550,20 @@ html:not(.dark) .bg-white\/25:not(.keep-white) {
   background-color: rgb(239 239 242 / 0.46);
 }
 
+/* Los grises casi blancos heredados también se atenúan. */
+html:not(.dark) .bg-slate-50:not(.keep-white),
+html:not(.dark) .bg-slate-50\/95:not(.keep-white),
+html:not(.dark) .bg-slate-50\/90:not(.keep-white),
+html:not(.dark) .bg-slate-50\/80:not(.keep-white),
+html:not(.dark) .bg-slate-50\/70:not(.keep-white),
+html:not(.dark) .bg-slate-50\/60:not(.keep-white),
+html:not(.dark) .bg-slate-50\/40:not(.keep-white) {
+  background-color: rgb(231 232 236 / 0.7);
+}
+html:not(.dark) .bg-slate-100:not(.keep-white) {
+  background-color: rgb(230 231 235 / 0.8);
+}
+
 html:not(.dark) .hover\:bg-white:hover:not(.keep-white),
 html:not(.dark) .focus\:bg-white:focus:not(.keep-white) {
   background-color: rgb(239 239 242 / 0.92);
