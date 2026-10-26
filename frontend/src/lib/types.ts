@@ -34,6 +34,7 @@ export interface Grade {
   weight: number | null;
   graded_at: string | null;
   notes: string | null;
+  is_exam: boolean;
   percentage: number | null;
   created_at: string;
   updated_at: string;

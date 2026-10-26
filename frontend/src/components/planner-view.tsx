@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
+  CalendarClock,
   CalendarDays,
   CalendarRange,
   Check,
@@ -23,6 +24,8 @@ import {
   X,
 } from "lucide-react";
 
+import { ExamCard } from "@/components/exam-card";
+import { ExamDialog, type ExamDialogMode } from "@/components/exam-dialog";
 import { useRealtime } from "@/components/realtime-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,8 +42,14 @@ import {
   loadCustomTimetable,
   saveCustomTimetable,
 } from "@/lib/custom-timetable";
+import { examDateKey, sortExams } from "@/lib/exams";
+import {
+  GRADE_CHANGE_EVENT,
+  GRADE_CHANGE_STORAGE_KEY,
+  notifyGradeChange,
+} from "@/lib/grade-events";
 import { formatDueLabel } from "@/lib/task-utils";
-import type { ClassEvent, Course, Task, TimetableEntry } from "@/lib/types";
+import type { ClassEvent, Course, Grade, Task, TimetableEntry } from "@/lib/types";
 import { cn, formatMinutes } from "@/lib/utils";
 
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -222,8 +231,14 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
   const [courses, setCourses] = useState<Course[]>([]);
   const [entries, setEntries] = useState<TimetableEntry[]>([]);
   const [events, setEvents] = useState<EnrichedClassEvent[]>([]);
+  const [grades, setGrades] = useState<Grade[]>([]);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [examDialog, setExamDialog] = useState<{
+    mode: ExamDialogMode;
+    exam: Grade | null;
+  } | null>(null);
+  const [deletingExamId, setDeletingExamId] = useState<string | null>(null);
 
   const {
     activeTasks,
@@ -276,14 +291,17 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
     if (!silent) setLoading(true);
     try {
       const customTimetable = loadCustomTimetable();
-      const [, courseList, timetableList, classList] = await Promise.all([
+      const [, courseList, timetableList, classList, gradeList] = await Promise.all([
         refreshTasks({ silent: true }),
         api.courses(),
         customTimetable ? Promise.resolve([] as TimetableEntry[]) : api.timetable(),
         api.classes().catch(() => []),
+        // Si falla la red se conservan los examenes ya cargados.
+        api.grades().catch(() => null),
       ]);
 
       setCourses(courseList);
+      if (Array.isArray(gradeList)) setGrades(gradeList);
       applyEntries(
         customTimetable
           ? hydrateTimetableCourses(customTimetable, courseList)
@@ -314,9 +332,35 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
     }
   }, [refreshTasks, applyEntries]);
 
+  const refreshGrades = useCallback(async () => {
+    try {
+      const gradeList = await api.grades();
+      if (Array.isArray(gradeList)) setGrades(gradeList);
+    } catch {
+      // Si falla la red se conserva la ultima lista conocida.
+    }
+  }, []);
+
   useEffect(() => {
     load().catch(() => undefined);
   }, [load]);
+
+  // Cambios de notas hechos en Academico, en otra pestaña o desde el propio
+  // formulario de examen: el calendario se actualiza sin recargar la pagina.
+  useEffect(() => {
+    const handleGradeChange = () => {
+      void refreshGrades();
+    };
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === GRADE_CHANGE_STORAGE_KEY) handleGradeChange();
+    };
+    window.addEventListener(GRADE_CHANGE_EVENT, handleGradeChange);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener(GRADE_CHANGE_EVENT, handleGradeChange);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, [refreshGrades]);
 
   useEffect(() => {
     if (focusClassForm === 0) return;
@@ -350,6 +394,10 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
   }, []);
 
   useRealtime((event) => {
+    if (event.event === "grades") {
+      void refreshGrades();
+      return;
+    }
     if (
       event.event === "tasks" ||
       event.event === "courses" ||
@@ -390,6 +438,20 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
     }
     return map;
   }, [events]);
+
+  const exams = useMemo(() => grades.filter((grade) => grade.is_exam), [grades]);
+
+  const examsByDay = useMemo(() => {
+    const map = new Map<string, Grade[]>();
+    for (const exam of exams) {
+      const key = examDateKey(exam);
+      if (!key) continue;
+      const bucket = map.get(key) ?? [];
+      bucket.push(exam);
+      map.set(key, bucket);
+    }
+    return map;
+  }, [exams]);
 
   const selectedDate = parseKey(selectedDay) ?? today;
   const selectedWeekday = weekdayIndex(selectedDate);
@@ -453,6 +515,11 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
     );
   }, [eventsByDay, selectedDay]);
 
+  const selectedExams = useMemo(
+    () => sortExams(examsByDay.get(selectedDay) ?? []),
+    [examsByDay, selectedDay],
+  );
+
   const pendingSelected = selectedTasks.length;
 
   const monthCells = useMemo(() => {
@@ -479,6 +546,18 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
     const prefix = `${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}`;
     return events.filter((event) => dayKey(event.start_at)?.startsWith(prefix)).length;
   }, [cursor, events]);
+
+  const monthExamCount = useMemo(() => {
+    const prefix = `${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}`;
+    return exams.filter((exam) => examDateKey(exam)?.startsWith(prefix)).length;
+  }, [cursor, exams]);
+
+  const monthPendingExamCount = useMemo(() => {
+    const prefix = `${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}`;
+    return exams.filter(
+      (exam) => exam.score === null && examDateKey(exam)?.startsWith(prefix),
+    ).length;
+  }, [cursor, exams]);
 
   function selectDay(key: string) {
     setSelectedDay(key);
@@ -570,6 +649,48 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
       setNotice({ tone: "error", text: errorMessage(error) });
     } finally {
       setBusyTaskId(null);
+    }
+  }
+
+  function openCreateExam() {
+    setExamDialog({ mode: "create", exam: null });
+    setNotice(null);
+  }
+
+  function openExamDialog(mode: ExamDialogMode, exam: Grade) {
+    setExamDialog({ mode, exam });
+    setNotice(null);
+  }
+
+  function handleExamSaved(saved: Grade, message: string) {
+    setGrades((current) => {
+      const exists = current.some((grade) => grade.id === saved.id);
+      return exists
+        ? current.map((grade) => (grade.id === saved.id ? saved : grade))
+        : [...current, saved];
+    });
+    setExamDialog(null);
+    setNotice({ tone: "success", text: message });
+  }
+
+  function handleExamDeleted(id: string) {
+    setGrades((current) => current.filter((grade) => grade.id !== id));
+    setNotice({ tone: "success", text: "Examen eliminado del calendario y de la media." });
+  }
+
+  async function removeExam(exam: Grade) {
+    if (deletingExamId) return;
+    setDeletingExamId(exam.id);
+    setNotice(null);
+    try {
+      await api.deleteGrade(exam.id);
+      setGrades((current) => current.filter((grade) => grade.id !== exam.id));
+      notifyGradeChange();
+      setNotice({ tone: "success", text: "Examen eliminado del calendario y de la media." });
+    } catch (error) {
+      setNotice({ tone: "error", text: errorMessage(error) });
+    } finally {
+      setDeletingExamId(null);
     }
   }
 
@@ -780,17 +901,30 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
           </h1>
           <p className="mt-2 max-w-2xl text-[12.5px] leading-5 text-slate-500 dark:text-white/45">
             Calendario y horario en una sola vista. Pulsa un día para ver sus clases, entregas y
-            exámenes; las tareas entregadas o vencidas dejan de ocupar tu lista.
+            exámenes; los días con examen se marcan en rojo y su nota actualiza la media de
+            Académico.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {monthPendingExamCount > 0 && (
+            <span className="inline-flex h-9 items-center gap-2 rounded-xl border border-[#FF3B30]/20 bg-[#FF3B30]/[0.07] px-3 text-[11.5px] font-medium text-[#d92b22] dark:border-[#FF3B30]/20 dark:bg-[#FF3B30]/10 dark:text-[#ff8a80]">
+              <CalendarClock className="h-3.5 w-3.5" />
+              {monthPendingExamCount === 1
+                ? "1 examen pendiente"
+                : `${monthPendingExamCount} exámenes pendientes`}
+            </span>
+          )}
           <span className="app-glass-soft inline-flex h-9 items-center gap-2 rounded-xl px-3 text-[11.5px] font-medium text-slate-600 dark:text-white/55">
             <Sparkles className="h-3.5 w-3.5 text-[#AF52DE]" strokeWidth={1.8} />
-            {monthPending} pendiente{monthPending === 1 ? "" : "s"} este mes
+            {monthPending} tarea{monthPending === 1 ? "" : "s"} pendiente
+            {monthPending === 1 ? "" : "s"} este mes
           </span>
           <Button variant="outline" size="sm" onClick={goToday}>
             <CalendarDays className="h-4 w-4" /> Hoy
+          </Button>
+          <Button size="sm" onClick={openCreateExam} aria-label="Nuevo Evento: Examen">
+            <Plus className="h-4 w-4" /> Nuevo Evento
           </Button>
         </div>
       </header>
@@ -877,7 +1011,10 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
               }
               const dayTasks = tasksByDay.get(cell.key) ?? [];
               const dayEvents = eventsByDay.get(cell.key) ?? [];
+              const dayExams = examsByDay.get(cell.key) ?? [];
+              const hasExam = dayExams.length > 0;
               const markers = [
+                ...dayExams.map(() => "#FF3B30"),
                 ...dayTasks.map((task) => PRIORITY_COLOR[task.priority] ?? "#8E8E93"),
                 ...dayEvents.map((event) => (event.is_exam ? "#FF3B30" : "#30B0C7")),
               ].slice(0, 3);
@@ -890,15 +1027,19 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                   type="button"
                   onClick={() => selectDay(cell.key)}
                   aria-pressed={selected}
-                  aria-label={`${longDate(cell.key)}: ${dayTasks.length} tareas, ${dayEvents.length} eventos`}
+                  aria-label={`${longDate(cell.key)}: ${dayTasks.length} tareas, ${dayExams.length === 1 ? "1 examen" : `${dayExams.length} exámenes`}, ${dayEvents.length} eventos`}
+                  title={hasExam ? dayExams.map((exam) => exam.title).join(" · ") : undefined}
                   className={cn(
                     "group relative flex min-h-[58px] flex-col items-center justify-start gap-1 rounded-2xl border px-1 py-2 text-center transition-all duration-200 ease-mac sm:min-h-[64px]",
                     selected
                       ? "border-[#0066FF]/30 bg-[#0066FF] text-white shadow-[0_12px_28px_-16px_rgba(0,102,255,0.95)]"
                       : todayCell
                         ? "border-[#0066FF]/30 bg-[#0066FF]/10 text-[#0066FF] dark:bg-[#0066FF]/15 dark:text-[#7fb2ff]"
-                        : "border-transparent text-slate-600 hover:border-white/70 hover:bg-white/40 dark:text-white/60 dark:hover:border-white/10 dark:hover:bg-white/[0.05]",
-                    weekendCell && !selected && !todayCell && "text-slate-400 dark:text-white/35",
+                        : hasExam
+                          ? "border-[#FF3B30]/35 bg-[#FF3B30]/[0.06] text-slate-700 hover:border-[#FF3B30]/55 hover:bg-[#FF3B30]/[0.1] dark:border-[#FF3B30]/25 dark:bg-[#FF3B30]/10 dark:text-white/75 dark:hover:bg-[#FF3B30]/15"
+                          : "border-transparent text-slate-600 hover:border-white/70 hover:bg-white/40 dark:text-white/60 dark:hover:border-white/10 dark:hover:bg-white/[0.05]",
+                    weekendCell && !selected && !todayCell && !hasExam && "text-slate-400 dark:text-white/35",
+                    hasExam && !selected && "ring-1 ring-inset ring-[#FF3B30]/45",
                   )}
                 >
                   <span
@@ -908,11 +1049,24 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                         ? "bg-white/20"
                         : todayCell
                           ? "bg-[#0066FF]/10 dark:bg-[#0066FF]/15"
-                          : "",
+                          : hasExam
+                            ? "bg-[#FF3B30]/12 text-[#d92b22] dark:bg-[#FF3B30]/15 dark:text-[#ff8a80]"
+                            : "",
                     )}
                   >
                     {cell.day}
                   </span>
+                  {hasExam && (
+                    <span
+                      className={cn(
+                        "absolute right-1 top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-bold leading-none shadow-sm",
+                        selected ? "bg-white text-[#FF3B30]" : "bg-[#FF3B30] text-white",
+                      )}
+                      aria-hidden
+                    >
+                      !
+                    </span>
+                  )}
                   <span className="flex h-1.5 items-center justify-center gap-1">
                     {markers.map((color, markerIndex) => (
                       <span
@@ -938,11 +1092,15 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
               <span className="inline-flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#0066FF]" /> Tarea corta
               </span>
+              <span className="inline-flex items-center gap-1.5 font-medium text-[#d92b22] dark:text-[#ff8a80]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#FF3B30]" /> Examen
+              </span>
               <span className="inline-flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#30B0C7]" /> Examen / evento
+                <span className="h-1.5 w-1.5 rounded-full bg-[#30B0C7]" /> Evento de clase
               </span>
             </div>
             <span>
+              {monthExamCount === 1 ? "1 examen" : `${monthExamCount} exámenes`} ·{" "}
               {monthEventCount} evento{monthEventCount === 1 ? "" : "s"}
             </span>
           </div>
@@ -961,7 +1119,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
               <p className="mt-1 text-[11.5px] text-slate-500 dark:text-white/40">
                 {viewMode === "week"
                   ? "Lunes a viernes · toca un día para ver su detalle"
-                  : `${selectedClasses.length} clase${selectedClasses.length === 1 ? "" : "s"} · ${selectedTasks.length} tarea${selectedTasks.length === 1 ? "" : "s"} · ${selectedEvents.length} evento${selectedEvents.length === 1 ? "" : "s"}`}
+                  : `${selectedClasses.length} clase${selectedClasses.length === 1 ? "" : "s"} · ${selectedExams.length === 1 ? "1 examen" : `${selectedExams.length} exámenes`} · ${selectedTasks.length} tarea${selectedTasks.length === 1 ? "" : "s"} · ${selectedEvents.length} evento${selectedEvents.length === 1 ? "" : "s"}`}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -1014,6 +1172,8 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                 {weekDays.map((day) => {
                   const dayTasks = tasksByDay.get(day.key) ?? [];
                   const dayEvents = eventsByDay.get(day.key) ?? [];
+                  const dayExams = examsByDay.get(day.key) ?? [];
+                  const hasClassExam = dayEvents.some((event) => event.is_exam);
                   const dayClasses = entries
                     .filter((entry) => entry.day_of_week === day.weekday)
                     .sort((a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time));
@@ -1031,6 +1191,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                         dayIsToday
                           ? "border-[#0066FF]/25 bg-[#0066FF]/[0.06] dark:border-[#0066FF]/25 dark:bg-[#0066FF]/10"
                           : "border-white/55 bg-white/25 hover:border-white/80 hover:bg-white/40 dark:border-white/[0.06] dark:bg-white/[0.025] dark:hover:border-white/15 dark:hover:bg-white/[0.05]",
+                        dayExams.length > 0 && "ring-1 ring-inset ring-[#FF3B30]/35",
                       )}
                     >
                       <span className="flex items-baseline justify-between gap-1 px-0.5">
@@ -1042,12 +1203,22 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                             "flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10.5px] font-semibold tabular-nums",
                             dayIsToday
                               ? "bg-[#0066FF] text-white"
-                              : "text-slate-500 dark:text-white/45",
+                              : dayExams.length > 0
+                                ? "bg-[#FF3B30]/12 text-[#d92b22] dark:bg-[#FF3B30]/15 dark:text-[#ff8a80]"
+                                : "text-slate-500 dark:text-white/45",
                           )}
                         >
                           {day.date.getDate()}
                         </span>
                       </span>
+                      {dayExams.length > 0 && (
+                        <span className="mt-1 flex min-w-0 items-center gap-1 rounded-full bg-[#FF3B30]/10 px-1.5 py-0.5 text-[8.5px] font-semibold text-[#d92b22] dark:bg-[#FF3B30]/15 dark:text-[#ff8a80]">
+                          <CalendarClock className="h-2.5 w-2.5 shrink-0" />
+                          <span className="truncate">
+                            {dayExams.length === 1 ? dayExams[0].title : `${dayExams.length} exámenes`}
+                          </span>
+                        </span>
+                      )}
                       <span className="mt-1.5 flex min-h-0 flex-1 flex-col gap-1">
                         {dayClasses.length === 0 ? (
                           <span className="rounded-lg border border-dashed border-white/60 px-1.5 py-2 text-center text-[9px] leading-3 text-slate-400 dark:border-white/10 dark:text-white/25">
@@ -1076,15 +1247,27 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                           })
                         )}
                       </span>
-                      {(dayTasks.length > 0 || dayEvents.length > 0) && (
+                      {(dayTasks.length > 0 || dayEvents.length > 0 || dayExams.length > 0) && (
                         <span className="mt-1 flex flex-wrap items-center gap-1 border-t border-white/40 px-0.5 pt-1 text-[8.5px] font-medium text-slate-500 dark:border-white/10 dark:text-white/35">
+                          {dayExams.length > 0 && (
+                            <span className="rounded-full bg-[#FF3B30]/10 px-1.5 py-0.5 text-[#d92b22] dark:bg-[#FF3B30]/15 dark:text-[#ff8a80]">
+                              {dayExams.length === 1 ? "1 examen" : `${dayExams.length} exámenes`}
+                            </span>
+                          )}
                           {dayTasks.length > 0 && (
                             <span className="rounded-full bg-[#0066FF]/10 px-1.5 py-0.5 text-[#0066FF] dark:bg-[#0066FF]/20 dark:text-[#8ab9ff]">
                               {dayTasks.length} tarea{dayTasks.length === 1 ? "" : "s"}
                             </span>
                           )}
                           {dayEvents.length > 0 && (
-                            <span className="rounded-full bg-[#30B0C7]/10 px-1.5 py-0.5 text-[#1f8fa3] dark:bg-[#30B0C7]/15 dark:text-[#6ed4e5]">
+                            <span
+                              className={cn(
+                                "rounded-full px-1.5 py-0.5",
+                                hasClassExam
+                                  ? "bg-[#FF3B30]/10 text-[#d92b22] dark:bg-[#FF3B30]/15 dark:text-[#ff8a80]"
+                                  : "bg-[#30B0C7]/10 text-[#1f8fa3] dark:bg-[#30B0C7]/15 dark:text-[#6ed4e5]",
+                              )}
+                            >
                               {dayEvents.length} evento{dayEvents.length === 1 ? "" : "s"}
                             </span>
                           )}
@@ -1110,7 +1293,18 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                 ))}
               </div>
             ) : selectedClasses.length === 0 ? (
-              <MonthEmpty weekend={false} />
+              selectedExams.length > 0 ? (
+                <div className="flex items-center gap-2.5 rounded-2xl border border-dashed border-[#FF3B30]/30 bg-[#FF3B30]/[0.04] px-3 py-4 text-[11.5px] text-slate-500 dark:border-[#FF3B30]/20 dark:bg-[#FF3B30]/[0.06] dark:text-white/40">
+                  <CalendarClock className="h-4 w-4 shrink-0 text-[#d92b22] dark:text-[#ff8a80]" />
+                  Sin clases lectivas, pero tienes{" "}
+                  {selectedExams.length === 1
+                    ? "1 examen"
+                    : `${selectedExams.length} exámenes`}{" "}
+                  este día.
+                </div>
+              ) : (
+                <MonthEmpty weekend={false} />
+              )
             ) : (
               <div className="relative">
                 <span className="absolute bottom-4 left-[65px] top-4 w-px bg-slate-200/80 dark:bg-white/10" />
@@ -1294,11 +1488,52 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
               </div>
             )}
 
+            <div className="mt-5 border-t border-white/50 pt-4 dark:border-white/5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#d92b22] dark:text-[#ff8a80]">
+                    Evaluaciones
+                  </p>
+                  <h3 className="mt-0.5 text-[15px] font-semibold tracking-[-0.01em] text-slate-800 dark:text-white/90">
+                    Exámenes del día
+                  </h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10.5px] text-slate-400 dark:text-white/30">
+                    {selectedExams.length}
+                  </span>
+                  <Button variant="outline" size="sm" onClick={openCreateExam} className="h-8">
+                    <Plus className="h-3.5 w-3.5" /> Añadir examen
+                  </Button>
+                </div>
+              </div>
+              {selectedExams.length === 0 ? (
+                <div className="mt-3 flex items-center gap-2.5 rounded-2xl border border-dashed border-white/70 px-3 py-4 text-[11.5px] text-slate-500 dark:border-white/10 dark:text-white/35">
+                  <CalendarClock className="h-4 w-4 shrink-0 text-[#FF3B30]" />
+                  Sin exámenes este día. Pulsa «Añadir examen» para vincularlo a una asignatura.
+                </div>
+              ) : (
+                <div className="mt-2 space-y-2">
+                  {selectedExams.map((exam) => (
+                    <ExamCard
+                      key={exam.id}
+                      exam={exam}
+                      course={exam.course_id ? courseById.get(exam.course_id) : undefined}
+                      busy={deletingExamId === exam.id}
+                      onEdit={() => openExamDialog("edit", exam)}
+                      onGrade={() => openExamDialog("grade", exam)}
+                      onDelete={() => removeExam(exam)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
             {selectedEvents.length > 0 && (
               <div className="mt-5 border-t border-white/50 pt-4 dark:border-white/5">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
-                    Exámenes y eventos
+                    Eventos de clase
                   </p>
                   <span className="text-[10px] text-slate-400 dark:text-white/30">
                     {selectedEvents.length}
@@ -1798,6 +2033,17 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
           Actualizando tu planificador…
         </div>
       )}
+
+      <ExamDialog
+        open={examDialog !== null}
+        mode={examDialog?.mode ?? "create"}
+        exam={examDialog?.exam ?? null}
+        courses={courses}
+        defaultDate={selectedDay}
+        onClose={() => setExamDialog(null)}
+        onSaved={handleExamSaved}
+        onDeleted={handleExamDeleted}
+      />
     </div>
   );
 }

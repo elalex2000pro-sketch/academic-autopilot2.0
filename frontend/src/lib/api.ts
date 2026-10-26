@@ -283,6 +283,7 @@ export const api = {
     weight?: number | null;
     graded_at?: string | null;
     notes?: string | null;
+    is_exam?: boolean;
   }) => request<Grade>("/api/v1/grades", { method: "POST", body: JSON.stringify(body) }),
   updateGrade: (
     id: string,
@@ -294,6 +295,7 @@ export const api = {
       weight?: number | null;
       graded_at?: string | null;
       notes?: string | null;
+      is_exam?: boolean;
     },
   ) => request<Grade>(`/api/v1/grades/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteGrade: (id: string) =>

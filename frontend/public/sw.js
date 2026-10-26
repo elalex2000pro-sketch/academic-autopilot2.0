@@ -5,7 +5,7 @@
  *   (asi no se mezclan datos privados con la cache publica del service worker).
  * - Navegacion: red primero; si falla, usa la ultima pagina visitada.
  */
-const VERSION = "2026-10-25-3";
+const VERSION = "2026-10-26-1";
 const PRECACHE = `autopilot-precache-${VERSION}`;
 const STATIC_CACHE = `autopilot-static-${VERSION}`;
 const PAGES_CACHE = `autopilot-pages-${VERSION}`;

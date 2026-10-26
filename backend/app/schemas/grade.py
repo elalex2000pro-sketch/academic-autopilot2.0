@@ -15,6 +15,8 @@ class GradeBase(BaseModel):
     weight: float | None = Field(default=None, ge=0)
     graded_at: date | None = None
     notes: str | None = None
+    # True para examenes: se muestran en el calendario del planificador.
+    is_exam: bool = False
 
 
 class GradeCreate(GradeBase):
@@ -29,6 +31,8 @@ class GradeUpdate(BaseModel):
     weight: float | None = Field(default=None, ge=0)
     graded_at: date | None = None
     notes: str | None = None
+    # No admite null: la columna es NOT NULL. Al no enviarse, no se modifica.
+    is_exam: bool = False
 
 
 class GradeRead(GradeBase):

@@ -84,7 +84,9 @@ const TUTORIALS: { match: RegExp; tutorial: Tutorial }[] = [
       title: "Planificador",
       steps: [
         "Calendario y horario en una sola vista: pulsa un día para ver sus clases y entregas.",
-        "Los puntos de colores indican tareas, exámenes y eventos; el día de hoy queda resaltado.",
+        "Pulsa «Nuevo Evento» o «Añadir examen» para crear un examen, vincularlo a una asignatura de 1.º de SMR y fijar su peso.",
+        "Los días con examen se marcan en rojo con una «!»; los puntos de colores indican tareas, exámenes y eventos.",
+        "Registra la nota desde la tarjeta del examen: la media ponderada de Académico se actualiza sola.",
         "Añade tareas o clases desde la propia vista, o importa una foto o PDF de tu horario.",
         "Las tareas entregadas o vencidas dejan de ocupar la lista activa; las vencidas quedan en «Historial / Vencidas».",
       ],
@@ -109,7 +111,9 @@ const TUTORIALS: { match: RegExp; tutorial: Tutorial }[] = [
       steps: [
         "Vista mensual de todas tus entregas, tareas y exámenes.",
         "Pulsa un día para ver los detalles; cambia de mes con las flechas.",
-        "Los exámenes de tus clases compartidas aparecen destacados.",
+        "Pulsa «Nuevo Evento» para crear un examen con asignatura, fecha y peso; quedará marcado en rojo.",
+        "Al registrar su nota, la media de la asignatura se recalcula en Académico.",
+        "Los exámenes de tus clases compartidas también aparecen destacados.",
       ],
     },
   },

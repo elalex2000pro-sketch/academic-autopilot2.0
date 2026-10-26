@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Award,
   BookOpen,
+  CalendarClock,
   CheckCircle2,
   ChevronRight,
   GraduationCap,
@@ -20,7 +21,13 @@ import { useRealtime } from "@/components/realtime-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { api, ApiError } from "@/lib/api";
+import {
+  GRADE_CHANGE_EVENT,
+  GRADE_CHANGE_STORAGE_KEY,
+  notifyGradeChange,
+} from "@/lib/grade-events";
 import type { Course, Grade, GradeSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -162,11 +169,15 @@ export function AcademicsView() {
   const [gradeWeight, setGradeWeight] = useState("");
   const [gradeDate, setGradeDate] = useState("");
   const [gradeNotes, setGradeNotes] = useState("");
+  const [gradeIsExam, setGradeIsExam] = useState(false);
   const [savingGrade, setSavingGrade] = useState(false);
   const [deletingGradeId, setDeletingGradeId] = useState<string | null>(null);
 
   const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
+    if (!silent) {
+      setLoading(true);
+      setNotice(null);
+    }
     try {
       const [courseList, gradeList, gradeSummary] = await Promise.all([
         api.courses(),
@@ -176,11 +187,10 @@ export function AcademicsView() {
       setCourses(courseList);
       setGrades(gradeList);
       setSummary(gradeSummary);
-      setNotice(null);
     } catch (error) {
       setNotice({ tone: "error", text: errorMessage(error) });
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -191,6 +201,23 @@ export function AcademicsView() {
   useRealtime((event) => {
     if (event.event === "courses" || event.event === "grades") void load(true);
   });
+
+  // El planificador avisa al registrar o borrar la nota de un examen. Se
+  // recarga la media aunque no haya WebSocket (modo local o varias pestañas).
+  useEffect(() => {
+    const handleGradeChange = () => {
+      void load(true);
+    };
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === GRADE_CHANGE_STORAGE_KEY) handleGradeChange();
+    };
+    window.addEventListener(GRADE_CHANGE_EVENT, handleGradeChange);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener(GRADE_CHANGE_EVENT, handleGradeChange);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, [load]);
 
   const selectedCourse = useMemo(
     () => courses.find((course) => course.id === selectedCourseId) ?? null,
@@ -323,6 +350,13 @@ export function AcademicsView() {
       setNotice({ tone: "error", text: "La nota no puede superar la puntuación máxima." });
       return;
     }
+    if (gradeIsExam && !gradeDate) {
+      setNotice({
+        tone: "error",
+        text: "Indica la fecha del examen para verlo en el calendario del planificador.",
+      });
+      return;
+    }
     setSavingGrade(true);
     setNotice(null);
     try {
@@ -334,6 +368,7 @@ export function AcademicsView() {
         weight: toNumber(gradeWeight),
         graded_at: gradeDate || null,
         notes: gradeNotes.trim() || null,
+        is_exam: gradeIsExam,
       });
       setGradeTitle("");
       setGradeScore("");
@@ -341,8 +376,15 @@ export function AcademicsView() {
       setGradeWeight("");
       setGradeDate("");
       setGradeNotes("");
+      setGradeIsExam(false);
+      notifyGradeChange();
       await load(true);
-      setNotice({ tone: "success", text: "Nota registrada y media recalculada." });
+      setNotice({
+        tone: "success",
+        text: gradeIsExam
+          ? "Examen registrado. Ya aparece en el calendario y en la media."
+          : "Nota registrada y media recalculada.",
+      });
     } catch (error) {
       setNotice({ tone: "error", text: errorMessage(error) });
     } finally {
@@ -357,6 +399,7 @@ export function AcademicsView() {
     setGrades((current) => current.filter((grade) => grade.id !== id));
     try {
       await api.deleteGrade(id);
+      notifyGradeChange();
       await load(true);
     } catch (error) {
       setGrades(previous);
@@ -825,7 +868,9 @@ export function AcademicsView() {
                       />
                     </label>
                     <label className="block">
-                      <span className="text-[10px] font-medium text-slate-500 dark:text-white/40">Fecha</span>
+                      <span className="text-[10px] font-medium text-slate-500 dark:text-white/40">
+                        Fecha {gradeIsExam && <span className="text-[#d92b22]">*</span>}
+                      </span>
                       <Input
                         type="date"
                         value={gradeDate}
@@ -845,14 +890,35 @@ export function AcademicsView() {
                         className="mt-1"
                       />
                     </label>
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-300/45 bg-white/35 px-3 py-2.5 sm:col-span-2 dark:border-white/10 dark:bg-white/[0.04]">
+                      <div className="flex min-w-0 items-start gap-2">
+                        <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-[#FF3B30]" />
+                        <div>
+                          <p className="text-[11px] font-semibold text-slate-700 dark:text-white/70">
+                            Es un examen
+                          </p>
+                          <p className="mt-0.5 text-[10px] leading-4 text-slate-500 dark:text-white/35">
+                            Aparecerá destacado en el calendario del planificador y podrás registrar
+                            la nota desde allí.
+                          </p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={gradeIsExam}
+                        onCheckedChange={setGradeIsExam}
+                        aria-label="Es un examen"
+                      />
+                    </div>
                   </div>
                   <div className="mt-3 flex items-center justify-between gap-2">
                     <p className="text-[10px] text-slate-400 dark:text-white/30">
-                      La media se recalcula con el peso de cada evaluación.
+                      {gradeIsExam
+                        ? "Se guardará como examen y aparecerá en el calendario del planificador."
+                        : "La media se recalcula con el peso de cada evaluación."}
                     </p>
                     <Button type="submit" size="sm" disabled={!gradeTitle.trim() || savingGrade}>
                       {savingGrade ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                      Registrar
+                      {gradeIsExam ? "Registrar examen" : "Registrar"}
                     </Button>
                   </div>
                 </form>
@@ -890,9 +956,16 @@ export function AcademicsView() {
                               {grade.score !== null ? grade.score : "—"}
                             </span>
                             <div className="min-w-0 flex-1">
-                              <p className="truncate text-[12px] font-medium text-slate-800 dark:text-white/80">
-                                {grade.title}
-                              </p>
+                              <div className="flex min-w-0 items-center gap-1.5">
+                                <p className="truncate text-[12px] font-medium text-slate-800 dark:text-white/80">
+                                  {grade.title}
+                                </p>
+                                {grade.is_exam && (
+                                  <span className="shrink-0 rounded-full bg-[#FF3B30]/10 px-1.5 py-0.5 text-[8.5px] font-semibold uppercase tracking-[0.06em] text-[#d92b22] dark:bg-[#FF3B30]/15 dark:text-[#ff8a80]">
+                                    Examen
+                                  </span>
+                                )}
+                              </div>
                               <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-slate-500 dark:text-white/35">
                                 <span>{formatDate(grade.graded_at)}</span>
                                 {grade.weight !== null && <span>· peso {grade.weight}</span>}
