@@ -7,6 +7,7 @@ import { PreferencesProvider } from "@/components/preferences-provider";
 import { PwaRegister } from "@/components/pwa-register";
 import { RealtimeProvider } from "@/components/realtime-provider";
 import { ThemeProvider } from "@/components/theme-provider";
+import { UpdateModal } from "@/components/update-modal";
 import { WallpaperBackdrop } from "@/components/wallpaper-backdrop";
 
 import "./globals.css";
@@ -61,6 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <RealtimeProvider>
                 <AppShell>{children}</AppShell>
                 <CursorGlow />
+                <UpdateModal />
               </RealtimeProvider>
             </AuthProvider>
           </PreferencesProvider>

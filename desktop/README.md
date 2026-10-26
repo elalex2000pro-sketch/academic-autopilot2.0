@@ -71,6 +71,22 @@ El instalador no está firmado digitalmente. Windows puede mostrar SmartScreen c
 desconocido"; es necesario indicar al usuario que pulse **Más información → Ejecutar de todas
 formas**. Para eliminar ese aviso habría que comprar un certificado de firma de código.
 
+## Actualizaciones desde la web
+
+El frontend detecta el canal por el user agent `AcademicAutopilotDesktop/<version>`:
+
+- **Escritorio:** consulta la última release `desktop-*` de GitHub que tenga adjunto
+  `Academic-Autopilot-Setup.exe`. Si la versión es mayor, muestra el modal y el botón abre la
+  descarga del instalador en el navegador del sistema.
+- **Web / PWA:** lee `frontend/public/version.json`. Para publicar una versión web, cambia
+  `version` en `frontend/package.json`, actualiza `version.json` con la misma versión y las
+  novedades, y despliega. Mantén ambos valores iguales: `version.json` solo debe anunciar una
+  versión superior cuando exista una release web nueva.
+
+El modal guarda un snooze de 24 h por canal y la versión instalada simulada en `localStorage`.
+También se puede lanzar una comprobación manual desde **Ajustes → App de escritorio → Buscar
+actualizaciones**.
+
 ## Datos y comportamiento
 
 - La app usa la partición persistente `persist:academic-autopilot`; la sesión y el almacenamiento

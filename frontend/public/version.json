@@ -1,0 +1,12 @@
+{
+  "version": "0.1.0",
+  "publishedAt": "2026-10-26T09:00:00.000Z",
+  "sizeBytes": 8388608,
+  "notes": [
+    "Nuevo modal de actualizaciones con descarga y progreso integrados.",
+    "Mejoras de rendimiento en el planificador y la biblioteca.",
+    "Correcciones de accesibilidad y del modo sin conexión.",
+    "Ajustes visuales en los temas claro y oscuro."
+  ],
+  "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases"
+}

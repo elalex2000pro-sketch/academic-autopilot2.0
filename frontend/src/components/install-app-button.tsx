@@ -310,7 +310,7 @@ export function InstallAppButton({
         <span aria-hidden="true">·</span>
         <span>{INSTALLER_SIZE}</span>
         <span aria-hidden="true">·</span>
-        <span>Versión 1.0.0</span>
+        <span>Versión 1.0.1</span>
         <span aria-hidden="true">·</span>
         <a
           href={DESKTOP_RELEASE_URL}

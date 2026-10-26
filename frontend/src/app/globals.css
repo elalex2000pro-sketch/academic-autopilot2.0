@@ -145,6 +145,66 @@
   }
 }
 
+@keyframes update-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.965);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes update-ring {
+  0% {
+    opacity: 0.55;
+    transform: scale(0.82);
+  }
+  70% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+
+@keyframes update-icon-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
+
+@keyframes update-progress-shine {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(240%);
+  }
+}
+
+@keyframes update-check-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @layer utilities {
   .animate-fade-up {
     animation: fade-up 0.22s cubic-bezier(0.32, 0.72, 0, 1) both;
@@ -176,6 +236,29 @@
   }
   .stagger-in > * {
     animation: fade-in 0.18s ease-out both;
+  }
+
+  /* Modal de actualizaciones: entrada tipo hoja flotante de macOS. */
+  .animate-update-in {
+    animation: update-modal-in 0.42s cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+  .animate-check-pop {
+    animation: update-check-pop 0.42s cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+  .update-icon-ring {
+    animation: update-ring 2.6s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
+  }
+  .update-icon-bob {
+    animation: update-icon-bob 2.2s ease-in-out infinite;
+  }
+  .update-progress-shine {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(255 255 255 / 0.5),
+      transparent
+    );
+    animation: update-progress-shine 1.8s ease-in-out infinite;
   }
 
   /* Encabezado de sección de la barra lateral. */

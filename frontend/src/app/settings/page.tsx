@@ -22,6 +22,7 @@ import {
 import { InstallAppButton } from "@/components/install-app-button";
 import { usePreferences } from "@/components/preferences-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { UpdateCheckButton } from "@/components/update-check-button";
 import { WallpaperPicker } from "@/components/wallpaper-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -430,6 +431,9 @@ function SettingsInner() {
               Windows 10 u 11, 64 bits. Tus datos siguen en tu cuenta y se sincronizan entre
               dispositivos.
             </span>
+          </div>
+          <div className="border-t border-separator pt-3">
+            <UpdateCheckButton />
           </div>
         </CardContent>
       </Card>
