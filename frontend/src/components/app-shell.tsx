@@ -136,6 +136,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const name = user.full_name?.trim() || user.email.split("@")[0];
   const initials = name.slice(0, 2).toUpperCase();
 
+  // Studio y el lector de libros ocupan toda la altura disponible y ya
+  // gestionan su propia cabecera; el inset del shell les haría desbordar.
+  const isImmersive = pathname === "/studio" || pathname.startsWith("/library/");
+
   return (
     <div className="app-shell flex min-h-dvh flex-col bg-transparent lg:flex-row">
       <aside className="sticky top-0 hidden h-dvh w-[236px] shrink-0 flex-col border-r border-slate-300/40 bg-slate-100/55 shadow-[18px_0_60px_-48px_rgba(36,36,38,0.28)] backdrop-blur-3xl dark:border-white/5 dark:bg-black/20 dark:shadow-[18px_0_60px_-48px_rgba(0,0,0,0.9)] lg:flex">
@@ -279,7 +283,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <OfflineStatus />
 
-        <main className="min-w-0 flex-1 overflow-x-hidden bg-transparent">
+        {/* 40 px en móvil y 48 px en escritorio: alinea el contenido con la barra de título. */}
+        <main
+          className={cn(
+            "min-w-0 flex-1 overflow-x-hidden bg-transparent",
+            !isImmersive && "pt-10 lg:pt-12",
+          )}
+        >
           {children}
           <HelpWidget />
         </main>
