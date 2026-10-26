@@ -15,6 +15,7 @@ import {
   FileUp,
   Loader2,
   MapPin,
+  Pencil,
   Plus,
   RefreshCw,
   Sparkles,
@@ -26,8 +27,18 @@ import { useRealtime } from "@/components/realtime-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { WeeklyTimetable } from "@/components/weekly-timetable";
 import { useTaskManager } from "@/hooks/use-task-manager";
 import { api, ApiError } from "@/lib/api";
+import {
+  createLocalTimetableEntry,
+  CUSTOM_TIMETABLE_EVENT,
+  CUSTOM_TIMETABLE_KEY,
+  hydrateTimetableCourses,
+  isLocalTimetableEntry,
+  loadCustomTimetable,
+  saveCustomTimetable,
+} from "@/lib/custom-timetable";
 import { formatDueLabel } from "@/lib/task-utils";
 import type { ClassEvent, Course, Task, TimetableEntry } from "@/lib/types";
 import { cn, formatMinutes } from "@/lib/utils";
@@ -240,24 +251,45 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
   const [classLocation, setClassLocation] = useState("");
   const [savingClass, setSavingClass] = useState(false);
   const [deletingClassId, setDeletingClassId] = useState<string | null>(null);
+  const [editingClassId, setEditingClassId] = useState<string | null>(null);
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [confirmDeleteClassId, setConfirmDeleteClassId] = useState<string | null>(null);
+  const [focusClassForm, setFocusClassForm] = useState(0);
+  const classFormRef = useRef<HTMLFormElement>(null);
+  const entriesRef = useRef<TimetableEntry[]>([]);
 
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
   const [replace, setReplace] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Mantiene la copia local y el estado sincronizados. `persist = false` se usa
+  // al leer del servidor para no crear una personalización sin que el usuario
+  // haya tocado nada.
+  const applyEntries = useCallback((next: TimetableEntry[], persist = true) => {
+    entriesRef.current = next;
+    setEntries(next);
+    if (persist) saveCustomTimetable(next);
+  }, []);
+
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
+      const customTimetable = loadCustomTimetable();
       const [, courseList, timetableList, classList] = await Promise.all([
         refreshTasks({ silent: true }),
         api.courses(),
-        api.timetable(),
+        customTimetable ? Promise.resolve([] as TimetableEntry[]) : api.timetable(),
         api.classes().catch(() => []),
       ]);
 
       setCourses(courseList);
-      setEntries(timetableList);
+      applyEntries(
+        customTimetable
+          ? hydrateTimetableCourses(customTimetable, courseList)
+          : timetableList,
+        false,
+      );
 
       if (classList.length === 0) {
         setEvents([]);
@@ -280,11 +312,37 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [refreshTasks]);
+  }, [refreshTasks, applyEntries]);
 
   useEffect(() => {
     load().catch(() => undefined);
   }, [load]);
+
+  useEffect(() => {
+    if (focusClassForm === 0) return;
+    classFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusClassForm]);
+
+  // Si Ajustes restaura el horario oficial (u otra pestaña lo cambia), la vista
+  // se actualiza sin necesidad de recargar.
+  const syncFromLocal = useCallback(() => {
+    const stored = loadCustomTimetable();
+    if (stored === null) return;
+    applyEntries(hydrateTimetableCourses(stored, courses), false);
+  }, [applyEntries, courses]);
+
+  useEffect(() => {
+    const handleCustomChange = () => syncFromLocal();
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === CUSTOM_TIMETABLE_KEY) syncFromLocal();
+    };
+    window.addEventListener(CUSTOM_TIMETABLE_EVENT, handleCustomChange);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener(CUSTOM_TIMETABLE_EVENT, handleCustomChange);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, [syncFromLocal]);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60_000);
@@ -425,6 +483,8 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
   function selectDay(key: string) {
     setSelectedDay(key);
     setConfirmDeleteId(null);
+    setSelectedClassId(null);
+    setConfirmDeleteClassId(null);
     const date = parseKey(key);
     if (date) setClassDay(weekdayIndex(date));
   }
@@ -443,6 +503,8 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
       setClassDay(weekdayIndex(next));
     }
     setConfirmDeleteId(null);
+    setSelectedClassId(null);
+    setConfirmDeleteClassId(null);
   }
 
   function goToday() {
@@ -450,6 +512,8 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
     setSelectedDay(todayKey);
     setClassDay(weekdayIndex(now));
     setConfirmDeleteId(null);
+    setSelectedClassId(null);
+    setConfirmDeleteClassId(null);
   }
 
   async function addTask(event: React.FormEvent) {
@@ -509,10 +573,56 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
     }
   }
 
-  async function addClass(event: React.FormEvent) {
+  function clearClassForm() {
+    setEditingClassId(null);
+    setClassCourseId("");
+    setClassTitle("");
+    setClassLocation("");
+    setClassStart("08:15");
+    setClassEnd("09:15");
+    const selectedDate = parseKey(selectedDay) ?? today;
+    setClassDay(weekdayIndex(selectedDate));
+  }
+
+  function startAddClass() {
+    clearClassForm();
+    setSelectedClassId(null);
+    setConfirmDeleteClassId(null);
+    setShowTools(true);
+    setNotice(null);
+    setFocusClassForm((value) => value + 1);
+  }
+
+  function startEditClass(entry: TimetableEntry) {
+    const course = entry.course_id ? courseById.get(entry.course_id) : undefined;
+    setEditingClassId(entry.id);
+    setSelectedClassId(entry.id);
+    setConfirmDeleteClassId(null);
+    setClassCourseId(entry.course_id ?? "");
+    setClassTitle(entry.title && entry.title !== course?.name ? entry.title : "");
+    setClassDay(entry.day_of_week);
+    setClassStart(entry.start_time.slice(0, 5));
+    setClassEnd(entry.end_time.slice(0, 5));
+    setClassLocation(entry.location ?? "");
+    setShowTools(true);
+    setNotice({
+      tone: "info",
+      text: `Editando ${subjectName(entry, course)}. Los cambios se guardan en este dispositivo.`,
+    });
+    setFocusClassForm((value) => value + 1);
+  }
+
+  function cancelEditClass() {
+    clearClassForm();
+    setSelectedClassId(null);
+    setNotice(null);
+  }
+
+  async function saveClass(event: React.FormEvent) {
     event.preventDefault();
     if (savingClass) return;
-    if (classStart >= classEnd) {
+
+    if (timeToMinutes(classStart) >= timeToMinutes(classEnd)) {
       setNotice({ tone: "error", text: "La hora de inicio debe ser anterior a la de fin." });
       return;
     }
@@ -523,40 +633,96 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
       });
       return;
     }
+
+    const course = classCourseId ? courseById.get(classCourseId) : undefined;
+    const base = {
+      course_id: classCourseId || null,
+      title: classTitle.trim() || course?.name?.trim() || null,
+      day_of_week: classDay,
+      start_time: classStart,
+      end_time: classEnd,
+      location: classLocation.trim() || null,
+    };
+
+    if (editingClassId) {
+      if (!entriesRef.current.some((entry) => entry.id === editingClassId)) {
+        clearClassForm();
+        setNotice({ tone: "info", text: "La franja que editabas ya no existe." });
+        return;
+      }
+      applyEntries(
+        entriesRef.current.map((entry) =>
+          entry.id === editingClassId ? { ...entry, ...base } : entry,
+        ),
+      );
+      setSelectedClassId(editingClassId);
+      clearClassForm();
+      setNotice({ tone: "success", text: "Asignatura actualizada en el horario." });
+      return;
+    }
+
+    const localEntry = createLocalTimetableEntry(base);
+    applyEntries([...entriesRef.current, localEntry]);
+    setSelectedClassId(localEntry.id);
+    clearClassForm();
     setSavingClass(true);
-    setNotice(null);
+    setNotice({ tone: "success", text: "Asignatura añadida al horario." });
+
     try {
-      await api.createTimetableEntry({
-        day_of_week: classDay,
-        start_time: classStart,
-        end_time: classEnd,
-        title: classTitle.trim() || null,
-        course_id: classCourseId || null,
-        location: classLocation.trim() || null,
+      const saved = await api.createTimetableEntry(base);
+      if (!saved || typeof saved.id !== "string" || saved.id.length === 0) {
+        throw new Error("El servidor no devolvió la clase creada.");
+      }
+
+      const current = entriesRef.current;
+      if (!current.some((entry) => entry.id === localEntry.id)) {
+        // Se eliminó mientras se sincronizaba: limpia también la copia del servidor.
+        await api.deleteTimetableEntry(saved.id).catch(() => undefined);
+        return;
+      }
+
+      // Conserva los campos locales (incluidas posibles ediciones) y adopta el
+      // id del servidor para que el borrado posterior también sincronice.
+      applyEntries(
+        current.map((entry) =>
+          entry.id === localEntry.id ? { ...entry, id: saved.id } : entry,
+        ),
+      );
+      setSelectedClassId((currentId) => (currentId === localEntry.id ? saved.id : currentId));
+    } catch {
+      setNotice({
+        tone: "info",
+        text: "Asignatura guardada en este dispositivo. No se pudo sincronizar con el servidor.",
       });
-      setClassTitle("");
-      setClassLocation("");
-      await load(true);
-      setNotice({ tone: "success", text: "Clase añadida al horario." });
-    } catch (error) {
-      setNotice({ tone: "error", text: errorMessage(error) });
     } finally {
       setSavingClass(false);
     }
   }
 
   async function removeClass(id: string) {
-    if (deletingClassId) return;
+    const entry = entriesRef.current.find((item) => item.id === id);
+    if (!entry) return;
+
     setDeletingClassId(id);
     setNotice(null);
+    applyEntries(entriesRef.current.filter((item) => item.id !== id));
+    if (selectedClassId === id) setSelectedClassId(null);
+    if (editingClassId === id) clearClassForm();
+    setConfirmDeleteClassId(null);
+    setNotice({ tone: "success", text: "Asignatura eliminada del horario." });
+
     try {
-      await api.deleteTimetableEntry(id);
-      await load(true);
-      setNotice({ tone: "success", text: "Clase quitada del horario." });
-    } catch (error) {
-      setNotice({ tone: "error", text: errorMessage(error) });
+      // Las franjas oficiales y las creadas en local no existen en el servidor.
+      if (!isLocalTimetableEntry(entry)) {
+        await api.deleteTimetableEntry(id);
+      }
+    } catch {
+      setNotice({
+        tone: "info",
+        text: "Asignatura eliminada en este dispositivo. No se pudo borrar en el servidor.",
+      });
     } finally {
-      setDeletingClassId(null);
+      setDeletingClassId((current) => (current === id ? null : current));
     }
   }
 
@@ -570,15 +736,27 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
     try {
       const document = await api.uploadFile(importFile);
       const result = await api.importTimetable(document.id, replace);
+
+      let imported: TimetableEntry[] | null = null;
+      try {
+        imported = await api.timetable();
+      } catch {
+        imported = null;
+      }
+      if (imported) applyEntries(imported);
+
       setNotice({
         tone: "success",
         text: `${result.created} clases importadas (${
           result.source === "heuristic" ? "lectura local" : "con IA"
-        }). Revisa que las horas sean correctas.`,
+        }). ${
+          imported
+            ? "El horario importado queda guardado en este dispositivo."
+            : "No se pudo leer el horario importado; recarga cuando recuperes la conexión."
+        }`,
       });
       setImportFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
-      await load(true);
     } catch (error) {
       setNotice({ tone: "error", text: errorMessage(error) });
     } finally {
@@ -946,6 +1124,8 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                       isToday &&
                       nowMinutes >= timeToMinutes(entry.start_time) &&
                       nowMinutes <= timeToMinutes(entry.end_time);
+                    const selected = selectedClassId === entry.id;
+                    const confirming = confirmDeleteClassId === entry.id;
                     return (
                       <div
                         key={entry.id}
@@ -966,11 +1146,16 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                           />
                         </div>
                         <div
+                          onClick={() => {
+                            setSelectedClassId(selected ? null : entry.id);
+                            setConfirmDeleteClassId(null);
+                          }}
                           className={cn(
-                            "min-w-0 rounded-2xl border p-3 transition-colors",
+                            "min-w-0 cursor-pointer rounded-2xl border p-3 transition-colors",
                             current
                               ? "border-[#0066FF]/30 bg-[#0066FF]/[0.07] dark:border-[#0066FF]/25 dark:bg-[#0066FF]/10"
                               : "border-white/55 bg-white/30 hover:bg-white/40 dark:border-white/[0.06] dark:bg-white/[0.03] dark:hover:bg-white/[0.05]",
+                            selected && "ring-2 ring-[#0066FF]/35",
                           )}
                           style={{
                             borderLeftColor: color,
@@ -995,7 +1180,10 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                                 </p>
                               )}
                             </div>
-                            <div className="flex shrink-0 items-center gap-1">
+                            <div
+                              className="flex shrink-0 items-center gap-1"
+                              onClick={(event) => event.stopPropagation()}
+                            >
                               <span
                                 className="rounded-full px-2 py-0.5 text-[9.5px] font-semibold"
                                 style={{
@@ -1007,11 +1195,20 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                               </span>
                               <button
                                 type="button"
-                                onClick={() => void removeClass(entry.id)}
+                                onClick={() => startEditClass(entry)}
+                                aria-label={`Editar ${name}`}
+                                title="Editar asignatura"
+                                className="flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 opacity-100 transition-colors hover:bg-[#0066FF]/10 hover:text-[#0066FF] disabled:opacity-40 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 dark:text-white/30 dark:hover:text-[#8ab9ff]"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteClassId(confirming ? null : entry.id)}
                                 disabled={deletingClassId === entry.id}
                                 aria-label={`Quitar ${name}`}
                                 title="Quitar clase"
-                                className="flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 opacity-100 transition-colors hover:bg-rose-500/10 hover:text-rose-500 disabled:opacity-40 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+                                className="flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 opacity-100 transition-colors hover:bg-rose-500/10 hover:text-rose-500 disabled:opacity-40 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 dark:text-white/30 dark:hover:text-rose-300"
                               >
                                 {deletingClassId === entry.id ? (
                                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1033,6 +1230,62 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                               </span>
                             )}
                           </div>
+                          {selected && (
+                            <div
+                              className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-white/50 pt-2 dark:border-white/5"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-[11px]"
+                                onClick={() => startEditClass(entry)}
+                              >
+                                <Pencil className="h-3.5 w-3.5" /> Editar
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-[11px] text-rose-600 hover:bg-rose-500/10 hover:text-rose-600 dark:text-rose-300 dark:hover:text-rose-200"
+                                onClick={() => setConfirmDeleteClassId(entry.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" /> Eliminar
+                              </Button>
+                            </div>
+                          )}
+                          {confirming && (
+                            <div
+                              className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-200/70 bg-rose-50/70 px-2.5 py-2 dark:border-rose-400/20 dark:bg-rose-500/10"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <p className="text-[11px] font-medium text-rose-700 dark:text-rose-200">
+                                ¿Eliminar esta asignatura del horario?
+                              </p>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="destructive"
+                                  className="h-7 px-2 text-[11px]"
+                                  onClick={() => void removeClass(entry.id)}
+                                  disabled={deletingClassId === entry.id}
+                                >
+                                  Eliminar
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2 text-[11px]"
+                                  onClick={() => setConfirmDeleteClassId(null)}
+                                >
+                                  Cancelar
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -1286,44 +1539,69 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
         </section>
       </div>
 
-      {/* Gestión del horario: añadir, importar y quitar clases */}
+      {/* Gestión del horario: añadir, editar, importar y quitar clases */}
       <section className="app-glass mt-4 rounded-3xl p-4 sm:p-5">
-        <button
-          type="button"
-          onClick={() => setShowTools((value) => !value)}
-          aria-expanded={showTools}
-          className="flex w-full items-center justify-between gap-3 text-left"
-        >
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
-              Horario semanal
-            </p>
-            <h2 className="mt-1 text-[17px] font-semibold tracking-[-0.02em] text-slate-800 dark:text-white/90">
-              Gestionar clases
-            </h2>
-            <p className="mt-1 text-[11.5px] text-slate-500 dark:text-white/40">
-              Añade una clase a mano o importa una foto o un PDF de tu horario.
-            </p>
-          </div>
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-300/45 bg-slate-100/50 text-slate-500 dark:border-white/10 dark:bg-white/[0.05] dark:text-white/50">
-            <ChevronDown
-              className={cn("h-4 w-4 transition-transform duration-200", showTools && "rotate-180")}
-            />
-          </span>
-        </button>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => setShowTools((value) => !value)}
+            aria-expanded={showTools}
+            className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
+          >
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
+                Horario semanal
+              </p>
+              <h2 className="mt-1 text-[17px] font-semibold tracking-[-0.02em] text-slate-800 dark:text-white/90">
+                Gestionar clases
+              </h2>
+              <p className="mt-1 text-[11.5px] text-slate-500 dark:text-white/40">
+                Añade una asignatura, edita una franja existente o importa una foto o un PDF de tu
+                horario.
+              </p>
+            </div>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-300/45 bg-slate-100/50 text-slate-500 dark:border-white/10 dark:bg-white/[0.05] dark:text-white/50">
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 transition-transform duration-200",
+                  showTools && "rotate-180",
+                )}
+              />
+            </span>
+          </button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={startAddClass}
+            className="h-auto shrink-0 whitespace-normal py-2 text-left"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Añadir Asignatura al Horario
+          </Button>
+        </div>
 
         {showTools && (
           <div className="mt-5 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
             <form
-              onSubmit={addClass}
+              ref={classFormRef}
+              onSubmit={saveClass}
               className="rounded-2xl border border-slate-300/45 bg-slate-100/45 p-3.5 dark:border-white/[0.07] dark:bg-white/[0.03]"
             >
               <div className="flex items-center gap-2">
-                <Plus className="h-4 w-4 text-[#0066FF]" />
+                {editingClassId ? (
+                  <Pencil className="h-4 w-4 text-[#0066FF]" />
+                ) : (
+                  <Plus className="h-4 w-4 text-[#0066FF]" />
+                )}
                 <p className="text-[13px] font-semibold text-slate-800 dark:text-white/90">
-                  Añadir clase
+                  {editingClassId ? "Editar asignatura" : "Añadir asignatura al horario"}
                 </p>
               </div>
+              {editingClassId && (
+                <p className="mt-1 text-[11px] leading-4 text-slate-500 dark:text-white/40">
+                  Los cambios se guardan en este dispositivo y sustituyen a la franja actual.
+                </p>
+              )}
               <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="planner-class-course">Asignatura</Label>
@@ -1395,14 +1673,28 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                   />
                 </div>
               </div>
-              <Button type="submit" size="sm" className="mt-3" disabled={savingClass}>
-                {savingClass ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Plus className="h-3.5 w-3.5" />
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="h-auto whitespace-normal py-2 text-left"
+                  disabled={savingClass}
+                >
+                  {savingClass ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : editingClassId ? (
+                    <Check className="h-3.5 w-3.5" />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5" />
+                  )}
+                  {editingClassId ? "Guardar cambios" : "Añadir Asignatura al Horario"}
+                </Button>
+                {editingClassId && (
+                  <Button type="button" size="sm" variant="ghost" onClick={cancelEditClass}>
+                    <X className="h-3.5 w-3.5" /> Cancelar
+                  </Button>
                 )}
-                Añadir clase
-              </Button>
+              </div>
             </form>
 
             <div className="rounded-2xl border border-dashed border-slate-400/35 bg-slate-100/30 p-3.5 dark:border-white/10 dark:bg-white/[0.02]">
@@ -1415,6 +1707,9 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
               <p className="mt-1.5 text-[11px] leading-5 text-slate-500 dark:text-white/40">
                 Sube una foto, PDF o Word. La IA detecta días, horas y asignaturas; sin IA se usa un
                 lector de líneas.
+              </p>
+              <p className="mt-1 text-[10.5px] leading-4 text-slate-400 dark:text-white/30">
+                El resultado se guarda como tu horario personalizado en este dispositivo.
               </p>
               <input
                 ref={fileInputRef}
@@ -1446,6 +1741,51 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                   )}
                   {importing ? "Leyendo..." : "Importar"}
                 </Button>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-300/45 bg-slate-100/35 p-3.5 lg:col-span-2 dark:border-white/[0.07] dark:bg-white/[0.02]">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
+                    Vista completa
+                  </p>
+                  <p className="mt-1 text-[11.5px] leading-5 text-slate-500 dark:text-white/40">
+                    Pulsa una asignatura para seleccionarla. Usa el lápiz para editarla o la
+                    papelera para quitarla del horario.
+                  </p>
+                </div>
+                <span className="inline-flex h-7 items-center rounded-full bg-slate-200/60 px-2.5 text-[10px] font-semibold text-slate-500 dark:bg-white/10 dark:text-white/45">
+                  {entries.length} franja{entries.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              <div className="mt-3">
+                {entries.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-slate-400/35 px-3 py-4 text-center text-[11.5px] text-slate-500 dark:border-white/10 dark:text-white/35">
+                    No hay asignaturas en el horario. Añade la primera con el formulario de arriba.
+                  </p>
+                ) : (
+                  <WeeklyTimetable
+                    entries={entries}
+                    courses={courses}
+                    selectedId={selectedClassId}
+                    onSelect={(id) => {
+                      setSelectedClassId(id);
+                      setConfirmDeleteClassId(null);
+                    }}
+                    onEdit={startEditClass}
+                    onDelete={(id) => {
+                      const entry = entriesRef.current.find((item) => item.id === id);
+                      const course = entry?.course_id
+                        ? courseById.get(entry.course_id)
+                        : undefined;
+                      const label = entry ? subjectName(entry, course) : "esta asignatura";
+                      if (window.confirm(`¿Eliminar ${label} del horario?`)) {
+                        void removeClass(id);
+                      }
+                    }}
+                  />
+                )}
               </div>
             </div>
           </div>

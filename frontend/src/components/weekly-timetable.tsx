@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MoveHorizontal, Trash2 } from "lucide-react";
+import { MoveHorizontal, Pencil, Trash2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { Course, TimetableEntry } from "@/lib/types";
@@ -136,10 +136,19 @@ export function WeeklyTimetable({
   entries,
   courses,
   onDelete,
+  onEdit,
+  selectedId,
+  onSelect,
 }: {
   entries: TimetableEntry[];
   courses: Course[];
   onDelete: (id: string) => void;
+  /** Si se indica, cada franja muestra un lápiz para editarla. */
+  onEdit?: (entry: TimetableEntry) => void;
+  /** Franja seleccionada desde el planificador. */
+  selectedId?: string | null;
+  /** Permite seleccionar una franja al pulsarla. */
+  onSelect?: (id: string) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [overflows, setOverflows] = useState(false);
@@ -325,6 +334,7 @@ export function WeeklyTimetable({
                   return (
                     <div
                       key={block.entry.id}
+                      onClick={() => onSelect?.(block.entry.id)}
                       className={cn(
                         "group absolute overflow-hidden border px-1.5 py-1 text-left transition-shadow hover:z-10 hover:shadow-md",
                         block.tone,
@@ -332,6 +342,9 @@ export function WeeklyTimetable({
                         block.joinsAbove ? "rounded-t-none" : "rounded-[5px]",
                         block.joinsBelow ? "rounded-b-none" : "rounded-[5px]",
                         block.breakEntry && "border-dashed border-white/25",
+                        onSelect && "cursor-pointer",
+                        selectedId === block.entry.id &&
+                          "z-10 ring-2 ring-white/90 shadow-[0_10px_24px_-12px_rgba(0,0,0,0.65)]",
                       )}
                       style={{
                         top,
@@ -360,15 +373,41 @@ export function WeeklyTimetable({
                           {block.entry.location}
                         </span>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => onDelete(block.entry.id)}
-                        title={`Eliminar ${block.name}`}
-                        aria-label={`Eliminar ${block.name} de ${DAY_LONG[day]}`}
-                        className="absolute right-1 top-1 rounded-[4px] bg-black/15 p-1 text-white/80 opacity-100 transition-colors hover:bg-black/30 hover:text-white focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                      <div
+                        className={cn(
+                          "absolute right-1 top-1 flex items-center gap-0.5 transition-opacity",
+                          selectedId === block.entry.id
+                            ? "opacity-100"
+                            : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100",
+                        )}
                       >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
+                        {onEdit && (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onEdit(block.entry);
+                            }}
+                            title={`Editar ${block.name}`}
+                            aria-label={`Editar ${block.name} de ${DAY_LONG[day]}`}
+                            className="rounded-[4px] bg-black/15 p-1 text-white/80 transition-colors hover:bg-black/30 hover:text-white focus:opacity-100"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onDelete(block.entry.id);
+                          }}
+                          title={`Eliminar ${block.name}`}
+                          aria-label={`Eliminar ${block.name} de ${DAY_LONG[day]}`}
+                          className="rounded-[4px] bg-black/15 p-1 text-white/80 transition-colors hover:bg-black/30 hover:text-white focus:opacity-100"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
                     </div>
                   );
                 })}

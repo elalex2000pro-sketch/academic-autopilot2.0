@@ -6,6 +6,7 @@ import {
   AppWindow,
   BellRing,
   BookOpen,
+  CalendarRange,
   CheckCircle2,
   Cpu,
   ExternalLink,
@@ -15,6 +16,7 @@ import {
   MonitorDown,
   Palette,
   Plus,
+  RotateCcw,
   Send,
   Trash2,
 } from "lucide-react";
@@ -31,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { api, ApiError } from "@/lib/api";
+import { resetCustomTimetable } from "@/lib/custom-timetable";
 import type { AssistantStatus, Integration, ReminderSettings, ScheduleBlock } from "@/lib/types";
 
 const DAYS = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"];
@@ -102,6 +105,7 @@ function SettingsInner() {
   const [blocks, setBlocks] = useState<ScheduleBlock[]>([]);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [resettingTimetable, setResettingTimetable] = useState(false);
 
   // Formulario Moodle
   const [moodleUrl, setMoodleUrl] = useState("");
@@ -319,6 +323,32 @@ function SettingsInner() {
     }
   }
 
+  async function resetTimetable() {
+    if (resettingTimetable) return;
+
+    const confirmed = window.confirm(
+      "¿Restablecer el Horario Oficial de 1.º SMR? Se perderán los cambios guardados en este dispositivo.",
+    );
+    if (!confirmed) return;
+
+    setResettingTimetable(true);
+    setNotice(null);
+    try {
+      // Si la API no responde, el horario oficial se guarda igualmente con los
+      // nombres de las asignaturas; el planificador rellenará los course_id
+      // cuando vuelva a tener la lista de cursos.
+      const courseList = await api.courses().catch(() => []);
+      const restored = resetCustomTimetable(courseList);
+      setNotice(
+        `Horario oficial restaurado: ${restored.length} franjas de 1.º SMR. Abre el Planificador para verlo.`,
+      );
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "No se pudo restablecer el horario.");
+    } finally {
+      setResettingTimetable(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-4xl space-y-6 px-5 pb-12 pt-7 sm:px-8 lg:pt-9">
       <header>
@@ -408,6 +438,47 @@ function SettingsInner() {
               onCheckedChange={setAutoStrikeOverdue}
               aria-labelledby="auto-strike-label"
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ---- Horario personalizado ---- */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CalendarRange className="h-4 w-4" /> Horario
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Tu horario personalizado se guarda en este navegador. Puedes añadir, editar o quitar
+            asignaturas desde el Planificador sin alterar las tareas ni el resto de la cuenta.
+          </p>
+          <div className="flex flex-col gap-3 rounded-2xl border border-slate-300/45 bg-slate-100/45 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-white/[0.06] dark:bg-white/[0.03]">
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold text-slate-800 dark:text-white/90">
+                Volver al horario de 1.º SMR
+              </p>
+              <p className="mt-1 max-w-xl text-xs leading-5 text-muted-foreground">
+                Restaura las 7 asignaturas y las 30 franjas oficiales de lunes a viernes. Se
+                descartan los cambios guardados en este dispositivo.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void resetTimetable()}
+              disabled={resettingTimetable}
+              className="h-auto shrink-0 whitespace-normal py-2 text-left"
+            >
+              {resettingTimetable ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RotateCcw className="h-4 w-4" />
+              )}
+              Restablecer Horario Oficial de 1.º SMR
+            </Button>
           </div>
         </CardContent>
       </Card>
