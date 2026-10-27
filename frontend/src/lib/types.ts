@@ -13,6 +13,10 @@ export interface User {
   full_name: string | null;
   timezone: string;
   created_at: string;
+  /** Pregunta configurada para recuperar la cuenta sin correo. */
+  recovery_question?: string | null;
+  /** True si la cuenta ya tiene pregunta y respuesta de seguridad. */
+  has_recovery?: boolean;
 }
 
 export interface Course {
@@ -77,12 +81,24 @@ export interface AiOutput {
   created_at: string;
 }
 
+export interface ChatAttachment {
+  name: string;
+  mime_type: string;
+  /** Base64 de la imagen que se envía a la IA (solo en el borrador). */
+  data?: string;
+  /** Miniatura en data URL que se muestra antes y después de enviar. */
+  preview?: string | null;
+  page?: number | null;
+  total_pages?: number | null;
+}
+
 export interface AssistantMessage {
   id: string;
   role: "user" | "assistant" | string;
   content: string;
   source: string | null;
   document_id: string | null;
+  attachments?: ChatAttachment[] | null;
   created_at: string;
 }
 

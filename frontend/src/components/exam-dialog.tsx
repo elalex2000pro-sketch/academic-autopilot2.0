@@ -34,7 +34,7 @@ interface ExamDialogProps {
 }
 
 const fieldClass =
-  "flex h-9 w-full rounded-xl border border-slate-300/45 bg-slate-100/55 px-3 text-[13px] text-slate-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.32)] backdrop-blur-xl transition-[border-color,box-shadow,background-color] duration-150 focus-visible:border-[#0066FF] focus-visible:bg-slate-100/75 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#0066FF]/20 dark:border-white/10 dark:bg-white/[0.055] dark:text-white/90 dark:focus-visible:bg-white/[0.08]";
+  "flex h-9 w-full rounded-xl border border-slate-300/40 bg-slate-100/70 px-3 text-[13px] text-slate-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-3xl transition-[border-color,box-shadow,background-color] duration-150 focus-visible:border-[#0066FF] focus-visible:bg-slate-100/85 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#0066FF]/20 dark:border-white/10 dark:bg-white/[0.055] dark:text-white/90 dark:focus-visible:bg-white/[0.08]";
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
@@ -231,7 +231,7 @@ export function ExamDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="exam-dialog-title"
-        className="animate-pop my-4 w-full max-w-2xl rounded-3xl border border-slate-300/45 bg-slate-100/90 shadow-2xl backdrop-blur-3xl dark:border-white/10 dark:bg-[#0b0f18]/92"
+        className="animate-pop my-4 w-full max-w-2xl rounded-3xl border border-slate-300/40 bg-slate-100/85 shadow-[0_28px_80px_-36px_rgba(32,39,48,0.45)] backdrop-blur-3xl dark:border-white/10 dark:bg-[#0b0f18]/92"
       >
         <div className="flex items-start justify-between gap-3 border-b border-slate-300/40 p-5 dark:border-white/10">
           <div className="flex min-w-0 items-start gap-3">
@@ -244,7 +244,7 @@ export function ExamDialog({
               </p>
               <h2
                 id="exam-dialog-title"
-                className="mt-1 text-xl font-semibold tracking-[-0.03em] text-slate-900 dark:text-white/95"
+                className="mt-1 text-xl font-semibold tracking-[-0.03em] text-slate-800 dark:text-white/95"
               >
                 {heading}
               </h2>
@@ -254,7 +254,7 @@ export function ExamDialog({
             type="button"
             onClick={onClose}
             disabled={saving || deleting}
-            className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100/70 hover:text-slate-700 disabled:opacity-40 dark:hover:bg-white/10 dark:hover:text-white"
+            className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 disabled:opacity-40 dark:hover:bg-white/10 dark:hover:text-white"
             aria-label="Cerrar"
           >
             <X className="h-4 w-4" />
@@ -285,7 +285,7 @@ export function ExamDialog({
             </div>
           )}
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="exam-title">Título del examen</Label>
               <Input

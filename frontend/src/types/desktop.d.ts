@@ -1,3 +1,5 @@
+import type { DesktopUpdaterBridge } from "@/lib/desktop-updater";
+
 export {};
 
 declare global {
@@ -17,6 +19,8 @@ declare global {
       ) => Promise<{ ok: boolean; useCustomTitlebar: boolean }>;
       /** Preferencia que el proceso principal aplicó al crear la ventana. */
       getWindowPreferences?: () => Promise<{ useCustomTitlebar: boolean }>;
+      /** Actualizaciones silenciosas gestionadas por electron-updater. */
+      updater?: DesktopUpdaterBridge;
     };
   }
 }

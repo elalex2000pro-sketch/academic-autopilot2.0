@@ -20,12 +20,17 @@ import {
   UPDATE_CHECK_EVENT,
   checkForUpdates,
   formatBytes,
+  getCurrentVersion,
   markVersionInstalled,
   shouldShowUpdate,
   snoozeUpdates,
   type AppUpdate,
   type UpdateChannel,
 } from "@/lib/app-update";
+import {
+  getDesktopUpdater,
+  type DesktopUpdaterState,
+} from "@/lib/desktop-updater";
 import { cn } from "@/lib/utils";
 
 type Phase =
@@ -42,10 +47,28 @@ const CHECK_DELAY_MS = 2400;
 const DOWNLOAD_DURATION_MS = 5600;
 
 /**
+ * Punto de entrada único de las actualizaciones.
+ *
+ * En Electron usa el puente `electron-updater`: la descarga ocurre en segundo
+ * plano y solo aparece un aviso discreto cuando está lista. En web/PWA se
+ * mantiene el modal con la comprobación de GitHub o `/version.json`.
+ */
+export function UpdateModal() {
+  const [desktop, setDesktop] = useState(false);
+
+  useEffect(() => {
+    setDesktop(getDesktopUpdater() !== null);
+  }, []);
+
+  if (desktop) return <DesktopUpdateToast />;
+  return <WebUpdateModal />;
+}
+
+/**
  * Modal de actualizaciones con estética Apple Glass. Se monta en el layout
  * raíz para que también pueda aparecer sobre la pantalla de carga o login.
  */
-export function UpdateModal() {
+function WebUpdateModal() {
   const [mounted, setMounted] = useState(false);
   const [phase, setPhase] = useState<Phase>("hidden");
   const [update, setUpdate] = useState<AppUpdate | null>(null);
@@ -432,7 +455,7 @@ export function UpdateModal() {
         aria-labelledby="update-modal-title"
         aria-describedby="update-modal-description"
         tabIndex={-1}
-        className="animate-update-in relative max-h-[calc(100dvh-2rem)] w-full max-w-[480px] overflow-y-auto rounded-[30px] border border-white/70 bg-gradient-to-br from-[#f7f7f9]/90 via-[#eceef2]/82 to-[#dfe3e9]/75 p-6 text-foreground shadow-[0_0_0_0.5px_rgba(0,0,0,0.08),0_24px_80px_-24px_rgba(15,23,42,0.45),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-3xl focus:outline-none dark:border-white/[0.12] dark:from-[#20222b]/95 dark:via-[#14161e]/92 dark:to-[#090b10]/90 dark:shadow-[0_0_0_0.5px_rgba(255,255,255,0.08),0_28px_90px_-24px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.08)] sm:max-h-[calc(100dvh-3rem)] sm:p-7"
+        className="animate-update-in relative max-h-[calc(100dvh-2rem)] w-full max-w-[480px] overflow-y-auto rounded-[30px] border border-slate-300/40 bg-gradient-to-br from-[#eef1f5]/92 via-[#e8ecf1]/88 to-[#dfe5ec]/82 p-6 text-foreground shadow-[0_0_0_0.5px_rgba(32,39,48,0.08),0_28px_90px_-30px_rgba(32,39,48,0.38),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-3xl focus:outline-none dark:border-white/[0.12] dark:from-[#20222b]/95 dark:via-[#14161e]/92 dark:to-[#090b10]/90 dark:shadow-[0_0_0_0.5px_rgba(255,255,255,0.08),0_28px_90px_-24px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.08)] sm:max-h-[calc(100dvh-3rem)] sm:p-7"
       >
         <div className="pointer-events-none absolute -top-20 left-1/2 h-48 w-64 -translate-x-1/2 rounded-full bg-primary/20 blur-3xl dark:bg-primary/30" />
 
@@ -441,7 +464,7 @@ export function UpdateModal() {
             type="button"
             onClick={handleDismiss}
             aria-label="Cerrar"
-            className="absolute right-4 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-black/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:hover:bg-white/10"
+            className="absolute right-4 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-slate-200/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:hover:bg-white/10"
           >
             <X className="h-4 w-4" />
           </button>
@@ -456,7 +479,7 @@ export function UpdateModal() {
             />
             <span className={iconShellClass}>
               {icon}
-              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border border-white/70 bg-white text-primary shadow-sm dark:border-white/20 dark:bg-[#1c1e26]">
+              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border border-slate-300/40 bg-slate-100 text-primary shadow-sm dark:border-white/20 dark:bg-[#1c1e26]">
                 {badgeIcon}
               </span>
             </span>
@@ -486,7 +509,7 @@ export function UpdateModal() {
 
             {update && (phase === "available" || phase === "ready") && (
               <div className="mt-3 flex items-center justify-center gap-2 text-[11.5px]">
-                <span className="rounded-full border border-slate-900/[0.08] bg-white/45 px-2.5 py-1 font-medium text-muted-foreground dark:border-white/10 dark:bg-white/[0.05]">
+                <span className="rounded-full border border-slate-300/40 bg-slate-100/60 px-2.5 py-1 font-medium text-muted-foreground dark:border-white/10 dark:bg-white/[0.05]">
                   v{currentVersion}
                 </span>
                 <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/70" />
@@ -506,7 +529,7 @@ export function UpdateModal() {
           </div>
 
           {phase === "available" && (
-            <div className="mt-5 rounded-2xl border border-white/60 bg-white/35 p-3.5 dark:border-white/[0.08] dark:bg-white/[0.035]">
+            <div className="mt-5 rounded-2xl border border-slate-300/40 bg-slate-100/55 p-3.5 dark:border-white/[0.08] dark:bg-white/[0.035]">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   Novedades
@@ -547,7 +570,7 @@ export function UpdateModal() {
           )}
 
           {(phase === "downloading" || phase === "ready" || phase === "installing") && (
-            <div className="mt-5 rounded-2xl border border-white/60 bg-white/40 p-4 dark:border-white/[0.08] dark:bg-white/[0.04]">
+            <div className="mt-5 rounded-2xl border border-slate-300/40 bg-slate-100/60 p-4 dark:border-white/[0.08] dark:bg-white/[0.04]">
               <div className="flex items-end justify-between gap-3">
                 <div>
                   <p className="text-[12px] font-medium text-foreground">
@@ -769,6 +792,294 @@ export function UpdateModal() {
           )}
         </div>
       </div>
+    </div>,
+    document.body,
+  );
+}
+
+/**
+ * Aviso no bloqueante para la app de escritorio.
+ *
+ * El proceso principal ya descarga la actualización; aquí solo se muestra el
+ * progreso mientras ocurre y, al terminar, el aviso con el reinicio. No hay
+ * modal ni descarga manual: el instalador se aplica al reiniciar.
+ */
+function DesktopUpdateToast() {
+  const [mounted, setMounted] = useState(false);
+  const [state, setState] = useState<DesktopUpdaterState | null>(null);
+  const [manual, setManual] = useState(false);
+  const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
+  const [installing, setInstalling] = useState(false);
+  const [installError, setInstallError] = useState("");
+  const checkingRef = useRef(false);
+  const currentVersion = getCurrentVersion("desktop");
+
+  useEffect(() => {
+    setMounted(true);
+    const updater = getDesktopUpdater();
+    if (!updater) return;
+
+    let active = true;
+    updater
+      .getState()
+      .then((next) => {
+        // Si un evento llegó antes que la respuesta, ese estado es más nuevo.
+        if (active) setState((current) => current ?? next);
+      })
+      .catch(() => undefined);
+
+    const unsubscribe = updater.onState((next) => {
+      if (!active) return;
+      setState(next);
+      if (next.status === "ready" && next.version) {
+        setDismissedVersion((current) => (current === next.version ? current : null));
+        setInstalling(false);
+        setInstallError("");
+      }
+    });
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
+
+  // La comprobación manual de Ajustes usa el mismo evento que en web, pero
+  // aquí se resuelve contra electron-updater.
+  useEffect(() => {
+    if (!mounted) return;
+    const handleCheck = () => {
+      const updater = getDesktopUpdater();
+      if (!updater || checkingRef.current) return;
+
+      checkingRef.current = true;
+      setManual(true);
+      setInstallError("");
+      setState((current) =>
+        current ? { ...current, status: "checking", error: null } : current,
+      );
+
+      updater
+        .check()
+        .then((next) => setState(next))
+        .catch((error) => {
+          setState((current) =>
+            current
+              ? {
+                  ...current,
+                  status: "error",
+                  error:
+                    error instanceof Error && error.message.trim()
+                      ? error.message
+                      : "No se pudo comprobar la actualización.",
+                }
+              : current,
+          );
+        })
+        .finally(() => {
+          checkingRef.current = false;
+        });
+    };
+
+    window.addEventListener(UPDATE_CHECK_EVENT, handleCheck);
+    return () => window.removeEventListener(UPDATE_CHECK_EVENT, handleCheck);
+  }, [mounted]);
+
+  // Los avisos de "al día" o de error manual se retiran solos; el aviso de
+  // versión lista permanece hasta reiniciar o descartarlo.
+  useEffect(() => {
+    if (!manual || !state) return;
+    if (state.status !== "current" && state.status !== "disabled") return;
+    const timer = window.setTimeout(() => setManual(false), 5000);
+    return () => window.clearTimeout(timer);
+  }, [manual, state]);
+
+  if (!mounted || !state) return null;
+
+  const status = state.status;
+  const version = state.version ?? "";
+  const isReady = status === "ready";
+  const isDownloading = status === "available" || status === "downloading";
+  const isChecking = status === "checking";
+  const isCurrent = status === "current";
+  const isError = status === "error";
+  const isDisabled = status === "disabled";
+
+  if (isReady && dismissedVersion === version) return null;
+  if (
+    !isReady &&
+    !isDownloading &&
+    !(manual && (isChecking || isCurrent || isError || isDisabled))
+  ) {
+    return null;
+  }
+
+  const progress = Math.max(0, Math.min(100, Math.round(state.progress || 0)));
+
+  async function restartNow() {
+    const updater = getDesktopUpdater();
+    if (!updater) return;
+    setInstalling(true);
+    setInstallError("");
+    try {
+      const result = await updater.install();
+      if (!result.ok) {
+        setInstallError(
+          result.reason === "not-ready"
+            ? "La actualización todavía se está preparando. Inténtalo en unos segundos."
+            : "No se pudo reiniciar la app. Ciérrala y vuelve a abrirla para aplicar la versión nueva.",
+        );
+        setInstalling(false);
+      }
+    } catch {
+      setInstallError(
+        "No se pudo reiniciar la app. Ciérrala y vuelve a abrirla para aplicar la versión nueva.",
+      );
+      setInstalling(false);
+    }
+  }
+
+  return createPortal(
+    <div
+      className="fixed bottom-20 right-3 z-[120] w-[calc(100vw-1.5rem)] max-w-[380px] sm:bottom-5 sm:right-5"
+      role="status"
+      aria-live="polite"
+    >
+      {isReady ? (
+        <div className="animate-fade-up overflow-hidden rounded-[22px] border border-emerald-500/25 bg-gradient-to-br from-white/95 to-white/85 p-4 shadow-[0_22px_60px_-24px_rgba(15,23,42,0.45),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-2xl dark:border-emerald-400/20 dark:from-[#18201b]/95 dark:to-[#0c120e]/90 dark:shadow-[0_22px_60px_-20px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.08)]">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#30D158] to-[#149A3C] text-white shadow-[0_10px_22px_-10px_rgba(48,209,88,0.8)]">
+              <Check className="h-5 w-5" strokeWidth={2.7} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold leading-5 text-slate-800 dark:text-white/90">
+                Nueva versión lista. Se aplicará al reiniciar la app
+              </p>
+              <p className="mt-0.5 text-[11px] leading-4 text-slate-500 dark:text-white/40">
+                {version
+                  ? `v${version} descargada en segundo plano.`
+                  : "Descarga completada en segundo plano."}
+              </p>
+              {installError && (
+                <p className="mt-2 rounded-lg border border-rose-300/50 bg-rose-500/10 px-2.5 py-1.5 text-[10.5px] leading-4 text-rose-700 dark:border-rose-400/20 dark:text-rose-200">
+                  {installError}
+                </p>
+              )}
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => void restartNow()}
+                  disabled={installing}
+                  className="h-8 rounded-xl bg-[#0A84FF] px-3 text-[11.5px] text-white hover:bg-[#0077ED]"
+                >
+                  {installing ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  )}
+                  {installing ? "Reiniciando…" : "Reiniciar ahora"}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setDismissedVersion(version)}
+                  disabled={installing}
+                  className="rounded-lg px-2 py-1 text-[11px] font-medium text-slate-500 transition-colors hover:text-slate-800 disabled:opacity-50 dark:text-white/40 dark:hover:text-white/80"
+                >
+                  Más tarde
+                </button>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDismissedVersion(version)}
+              disabled={installing}
+              aria-label="Cerrar aviso de actualización"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-200/70 hover:text-slate-700 disabled:opacity-50 dark:text-white/35 dark:hover:bg-white/10 dark:hover:text-white/80"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      ) : isDownloading ? (
+        <div className="overflow-hidden rounded-[20px] border border-slate-300/45 bg-white/90 p-3.5 shadow-[0_18px_45px_-22px_rgba(15,23,42,0.4),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-2xl dark:border-white/[0.1] dark:bg-[#12151c]/92 dark:shadow-[0_18px_45px_-18px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.06)]">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#0A84FF]/12 text-[#0A84FF] dark:bg-[#0A84FF]/20 dark:text-[#7ab7ff]">
+              <Download className="h-4 w-4" strokeWidth={2} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11.5px] font-medium text-slate-700 dark:text-white/80">
+                  Descargando actualización…
+                </p>
+                <span className="tabular text-[10.5px] font-semibold text-slate-500 dark:text-white/45">
+                  {progress}%
+                </span>
+              </div>
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-900/[0.08] dark:bg-white/10">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-[#0A84FF] to-[#5E5CE6] transition-[width] duration-300 ease-out"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <p className="mt-1 text-[10px] text-slate-400 dark:text-white/30">
+                Se instalará sola al reiniciar. Puedes seguir trabajando.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-[20px] border border-slate-300/45 bg-white/92 p-3.5 shadow-[0_18px_45px_-22px_rgba(15,23,42,0.4),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-2xl dark:border-white/[0.1] dark:bg-[#12151c]/92 dark:shadow-[0_18px_45px_-18px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.06)]">
+          <div className="flex items-start gap-2.5">
+            <span
+              className={cn(
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl",
+                isError
+                  ? "bg-amber-500/12 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300"
+                  : "bg-emerald-500/12 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300",
+              )}
+            >
+              {isChecking ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : isError ? (
+                <RefreshCw className="h-4 w-4" />
+              ) : (
+                <ShieldCheck className="h-4 w-4" />
+              )}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11.5px] font-medium text-slate-700 dark:text-white/80">
+                {isChecking
+                  ? "Buscando actualizaciones…"
+                  : isError
+                    ? "No se pudo comprobar la actualización"
+                    : isDisabled
+                      ? "Actualizaciones automáticas no disponibles"
+                      : "Estás al día"}
+              </p>
+              <p className="mt-0.5 text-[10.5px] leading-4 text-slate-500 dark:text-white/40">
+                {isChecking
+                  ? "Comprobando si hay una versión nueva."
+                  : isError
+                    ? state.error || "Revisa tu conexión e inténtalo de nuevo."
+                    : isDisabled
+                      ? "Esta función solo está activa en la app instalada."
+                      : `Ya tienes la última versión${
+                          currentVersion ? ` (v${currentVersion})` : ""
+                        }.`}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setManual(false)}
+              aria-label="Cerrar aviso"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-200/70 hover:text-slate-700 dark:text-white/35 dark:hover:bg-white/10 dark:hover:text-white/80"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>,
     document.body,
   );

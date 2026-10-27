@@ -9,6 +9,7 @@ import type {
   BookMessage,
   BookSection,
   BookSummary,
+  ChatAttachment,
   ChatResponse,
   ClassAssignment,
   ClassDetail,
@@ -38,6 +39,8 @@ import type {
   SyncLog,
   SyncResult,
   Task,
+  TaskPriority,
+  TaskStatus,
   TimetableEntry,
   TimetableImportResult,
   UploadSession,
@@ -221,7 +224,14 @@ function extractErrorMessage(status: number, data: unknown): string {
 
 export const api = {
   // --- Auth ---
-  register: (body: { email: string; password: string; full_name?: string; timezone?: string }) =>
+  register: (body: {
+    email: string;
+    password: string;
+    full_name?: string;
+    timezone?: string;
+    recovery_question?: string;
+    recovery_answer?: string;
+  }) =>
     request<{ access_token: string }>("/api/v1/auth/register", {
       method: "POST",
       body: JSON.stringify(body),
@@ -232,6 +242,21 @@ export const api = {
       body: JSON.stringify(body),
     }),
   me: () => request<User>("/api/v1/auth/me"),
+  recoveryQuestion: (email: string) =>
+    request<{ available: boolean; question: string | null }>(
+      "/api/v1/auth/recovery/question",
+      { method: "POST", body: JSON.stringify({ email }) },
+    ),
+  resetPassword: (body: { email: string; answer: string; new_password: string }) =>
+    request<{ access_token: string }>("/api/v1/auth/recovery/reset", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  setRecovery: (body: { question: string; answer: string }) =>
+    request<User>("/api/v1/auth/recovery", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
 
   // --- Integraciones ---
   integrations: () => request<Integration[]>("/api/v1/integrations"),
@@ -334,6 +359,18 @@ export const api = {
     estimated_minutes?: number;
     course_id?: string;
   }) => request<Task>("/api/v1/tasks", { method: "POST", body: JSON.stringify(body) }),
+  updateTask: (
+    id: string,
+    body: {
+      title?: string;
+      description?: string | null;
+      due_at?: string | null;
+      estimated_minutes?: number;
+      course_id?: string | null;
+      status?: TaskStatus;
+      priority?: TaskPriority;
+    },
+  ) => request<Task>(`/api/v1/tasks/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
 
   // --- Agenda y disponibilidad ---
   today: () => request<DailyAgenda>("/api/v1/schedule/today"),
@@ -362,10 +399,21 @@ export const api = {
     }),
   assistantMessages: (limit = 50) =>
     request<AssistantMessage[]>(`/api/v1/assistant/messages?limit=${limit}`),
-  chat: (message: string, documentId?: string | null) =>
+  chat: (message: string, documentId?: string | null, attachments: ChatAttachment[] = []) =>
     request<ChatResponse>("/api/v1/assistant/chat", {
       method: "POST",
-      body: JSON.stringify({ message, document_id: documentId ?? null }),
+      body: JSON.stringify({
+        message,
+        document_id: documentId ?? null,
+        attachments: attachments.map((attachment) => ({
+          name: attachment.name,
+          mime_type: attachment.mime_type,
+          data: attachment.data,
+          preview: attachment.preview ?? null,
+          page: attachment.page ?? null,
+          total_pages: attachment.total_pages ?? null,
+        })),
+      }),
     }),
   confirmAction: (tool: string, args: Record<string, unknown>, approve: boolean) =>
     request<ChatResponse>("/api/v1/assistant/confirm", {

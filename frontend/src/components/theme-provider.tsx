@@ -7,7 +7,7 @@ export type ResolvedTheme = "light" | "dark";
 
 const STORAGE_KEY = "academic-autopilot-theme";
 const THEME_COLORS: Record<ResolvedTheme, string> = {
-  light: "#e7e8ec",
+  light: "#e4e8ec",
   dark: "#10131a",
 };
 

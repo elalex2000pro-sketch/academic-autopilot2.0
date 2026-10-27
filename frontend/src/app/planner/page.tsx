@@ -1,5 +1,5 @@
-import { PlannerView } from "@/components/planner-view";
+import { PlannerPageView } from "@/components/planner-page-view";
 
 export default function PlannerPage() {
-  return <PlannerView />;
+  return <PlannerPageView />;
 }

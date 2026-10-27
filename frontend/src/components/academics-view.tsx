@@ -2,13 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   Award,
   BookOpen,
   CalendarClock,
   CheckCircle2,
   ChevronRight,
   GraduationCap,
+  GripVertical,
   Loader2,
+  Pencil,
   Percent,
   Plus,
   Search,
@@ -17,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 
+import { ExamDialog, type ExamDialogMode } from "@/components/exam-dialog";
 import { useRealtime } from "@/components/realtime-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,14 +30,46 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { api, ApiError } from "@/lib/api";
 import {
+  CUSTOM_TIMETABLE_EVENT,
+  hydrateTimetableCourses,
+  loadCustomTimetable,
+} from "@/lib/custom-timetable";
+import {
   GRADE_CHANGE_EVENT,
   GRADE_CHANGE_STORAGE_KEY,
   notifyGradeChange,
 } from "@/lib/grade-events";
-import type { Course, Grade, GradeSummary } from "@/lib/types";
+import type { Course, Grade, GradeSummary, TimetableEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type Notice = { tone: "success" | "error"; text: string };
+
+type CourseSortMode = "name" | "average_desc" | "average_asc" | "schedule" | "manual";
+
+const COURSE_SORT_STORAGE_KEY = "autopilot-academics-sort";
+const COURSE_ORDER_STORAGE_KEY = "autopilot-academics-course-order";
+
+const COURSE_SORT_OPTIONS: Array<{ value: CourseSortMode; label: string }> = [
+  { value: "name", label: "Por Nombre (A-Z)" },
+  { value: "average_desc", label: "Por Nota Media (Mayor a Menor)" },
+  { value: "average_asc", label: "Por Nota Media (Menor a Mayor)" },
+  { value: "schedule", label: "Por Orden del Horario / Curso" },
+  { value: "manual", label: "Orden Manual (Arrastrar / Flechas)" },
+];
+
+function isCourseSortMode(value: string | null): value is CourseSortMode {
+  return COURSE_SORT_OPTIONS.some((option) => option.value === value);
+}
+
+function timeToMinutes(value: string): number {
+  const [hours, minutes] = value.split(":").map(Number);
+  return (hours || 0) * 60 + (minutes || 0);
+}
+
+function localDateKey(date = new Date()): string {
+  const pad = (value: number) => (value < 10 ? `0${value}` : String(value));
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
@@ -152,6 +190,16 @@ export function AcademicsView() {
   const [query, setQuery] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [showCourseForm, setShowCourseForm] = useState(false);
+  const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
+  const [sortMode, setSortMode] = useState<CourseSortMode>("name");
+  const [manualOrder, setManualOrder] = useState<string[]>([]);
+  const [sortReady, setSortReady] = useState(false);
+  const [draggingCourseId, setDraggingCourseId] = useState<string | null>(null);
+  const [dragOverCourseId, setDragOverCourseId] = useState<string | null>(null);
+  const [examDialog, setExamDialog] = useState<{
+    mode: ExamDialogMode;
+    exam: Grade;
+  } | null>(null);
 
   const [courseName, setCourseName] = useState("");
   const [courseTeacher, setCourseTeacher] = useState("");
@@ -179,14 +227,26 @@ export function AcademicsView() {
       setNotice(null);
     }
     try {
-      const [courseList, gradeList, gradeSummary] = await Promise.all([
+      // El planificador guarda su horario personalizado en este dispositivo.
+      // Se usa el mismo para que "Por Orden del Horario" coincida con lo que
+      // el usuario ve en su calendario.
+      const customTimetable = loadCustomTimetable();
+      const [courseList, gradeList, gradeSummary, timetableList] = await Promise.all([
         api.courses(),
         api.grades(),
         api.gradeSummary(),
+        customTimetable
+          ? Promise.resolve([] as TimetableEntry[])
+          : api.timetable().catch(() => [] as TimetableEntry[]),
       ]);
       setCourses(courseList);
       setGrades(gradeList);
       setSummary(gradeSummary);
+      setTimetable(
+        customTimetable
+          ? hydrateTimetableCourses(customTimetable, courseList)
+          : timetableList,
+      );
     } catch (error) {
       setNotice({ tone: "error", text: errorMessage(error) });
     } finally {
@@ -218,6 +278,63 @@ export function AcademicsView() {
       window.removeEventListener("storage", handleStorage);
     };
   }, [load]);
+
+  useEffect(() => {
+    const handleTimetableChange = () => {
+      void load(true);
+    };
+    window.addEventListener(CUSTOM_TIMETABLE_EVENT, handleTimetableChange);
+    return () => window.removeEventListener(CUSTOM_TIMETABLE_EVENT, handleTimetableChange);
+  }, [load]);
+
+  // El orden y la forma de ordenar se guardan solo en este dispositivo: no
+  // forman parte de los datos academicos del backend.
+  useEffect(() => {
+    try {
+      const storedSort = window.localStorage.getItem(COURSE_SORT_STORAGE_KEY);
+      if (isCourseSortMode(storedSort)) setSortMode(storedSort);
+      const storedOrder = window.localStorage.getItem(COURSE_ORDER_STORAGE_KEY);
+      if (storedOrder) {
+        const parsed: unknown = JSON.parse(storedOrder);
+        if (Array.isArray(parsed)) {
+          setManualOrder(parsed.filter((id): id is string => typeof id === "string"));
+        }
+      }
+    } catch {
+      // localStorage puede estar bloqueado por el navegador.
+    } finally {
+      setSortReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!sortReady) return;
+    try {
+      window.localStorage.setItem(COURSE_SORT_STORAGE_KEY, sortMode);
+    } catch {
+      // Sin persistencia: la vista sigue funcionando en memoria.
+    }
+  }, [sortMode, sortReady]);
+
+  useEffect(() => {
+    if (!sortReady) return;
+    try {
+      window.localStorage.setItem(COURSE_ORDER_STORAGE_KEY, JSON.stringify(manualOrder));
+    } catch {
+      // Sin persistencia: la vista sigue funcionando en memoria.
+    }
+  }, [manualOrder, sortReady]);
+
+  useEffect(() => {
+    if (courses.length === 0) return;
+    setManualOrder((previous) => {
+      const ids = courses.map((course) => course.id);
+      const kept = previous.filter((id) => ids.includes(id));
+      const missing = ids.filter((id) => !kept.includes(id));
+      if (kept.length === previous.length && missing.length === 0) return previous;
+      return [...kept, ...missing];
+    });
+  }, [courses]);
 
   const selectedCourse = useMemo(
     () => courses.find((course) => course.id === selectedCourseId) ?? null,
@@ -256,6 +373,134 @@ export function AcademicsView() {
         .some((value) => String(value).toLowerCase().includes(needle)),
     );
   }, [courses, query]);
+
+  // Primera franja semanal de cada asignatura. Si no hay ninguna, se usa el
+  // codigo o el nombre como criterio de desempate.
+  const scheduleIndex = useMemo(() => {
+    const nameToId = new Map<string, string>();
+    for (const course of courses) {
+      nameToId.set(course.name.trim().toLowerCase(), course.id);
+    }
+    const map = new Map<string, number>();
+    for (const entry of timetable) {
+      const courseId =
+        entry.course_id ??
+        nameToId.get((entry.title ?? "").trim().toLowerCase());
+      if (!courseId) continue;
+      const value = entry.day_of_week * 1440 + timeToMinutes(entry.start_time);
+      const current = map.get(courseId);
+      if (current === undefined || value < current) map.set(courseId, value);
+    }
+    return map;
+  }, [courses, timetable]);
+
+  const visibleCourses = useMemo(() => {
+    const list = [...filteredCourses];
+    const byName = (a: Course, b: Course) =>
+      a.name.localeCompare(b.name, "es", { sensitivity: "base" });
+
+    if (sortMode === "manual") {
+      const position = new Map(manualOrder.map((id, index) => [id, index]));
+      list.sort(
+        (a, b) =>
+          (position.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+            (position.get(b.id) ?? Number.MAX_SAFE_INTEGER) || byName(a, b),
+      );
+    } else if (sortMode === "name") {
+      list.sort(byName);
+    } else if (sortMode === "average_desc" || sortMode === "average_asc") {
+      list.sort((a, b) => {
+        const aAverage = summaryByCourse.get(a.id)?.average_percent ?? null;
+        const bAverage = summaryByCourse.get(b.id)?.average_percent ?? null;
+        if (aAverage === null && bAverage === null) return byName(a, b);
+        if (aAverage === null) return 1;
+        if (bAverage === null) return -1;
+        return sortMode === "average_desc"
+          ? bAverage - aAverage || byName(a, b)
+          : aAverage - bAverage || byName(a, b);
+      });
+    } else {
+      list.sort((a, b) => {
+        const aSlot = scheduleIndex.get(a.id);
+        const bSlot = scheduleIndex.get(b.id);
+        if (aSlot !== undefined && bSlot !== undefined) {
+          return aSlot - bSlot || byName(a, b);
+        }
+        if (aSlot !== undefined) return -1;
+        if (bSlot !== undefined) return 1;
+        return (
+          (a.code?.trim() || a.name).localeCompare(b.code?.trim() || b.name, "es", {
+            sensitivity: "base",
+          }) || byName(a, b)
+        );
+      });
+    }
+
+    return list;
+  }, [filteredCourses, manualOrder, scheduleIndex, sortMode, summaryByCourse]);
+
+  function handleDragStart(event: React.DragEvent<HTMLDivElement>, courseId: string) {
+    setDraggingCourseId(courseId);
+    setDragOverCourseId(null);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", courseId);
+  }
+
+  function handleDragOver(event: React.DragEvent<HTMLDivElement>, courseId: string) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    if (draggingCourseId && draggingCourseId !== courseId) {
+      setDragOverCourseId(courseId);
+    }
+  }
+
+  /**
+   * Guarda el orden visible y conserva al final las asignaturas ocultas por
+   * la búsqueda, para que limpiar el filtro no descoloque la lista.
+   */
+  function applyManualOrder(visibleIds: string[]) {
+    setManualOrder((previous) => {
+      const allIds = courses.map((course) => course.id);
+      const hidden = [
+        ...previous.filter((id) => allIds.includes(id) && !visibleIds.includes(id)),
+        ...allIds.filter((id) => !visibleIds.includes(id) && !previous.includes(id)),
+      ];
+      return [...visibleIds, ...hidden];
+    });
+    setSortMode("manual");
+  }
+
+  function handleDrop(event: React.DragEvent<HTMLDivElement>, targetId: string) {
+    event.preventDefault();
+    const sourceId = draggingCourseId ?? event.dataTransfer.getData("text/plain");
+    setDraggingCourseId(null);
+    setDragOverCourseId(null);
+    if (!sourceId || sourceId === targetId) return;
+
+    const visibleIds = visibleCourses.map((course) => course.id);
+    const from = visibleIds.indexOf(sourceId);
+    const to = visibleIds.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    visibleIds.splice(from, 1);
+    visibleIds.splice(to, 0, sourceId);
+    applyManualOrder(visibleIds);
+  }
+
+  function handleDragEnd() {
+    setDraggingCourseId(null);
+    setDragOverCourseId(null);
+  }
+
+  /** Alternativa táctil y accesible al arrastre (HTML5 DnD no funciona en móvil). */
+  function moveCourse(courseId: string, direction: -1 | 1) {
+    const visibleIds = visibleCourses.map((course) => course.id);
+    const from = visibleIds.indexOf(courseId);
+    const to = from + direction;
+    if (from < 0 || to < 0 || to >= visibleIds.length) return;
+    visibleIds.splice(from, 1);
+    visibleIds.splice(to, 0, courseId);
+    applyManualOrder(visibleIds);
+  }
 
   const selectedGrades = useMemo(() => {
     if (!selectedCourse) return [];
@@ -409,6 +654,23 @@ export function AcademicsView() {
     }
   }
 
+  function handleExamSaved(saved: Grade, message: string) {
+    setExamDialog(null);
+    setGrades((current) => {
+      const exists = current.some((grade) => grade.id === saved.id);
+      return exists
+        ? current.map((grade) => (grade.id === saved.id ? saved : grade))
+        : [...current, saved];
+    });
+    setNotice({ tone: "success", text: message });
+  }
+
+  function handleExamDeleted(id: string) {
+    setExamDialog(null);
+    setGrades((current) => current.filter((grade) => grade.id !== id));
+    setNotice({ tone: "success", text: "Examen eliminado de la media y del calendario." });
+  }
+
   // El inset superior lo aporta el <main> del AppShell; aquí solo van los
   // márgenes laterales e inferiores para no duplicar la separación.
   return (
@@ -431,7 +693,7 @@ export function AcademicsView() {
           </Button>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-4">
           <StatCard
             icon={<Award className="h-3.5 w-3.5" />}
             label="Media global"
@@ -482,23 +744,50 @@ export function AcademicsView() {
               Tus asignaturas
             </p>
             <h2 className="mt-1 text-[18px] font-semibold tracking-[-0.02em] text-slate-800 dark:text-white/90">
-              {filteredCourses.length} asignatura{filteredCourses.length === 1 ? "" : "s"}
+              {visibleCourses.length} asignatura{visibleCourses.length === 1 ? "" : "s"}
             </h2>
           </div>
-          <label className="relative w-full sm:w-64">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 dark:text-white/30" />
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar asignatura o profesor"
-              className="h-9 rounded-full pl-9"
-              aria-label="Buscar asignatura o profesor"
-            />
-          </label>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <label className="relative w-full sm:w-[280px]">
+              <ArrowUpDown className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 dark:text-white/30" />
+              <select
+                value={sortMode}
+                onChange={(event) => setSortMode(event.target.value as CourseSortMode)}
+                className="h-9 w-full rounded-full border border-slate-300/40 bg-slate-100/70 pl-9 pr-3 text-[11.5px] font-medium text-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-3xl transition-[border-color,box-shadow,background-color] duration-150 focus-visible:border-[#0066FF] focus-visible:bg-slate-100/85 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#0066FF]/20 dark:border-white/10 dark:bg-white/[0.055] dark:text-white/70 dark:focus-visible:bg-white/[0.08]"
+                aria-label="Ordenar asignaturas"
+              >
+                {COURSE_SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="relative w-full sm:w-64">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 dark:text-white/30" />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Buscar asignatura o profesor"
+                className="h-9 rounded-full pl-9"
+                aria-label="Buscar asignatura o profesor"
+              />
+            </label>
+          </div>
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-300/40 bg-slate-100/50 px-3 py-2 dark:border-white/10 dark:bg-white/[0.03]">
+          <p className="flex min-w-0 items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-white/35">
+            <GripVertical className="h-3.5 w-3.5 shrink-0" />
+            Arrastra una tarjeta o usa las flechas para crear tu propio orden.
+          </p>
+          <span className="rounded-full bg-slate-900/[0.05] px-2 py-0.5 text-[9.5px] font-medium text-slate-500 dark:bg-white/[0.07] dark:text-white/40">
+            {sortMode === "manual" ? "Orden manual activo" : "Se guarda en este dispositivo"}
+          </span>
         </div>
 
         {loading ? (
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {[0, 1, 2, 3, 4, 5].map((item) => (
               <div
                 key={item}
@@ -506,7 +795,7 @@ export function AcademicsView() {
               />
             ))}
           </div>
-        ) : filteredCourses.length === 0 ? (
+        ) : visibleCourses.length === 0 ? (
           <div className="mt-5 flex flex-col items-center justify-center rounded-3xl border border-dashed border-white/70 px-6 py-12 text-center dark:border-white/10">
             <GraduationCap className="h-8 w-8 text-slate-300 dark:text-white/25" />
             <p className="mt-3 text-sm font-semibold text-slate-700 dark:text-white/80">
@@ -517,19 +806,65 @@ export function AcademicsView() {
             </p>
           </div>
         ) : (
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {filteredCourses.map((course) => {
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {visibleCourses.map((course, index) => {
               const courseSummary = summaryByCourse.get(course.id);
               const average = courseSummary?.average_percent ?? null;
               const count = courseSummary?.graded_count ?? 0;
               const color = course.color?.trim() || "#0066FF";
               return (
-                <button
+                <div
                   key={course.id}
-                  type="button"
-                  onClick={() => setSelectedCourseId(course.id)}
-                  className="group relative overflow-hidden rounded-3xl border border-slate-300/45 bg-slate-100/45 p-4 text-left shadow-[0_18px_45px_-32px_rgba(15,23,42,0.7)] backdrop-blur-3xl transition-all duration-200 ease-mac hover:-translate-y-0.5 hover:border-white/80 hover:bg-white/45 dark:border-white/10 dark:bg-black/25 dark:hover:border-white/20 dark:hover:bg-white/[0.06]"
+                  draggable
+                  onDragStart={(event) => handleDragStart(event, course.id)}
+                  onDragOver={(event) => handleDragOver(event, course.id)}
+                  onDragLeave={() =>
+                    setDragOverCourseId((current) => (current === course.id ? null : current))
+                  }
+                  onDrop={(event) => handleDrop(event, course.id)}
+                  onDragEnd={handleDragEnd}
+                  className={cn(
+                    "relative rounded-3xl transition-[opacity,transform] duration-150",
+                    draggingCourseId === course.id && "opacity-40",
+                    dragOverCourseId === course.id && "scale-[0.985]",
+                  )}
                 >
+                  {sortMode === "manual" && (
+                    <div className="mb-1 flex items-center justify-between gap-2 px-1">
+                      <span className="text-[9.5px] font-semibold uppercase tracking-[0.1em] text-slate-400 dark:text-white/30">
+                        Posición {index + 1}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          draggable={false}
+                          onClick={() => moveCourse(course.id, -1)}
+                          disabled={index === 0}
+                          aria-label={`Mover ${course.name} hacia arriba`}
+                          title="Mover hacia arriba"
+                          className="flex h-6 w-6 items-center justify-center rounded-lg border border-slate-300/40 bg-slate-100/60 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-35 dark:border-white/10 dark:bg-white/[0.05] dark:text-white/40 dark:hover:bg-white/[0.09] dark:hover:text-white/70"
+                        >
+                          <ArrowUp className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          draggable={false}
+                          onClick={() => moveCourse(course.id, 1)}
+                          disabled={index === visibleCourses.length - 1}
+                          aria-label={`Mover ${course.name} hacia abajo`}
+                          title="Mover hacia abajo"
+                          className="flex h-6 w-6 items-center justify-center rounded-lg border border-slate-300/40 bg-slate-100/60 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-35 dark:border-white/10 dark:bg-white/[0.05] dark:text-white/40 dark:hover:bg-white/[0.09] dark:hover:text-white/70"
+                        >
+                          <ArrowDown className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCourseId(course.id)}
+                    className="group relative w-full overflow-hidden rounded-3xl border border-slate-300/40 bg-slate-100/60 p-4 text-left shadow-[0_18px_45px_-32px_rgba(15,23,42,0.7)] backdrop-blur-3xl transition-all duration-200 ease-mac hover:-translate-y-0.5 hover:border-slate-400/45 hover:bg-slate-100/75 dark:border-white/10 dark:bg-black/25 dark:hover:border-white/20 dark:hover:bg-white/[0.06]"
+                  >
                   <span
                     className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full opacity-20 blur-2xl"
                     style={{ backgroundColor: color }}
@@ -541,7 +876,16 @@ export function AcademicsView() {
                     >
                       <BookOpen className="h-5 w-5" />
                     </span>
-                    <ProgressRing value={average} size={66} label="media" />
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className="flex h-7 w-7 cursor-grab items-center justify-center rounded-lg text-slate-400/70 transition-colors hover:bg-slate-900/[0.05] hover:text-slate-600 active:cursor-grabbing dark:text-white/25 dark:hover:bg-white/[0.07] dark:hover:text-white/60"
+                        title="Arrastra para reordenar"
+                        aria-hidden
+                      >
+                        <GripVertical className="h-4 w-4" />
+                      </span>
+                      <ProgressRing value={average} size={66} label="media" />
+                    </div>
                   </div>
                   <div className="relative mt-4">
                     <p className="line-clamp-2 text-[16px] font-semibold leading-tight tracking-[-0.02em] text-slate-900 dark:text-white/90">
@@ -576,7 +920,14 @@ export function AcademicsView() {
                       }}
                     />
                   </div>
-                </button>
+                  </button>
+                  {dragOverCourseId === course.id && (
+                    <span
+                      className="pointer-events-none absolute inset-0 rounded-3xl ring-2 ring-[#0066FF]/70 dark:ring-[#8ab9ff]/70"
+                      aria-hidden
+                    />
+                  )}
+                </div>
               );
             })}
           </div>
@@ -635,7 +986,7 @@ export function AcademicsView() {
                   className="mt-1"
                 />
               </label>
-              <div className="grid gap-3 sm:grid-cols-[1fr_90px]">
+              <div className="grid gap-3 md:grid-cols-[1fr_90px]">
                 <label className="block">
                   <span className="text-[11px] font-semibold text-slate-600 dark:text-white/55">Código (opcional)</span>
                   <Input
@@ -714,7 +1065,7 @@ export function AcademicsView() {
 
             <div className="grid gap-5 p-5 lg:grid-cols-[270px_minmax(0,1fr)]">
               <aside className="space-y-3">
-                <div className="flex items-center gap-4 rounded-3xl border border-slate-300/45 bg-slate-100/45 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                <div className="flex items-center gap-4 rounded-3xl border border-slate-300/40 bg-slate-100/60 p-4 dark:border-white/10 dark:bg-white/[0.04]">
                   <ProgressRing value={selectedSummary?.average_percent ?? null} size={88} stroke={8} label="media" />
                   <div>
                     <p className="text-[9.5px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-white/30">
@@ -734,7 +1085,7 @@ export function AcademicsView() {
                   </div>
                 </div>
 
-                <div className="rounded-3xl border border-slate-300/45 bg-slate-100/45 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                <div className="rounded-3xl border border-slate-300/40 bg-slate-100/60 p-4 dark:border-white/10 dark:bg-white/[0.04]">
                   <p className="text-[9.5px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-white/30">
                     Profesor/a
                   </p>
@@ -760,7 +1111,7 @@ export function AcademicsView() {
                   </div>
                 </div>
 
-                <div className="rounded-3xl border border-slate-300/45 bg-slate-100/45 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                <div className="rounded-3xl border border-slate-300/40 bg-slate-100/60 p-4 dark:border-white/10 dark:bg-white/[0.04]">
                   <p className="text-[9.5px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-white/30">
                     Resumen
                   </p>
@@ -802,7 +1153,7 @@ export function AcademicsView() {
               <div className="min-w-0 space-y-4">
                 <form
                   onSubmit={addGrade}
-                  className="rounded-3xl border border-slate-300/45 bg-slate-100/45 p-4 dark:border-white/10 dark:bg-white/[0.04]"
+                  className="rounded-3xl border border-slate-300/40 bg-slate-100/60 p-4 dark:border-white/10 dark:bg-white/[0.04]"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div>
@@ -817,7 +1168,7 @@ export function AcademicsView() {
                       Media automática
                     </Badge>
                   </div>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div className="mt-3 grid gap-2 md:grid-cols-2">
                     <label className="block sm:col-span-2">
                       <span className="text-[10px] font-medium text-slate-500 dark:text-white/40">
                         Examen, trabajo o práctica
@@ -890,7 +1241,7 @@ export function AcademicsView() {
                         className="mt-1"
                       />
                     </label>
-                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-300/45 bg-white/35 px-3 py-2.5 sm:col-span-2 dark:border-white/10 dark:bg-white/[0.04]">
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-300/40 bg-slate-100/60 px-3 py-2.5 sm:col-span-2 dark:border-white/10 dark:bg-white/[0.04]">
                       <div className="flex min-w-0 items-start gap-2">
                         <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-[#FF3B30]" />
                         <div>
@@ -923,7 +1274,7 @@ export function AcademicsView() {
                   </div>
                 </form>
 
-                <div className="rounded-3xl border border-slate-300/45 bg-slate-100/45 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                <div className="rounded-3xl border border-slate-300/40 bg-slate-100/60 p-4 dark:border-white/10 dark:bg-white/[0.04]">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-[9.5px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-white/30">
                       Historial
@@ -941,7 +1292,7 @@ export function AcademicsView() {
                         return (
                           <div
                             key={grade.id}
-                            className="group flex items-center gap-3 rounded-2xl border border-transparent px-2.5 py-2.5 transition-colors hover:border-white/60 hover:bg-white/30 dark:hover:border-white/10 dark:hover:bg-white/[0.04]"
+                            className="group flex items-center gap-3 rounded-2xl border border-transparent px-2.5 py-2.5 transition-colors hover:border-slate-400/45 hover:bg-slate-100/55 dark:hover:border-white/10 dark:hover:bg-white/[0.04]"
                           >
                             <span
                               className={cn(
@@ -981,6 +1332,17 @@ export function AcademicsView() {
                                 {percent === null ? "sin nota" : `${(percent / 10).toFixed(1)}/10`}
                               </p>
                             </div>
+                            {grade.is_exam && (
+                              <button
+                                type="button"
+                                onClick={() => setExamDialog({ mode: "edit", exam: grade })}
+                                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-400 opacity-100 transition-colors hover:bg-[#0066FF]/10 hover:text-[#0066FF] dark:text-white/25 dark:hover:text-[#8ab9ff] sm:opacity-0 sm:group-hover:opacity-100"
+                                aria-label={`Editar ${grade.title}`}
+                                title="Editar examen"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => void removeGrade(grade.id)}
@@ -1005,6 +1367,17 @@ export function AcademicsView() {
           </div>
         </div>
       )}
+
+      <ExamDialog
+        open={Boolean(examDialog)}
+        mode={examDialog?.mode ?? "edit"}
+        exam={examDialog?.exam ?? null}
+        courses={courses}
+        defaultDate={localDateKey()}
+        onClose={() => setExamDialog(null)}
+        onSaved={handleExamSaved}
+        onDeleted={handleExamDeleted}
+      />
     </div>
   );
 }

@@ -7,10 +7,29 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class MessageAttachment(BaseModel):
+    """Adjunto tal y como se guarda y se muestra en el historial."""
+
+    name: str = Field(..., min_length=1, max_length=200)
+    mime_type: str = Field(..., max_length=60)
+    # Miniatura en data URL (nunca la imagen completa: pesa demasiado en la BD).
+    preview: str | None = Field(default=None, max_length=400_000)
+    page: int | None = Field(default=None, ge=1)
+    total_pages: int | None = Field(default=None, ge=1)
+
+
+class ChatAttachment(MessageAttachment):
+    """Imagen o página de PDF renderizada que se envía al modelo."""
+
+    data: str = Field(..., min_length=1, max_length=12_000_000)
+
+
 class ChatRequest(BaseModel):
     message: str = Field(default="", max_length=4000)
     # Imagen adjunta (documento subido antes mediante /files). Opcional.
     document_id: uuid.UUID | None = None
+    # Fotos y páginas de PDF renderizadas en el navegador (máximo 6).
+    attachments: list[ChatAttachment] = Field(default_factory=list, max_length=6)
 
 
 class PendingAction(BaseModel):
@@ -34,6 +53,7 @@ class AssistantMessageRead(BaseModel):
     content: str
     source: str | None = None
     document_id: uuid.UUID | None = None
+    attachments: list[MessageAttachment] = Field(default_factory=list)
     created_at: datetime
 
 

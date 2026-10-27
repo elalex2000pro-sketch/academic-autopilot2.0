@@ -8,13 +8,15 @@ import {
   FileSpreadsheet,
   History,
   Loader2,
+  Pencil,
   Trash2,
 } from "lucide-react";
 
+import { TaskDialog } from "@/components/task-dialog";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { formatDueLabel } from "@/lib/task-utils";
-import type { Task } from "@/lib/types";
+import type { Course, Task } from "@/lib/types";
 import { cn, formatMinutes } from "@/lib/utils";
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -51,8 +53,12 @@ interface TaskListProps {
   error?: string | null;
   /** Solo afecta al historial; la lista activa nunca muestra tachados. */
   strikeHistory?: boolean;
+  /** Asignaturas disponibles para reasignar una tarea al editarla. */
+  courses?: Course[];
   onComplete: (id: string) => Promise<void> | void;
   onDelete: (id: string) => Promise<void> | void;
+  /** Se llama después de guardar una edición para refrescar la lista. */
+  onTaskUpdated?: (task: Task) => Promise<void> | void;
   className?: string;
 }
 
@@ -62,13 +68,16 @@ export function TaskList({
   loading = false,
   error = null,
   strikeHistory = false,
+  courses = [],
   onComplete,
   onDelete,
+  onTaskUpdated,
   className,
 }: TaskListProps) {
   const [showHistory, setShowHistory] = useState(false);
   const [busy, setBusy] = useState<{ id: string; action: TaskAction } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
 
@@ -175,6 +184,17 @@ export function TaskList({
           >
             {PRIORITY_LABEL[task.priority] ?? task.priority}
           </span>
+
+          <button
+            type="button"
+            aria-label={`Editar ${task.title}`}
+            title="Editar tarea"
+            onClick={() => setEditingTask(task)}
+            disabled={busyHere}
+            className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-[#0066FF]/10 hover:text-[#0066FF] disabled:opacity-40 dark:text-white/25 dark:hover:text-[#8ab9ff]"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
 
           <button
             type="button"
@@ -323,13 +343,25 @@ export function TaskList({
           {showHistory && (
             <div className="mt-1 space-y-0.5 opacity-95">
               <p className="px-1.5 pb-1 text-[9.5px] text-slate-400 dark:text-white/25">
-                No cuentan como pendientes. Puedes completarlas o eliminarlas.
+                No cuentan como pendientes. Puedes editarlas, completarlas o eliminarlas.
               </p>
               {historyTasks.map((task) => renderTask(task, "history"))}
             </div>
           )}
         </div>
       )}
+
+      <TaskDialog
+        open={Boolean(editingTask)}
+        task={editingTask}
+        courses={courses}
+        onClose={() => setEditingTask(null)}
+        onSaved={(saved) => {
+          setEditingTask(null);
+          setActionError(null);
+          void onTaskUpdated?.(saved);
+        }}
+      />
     </section>
   );
 }

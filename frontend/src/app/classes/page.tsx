@@ -173,7 +173,7 @@ export default function ClassesPage() {
           </p>
         )}
         {!loading && classes.length > 0 && (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2">
             {classes.map((item) => (
               <Link
                 key={item.id}

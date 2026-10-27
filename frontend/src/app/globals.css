@@ -11,28 +11,30 @@
 }
 
 @layer base {
-  /* Paleta Muted Light: gris tiza / pizarra suave, sin blancos brillantes. */
+  /* Paleta Muted Light / Soft Slate: pizarra fría, mate y sin blancos puros. */
   :root {
-    --background: 220 15% 92%;
-    --foreground: 240 4% 23%;
-    --card: 220 14% 94%;
-    --card-foreground: 240 4% 23%;
+    --background: 214 16% 91%;
+    --foreground: 213 18% 21%;
+    --card: 214 20% 94%;
+    --card-foreground: 213 18% 21%;
     --primary: 216 100% 50%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 12% 90%;
-    --secondary-foreground: 240 4% 23%;
-    --muted: 220 12% 89%;
-    --muted-foreground: 240 3% 40%;
-    --accent: 216 55% 93%;
+    --secondary: 214 16% 89%;
+    --secondary-foreground: 213 18% 21%;
+    --muted: 214 14% 88%;
+    --muted-foreground: 214 12% 42%;
+    --accent: 216 45% 92%;
     --accent-foreground: 216 90% 38%;
     --destructive: 4 100% 59%;
     --destructive-foreground: 0 0% 100%;
-    --border: 240 3% 80%;
-    --input: 240 3% 78%;
+    --border: 212 18% 82%;
+    --input: 212 18% 78%;
     --ring: 216 100% 50%;
     --radius: 0.75rem;
-    --sidebar: 220 15% 92%;
-    --separator: 240 3% 82%;
+    --sidebar: 214 17% 92%;
+    --separator: 212 16% 84%;
+    --mobile-nav-height: 68px;
+    --mobile-nav-offset: 0px;
   }
 
   .dark {
@@ -232,7 +234,9 @@
     background-color: hsl(var(--foreground) / 0.035);
   }
   .glass-panel {
-    background: hsl(var(--card));
+    background: hsl(var(--card) / 0.72);
+    backdrop-filter: blur(48px) saturate(130%);
+    -webkit-backdrop-filter: blur(48px) saturate(130%);
   }
   .stagger-in > * {
     animation: fade-in 0.18s ease-out both;
@@ -286,9 +290,9 @@
   }
 
   .vibrancy {
-    background-color: hsl(var(--sidebar) / 0.68);
-    backdrop-filter: saturate(140%) blur(28px);
-    -webkit-backdrop-filter: saturate(140%) blur(28px);
+    background-color: hsl(var(--sidebar) / 0.64);
+    backdrop-filter: saturate(135%) blur(64px);
+    -webkit-backdrop-filter: saturate(135%) blur(64px);
   }
 
   .dark .vibrancy {
@@ -297,7 +301,7 @@
 
   /* Sombra interior sutil de los campos de texto. */
   .inset-field {
-    box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.05);
+    box-shadow: inset 0 1px 2px rgb(32 39 48 / 0.05);
   }
 }
 
@@ -307,13 +311,14 @@
 @layer components {
   .glass-card {
     border-radius: 28px;
-    border: 1px solid rgb(199 199 204 / 0.42);
-    background-color: rgb(239 239 242 / 0.58);
+    border: 1px solid rgb(201 209 219 / 0.4);
+    background-color: rgb(238 241 245 / 0.7);
     box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.32),
-      0 12px 32px -16px rgb(36 36 38 / 0.08);
-    backdrop-filter: blur(40px) saturate(135%);
-    -webkit-backdrop-filter: blur(40px) saturate(135%);
+      inset 0 1px 0 rgb(255 255 255 / 0.34),
+      0 18px 44px -28px rgb(32 39 48 / 0.14),
+      0 4px 12px -8px rgb(32 39 48 / 0.05);
+    backdrop-filter: blur(64px) saturate(130%);
+    -webkit-backdrop-filter: blur(64px) saturate(130%);
   }
 
   .dark .glass-card {
@@ -326,13 +331,13 @@
 
   .glass-strong {
     border-radius: 28px;
-    border: 1px solid rgb(199 199 204 / 0.48);
-    background-image: linear-gradient(145deg, rgb(239 239 242 / 0.72), rgb(229 229 234 / 0.56));
+    border: 1px solid rgb(201 209 219 / 0.45);
+    background-image: linear-gradient(145deg, rgb(241 244 247 / 0.82), rgb(232 236 241 / 0.7));
     box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.38),
-      0 14px 38px -18px rgb(36 36 38 / 0.1);
-    backdrop-filter: blur(48px) saturate(140%);
-    -webkit-backdrop-filter: blur(48px) saturate(140%);
+      inset 0 1px 0 rgb(255 255 255 / 0.4),
+      0 20px 48px -30px rgb(32 39 48 / 0.16);
+    backdrop-filter: blur(64px) saturate(135%);
+    -webkit-backdrop-filter: blur(64px) saturate(135%);
   }
 
   .dark .glass-strong {
@@ -344,9 +349,9 @@
   }
 
   .glass-inset {
-    border: 1px solid rgb(199 199 204 / 0.36);
-    background-color: rgb(225 225 230 / 0.42);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.28);
+    border: 1px solid rgb(201 209 219 / 0.36);
+    background-color: rgb(224 229 235 / 0.45);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.3);
   }
 
   .dark .glass-inset {
@@ -357,13 +362,14 @@
 
   /* Cristal principal: tiza pizarra en claro y acrílico oscuro en oscuro. */
   .app-glass {
-    border: 1px solid rgb(199 199 204 / 0.42);
-    background-color: rgb(239 239 242 / 0.56);
+    border: 1px solid rgb(201 209 219 / 0.4);
+    background-color: rgb(238 241 245 / 0.68);
     box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.32),
-      0 12px 32px -16px rgb(36 36 38 / 0.08);
-    backdrop-filter: blur(48px) saturate(140%);
-    -webkit-backdrop-filter: blur(48px) saturate(140%);
+      inset 0 1px 0 rgb(255 255 255 / 0.34),
+      0 18px 44px -28px rgb(32 39 48 / 0.14),
+      0 4px 12px -8px rgb(32 39 48 / 0.05);
+    backdrop-filter: blur(64px) saturate(130%);
+    -webkit-backdrop-filter: blur(64px) saturate(130%);
   }
 
   .dark .app-glass {
@@ -375,13 +381,13 @@
   }
 
   .app-glass-strong {
-    border: 1px solid rgb(199 199 204 / 0.48);
-    background-color: rgb(239 239 242 / 0.7);
+    border: 1px solid rgb(201 209 219 / 0.45);
+    background-color: rgb(238 241 245 / 0.8);
     box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.38),
-      0 14px 38px -18px rgb(36 36 38 / 0.1);
-    backdrop-filter: blur(56px) saturate(145%);
-    -webkit-backdrop-filter: blur(56px) saturate(145%);
+      inset 0 1px 0 rgb(255 255 255 / 0.4),
+      0 20px 48px -30px rgb(32 39 48 / 0.16);
+    backdrop-filter: blur(64px) saturate(135%);
+    -webkit-backdrop-filter: blur(64px) saturate(135%);
   }
 
   .dark .app-glass-strong {
@@ -393,13 +399,55 @@
   }
 
   .app-glass-soft {
-    border: 1px solid rgb(199 199 204 / 0.36);
-    background-color: rgb(239 239 242 / 0.44);
+    border: 1px solid rgb(201 209 219 / 0.36);
+    background-color: rgb(238 241 245 / 0.55);
+    backdrop-filter: blur(40px) saturate(125%);
+    -webkit-backdrop-filter: blur(40px) saturate(125%);
   }
 
   .dark .app-glass-soft {
     border-color: rgb(255 255 255 / 0.05);
     background-color: rgb(255 255 255 / 0.035);
+  }
+}
+
+/* El shell reserva el alto de la barra inferior. En /login no existe barra,
+   así que el offset se queda en 0 y los elementos fijos no se elevan de más. */
+.app-shell {
+  --mobile-nav-offset: calc(var(--mobile-nav-height) + 1px + env(safe-area-inset-bottom, 0px));
+  --mobile-header-height: calc(113px + env(safe-area-inset-top, 0px));
+}
+
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  .app-shell {
+    --mobile-header-height: calc(101px + env(safe-area-inset-top, 0px));
+  }
+}
+
+/* Objetivos táctiles cómodos en teléfono. Los interruptores conservan su
+   pista de 30 px; el resto de controles dentro del contenido llega a 44 px. */
+@media (max-width: 767.98px) {
+  .app-shell main button:not([role="switch"]):not([role="checkbox"]):not([role="radio"]):not([data-touch-compact]),
+  .app-shell main
+    [role="button"]:not([role="switch"]):not([role="checkbox"]):not([role="radio"]):not([data-touch-compact]) {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .app-shell main a[aria-label],
+  .app-shell main li > a,
+  .app-shell main li > button {
+    min-height: 44px;
+  }
+
+  .app-shell main a[aria-label] {
+    min-width: 44px;
+  }
+
+  .app-shell main button,
+  .app-shell main [role="button"],
+  .app-shell main a {
+    touch-action: manipulation;
   }
 }
 
@@ -561,13 +609,13 @@
 }
 
 .wallpaper-swatch {
-  background-color: #e4e6eb;
+  background-color: #e7eaef;
   background-image:
-    radial-gradient(60% 60% at 16% 16%, #c2cdd8 0%, transparent 70%),
-    radial-gradient(55% 60% at 84% 10%, #d4cad8 0%, transparent 72%),
-    radial-gradient(65% 65% at 76% 88%, #c2d2cb 0%, transparent 70%),
-    radial-gradient(45% 55% at 20% 92%, #dcd1c1 0%, transparent 72%),
-    linear-gradient(135deg, #e7e9ed 0%, #e9e5ec 50%, #e5ebe8 100%);
+    radial-gradient(60% 60% at 16% 16%, #cbd4df 0%, transparent 70%),
+    radial-gradient(55% 60% at 84% 10%, #d6d9e2 0%, transparent 72%),
+    radial-gradient(65% 65% at 76% 88%, #ccd7d4 0%, transparent 70%),
+    radial-gradient(45% 55% at 20% 92%, #dcd7cf 0%, transparent 72%),
+    linear-gradient(135deg, #e9ecf0 0%, #eae9ee 50%, #e7ecea 100%);
 }
 
 .dark .wallpaper-swatch {
@@ -584,7 +632,7 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, hsl(220 18% 96% / 0.16), hsl(220 14% 90% / 0.04)),
+    linear-gradient(180deg, hsl(214 18% 96% / 0.14), hsl(214 14% 90% / 0.04)),
     hsl(var(--background) / 0.42);
 }
 
@@ -604,18 +652,173 @@
 }
 
 /* --------------------------------------------------------------------------
+   Preferencias globales de interfaz.
+   `PreferencesProvider` publica data-animations y data-performance en <html>.
+   -------------------------------------------------------------------------- */
+
+/* Nivel reducido: corta el movimiento sin afectar a la legibilidad. */
+html[data-animations="reduced"] *,
+html[data-animations="reduced"] *::before,
+html[data-animations="reduced"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+html[data-animations="reduced"] .animate-fade-up,
+html[data-animations="reduced"] .animate-fade-in,
+html[data-animations="reduced"] .animate-pop,
+html[data-animations="reduced"] .animate-update-in,
+html[data-animations="reduced"] .animate-check-pop,
+html[data-animations="reduced"] .update-icon-ring,
+html[data-animations="reduced"] .update-icon-bob,
+html[data-animations="reduced"] .update-progress-shine,
+html[data-animations="reduced"] .stagger-in > * {
+  animation: none !important;
+}
+
+/* Nivel fluido: transiciones largas y una elevación 3D contenida. */
+html[data-animations="fluid"] .glass-card,
+html[data-animations="fluid"] .glass-strong,
+html[data-animations="fluid"] .app-glass,
+html[data-animations="fluid"] .app-glass-strong,
+html[data-animations="fluid"] .app-glass-soft {
+  transition:
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.45s ease,
+    border-color 0.45s ease,
+    backdrop-filter 0.45s ease,
+    -webkit-backdrop-filter 0.45s ease;
+  transform-style: preserve-3d;
+}
+
+html[data-animations="fluid"] .glass-card:hover,
+html[data-animations="fluid"] .glass-strong:hover,
+html[data-animations="fluid"] .app-glass:hover,
+html[data-animations="fluid"] .app-glass-strong:hover {
+  transform: translateY(-2px) scale(1.002);
+  box-shadow:
+    0 22px 52px -32px rgb(32 39 48 / 0.22),
+    0 8px 18px -12px rgb(32 39 48 / 0.1);
+}
+
+html[data-animations="fluid"].dark .glass-card:hover,
+html[data-animations="fluid"].dark .glass-strong:hover,
+html[data-animations="fluid"].dark .app-glass:hover,
+html[data-animations="fluid"].dark .app-glass-strong:hover {
+  box-shadow:
+    0 22px 52px -28px rgb(0 0 0 / 0.55),
+    0 8px 18px -12px rgb(0 0 0 / 0.35);
+}
+
+html[data-animations="fluid"][data-performance="quality"] .glass-card:hover,
+html[data-animations="fluid"][data-performance="quality"] .app-glass:hover,
+html[data-animations="fluid"][data-performance="quality"] .app-glass-strong:hover {
+  backdrop-filter: blur(76px) saturate(150%);
+  -webkit-backdrop-filter: blur(76px) saturate(150%);
+}
+
+html[data-animations="fluid"] .animate-fade-up {
+  animation-duration: 0.4s;
+}
+
+html[data-animations="fluid"] .animate-fade-in {
+  animation-duration: 0.34s;
+}
+
+/* Modo Ahorro: sin desenfoque de fondo y con sombras planas. */
+html[data-performance="efficiency"] .glass-card,
+html[data-performance="efficiency"] .glass-strong,
+html[data-performance="efficiency"] .glass-panel,
+html[data-performance="efficiency"] .glass-inset,
+html[data-performance="efficiency"] .app-glass,
+html[data-performance="efficiency"] .app-glass-strong,
+html[data-performance="efficiency"] .app-glass-soft,
+html[data-performance="efficiency"] .vibrancy,
+html[data-performance="efficiency"] [class*="backdrop-blur"] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+html[data-performance="efficiency"] .glass-card,
+html[data-performance="efficiency"] .glass-strong,
+html[data-performance="efficiency"] .app-glass,
+html[data-performance="efficiency"] .app-glass-strong,
+html[data-performance="efficiency"] .app-glass-soft {
+  box-shadow: 0 1px 2px rgb(32 39 48 / 0.07) !important;
+}
+
+html[data-performance="efficiency"] .glass-strong {
+  background-image: none !important;
+}
+
+html[data-performance="efficiency"]:not(.dark) .glass-card,
+html[data-performance="efficiency"]:not(.dark) .glass-strong,
+html[data-performance="efficiency"]:not(.dark) .glass-panel,
+html[data-performance="efficiency"]:not(.dark) .app-glass,
+html[data-performance="efficiency"]:not(.dark) .app-glass-strong,
+html[data-performance="efficiency"]:not(.dark) .app-glass-soft {
+  background-color: rgb(238 241 245 / 0.95) !important;
+}
+
+html[data-performance="efficiency"].dark .glass-card,
+html[data-performance="efficiency"].dark .glass-strong,
+html[data-performance="efficiency"].dark .glass-panel,
+html[data-performance="efficiency"].dark .app-glass,
+html[data-performance="efficiency"].dark .app-glass-strong,
+html[data-performance="efficiency"].dark .app-glass-soft {
+  background-color: rgb(16 20 28 / 0.95) !important;
+}
+
+html[data-performance="efficiency"]:not(.dark) .glass-inset {
+  background-color: rgb(228 233 239 / 0.92) !important;
+}
+
+html[data-performance="efficiency"].dark .glass-inset {
+  background-color: rgb(255 255 255 / 0.06) !important;
+}
+
+html[data-performance="efficiency"] .app-shell > aside,
+html[data-performance="efficiency"] .app-shell header[class*="backdrop-blur"] {
+  background-color: hsl(var(--sidebar) / 0.96) !important;
+}
+
+html[data-performance="efficiency"] .app-shell [data-mobile-nav] {
+  background-color: hsl(var(--sidebar) / 0.97) !important;
+}
+
+html[data-performance="efficiency"].dark .app-shell > aside,
+html[data-performance="efficiency"].dark .app-shell header[class*="backdrop-blur"] {
+  background-color: rgb(8 11 17 / 0.96) !important;
+}
+
+html[data-performance="efficiency"].dark .app-shell [data-mobile-nav] {
+  background-color: rgb(8 11 17 / 0.97) !important;
+}
+
+html[data-performance="efficiency"][data-animations="fluid"] .glass-card:hover,
+html[data-performance="efficiency"][data-animations="fluid"] .glass-strong:hover,
+html[data-performance="efficiency"][data-animations="fluid"] .app-glass:hover,
+html[data-performance="efficiency"][data-animations="fluid"] .app-glass-strong:hover {
+  transform: none !important;
+  box-shadow: 0 1px 2px rgb(32 39 48 / 0.07) !important;
+}
+
+/* --------------------------------------------------------------------------
    Modo claro atenuado: los blancos heredados pasan a tiza / pizarra.
    Los elementos que deben seguir siendo blancos llevan la clase .keep-white
    (controles de interruptor, páginas de PDF, barras de progreso...).
    -------------------------------------------------------------------------- */
 html:not(.dark) .bg-white:not(.keep-white) {
-  background-color: rgb(239 239 242 / 0.84);
+  background-color: rgb(238 241 245 / 0.74);
 }
 html:not(.dark) .bg-white\/95:not(.keep-white),
 html:not(.dark) .bg-white\/90:not(.keep-white),
 html:not(.dark) .bg-white\/85:not(.keep-white),
 html:not(.dark) .bg-white\/80:not(.keep-white) {
-  background-color: rgb(239 239 242 / 0.8);
+  background-color: rgb(238 241 245 / 0.72);
 }
 html:not(.dark) .bg-white\/75:not(.keep-white),
 html:not(.dark) .bg-white\/70:not(.keep-white),
@@ -623,14 +826,14 @@ html:not(.dark) .bg-white\/65:not(.keep-white),
 html:not(.dark) .bg-white\/60:not(.keep-white),
 html:not(.dark) .bg-white\/55:not(.keep-white),
 html:not(.dark) .bg-white\/50:not(.keep-white) {
-  background-color: rgb(239 239 242 / 0.62);
+  background-color: rgb(238 241 245 / 0.58);
 }
 html:not(.dark) .bg-white\/45:not(.keep-white),
 html:not(.dark) .bg-white\/40:not(.keep-white),
 html:not(.dark) .bg-white\/35:not(.keep-white),
 html:not(.dark) .bg-white\/30:not(.keep-white),
 html:not(.dark) .bg-white\/25:not(.keep-white) {
-  background-color: rgb(239 239 242 / 0.46);
+  background-color: rgb(238 241 245 / 0.44);
 }
 
 /* Los grises casi blancos heredados también se atenúan. */
@@ -641,15 +844,27 @@ html:not(.dark) .bg-slate-50\/80:not(.keep-white),
 html:not(.dark) .bg-slate-50\/70:not(.keep-white),
 html:not(.dark) .bg-slate-50\/60:not(.keep-white),
 html:not(.dark) .bg-slate-50\/40:not(.keep-white) {
-  background-color: rgb(231 232 236 / 0.7);
+  background-color: rgb(238 241 245 / 0.66);
 }
 html:not(.dark) .bg-slate-100:not(.keep-white) {
-  background-color: rgb(230 231 235 / 0.8);
+  background-color: rgb(238 241 245 / 0.74);
+}
+
+/* Los bordes grises heredados pasan a pizarra tenue. */
+html:not(.dark) .border-slate-200,
+html:not(.dark) .border-slate-200\/90,
+html:not(.dark) .border-slate-200\/80,
+html:not(.dark) .border-slate-200\/70,
+html:not(.dark) .border-slate-100 {
+  border-color: rgb(201 209 219 / 0.45);
+}
+html:not(.dark) .border-slate-300 {
+  border-color: rgb(201 209 219 / 0.55);
 }
 
 html:not(.dark) .hover\:bg-white:hover:not(.keep-white),
 html:not(.dark) .focus\:bg-white:focus:not(.keep-white) {
-  background-color: rgb(239 239 242 / 0.92);
+  background-color: rgb(238 241 245 / 0.86);
 }
 html:not(.dark) .hover\:bg-white\/80:hover:not(.keep-white),
 html:not(.dark) .hover\:bg-white\/70:hover:not(.keep-white),
@@ -660,54 +875,57 @@ html:not(.dark) .hover\:bg-white\/45:hover:not(.keep-white),
 html:not(.dark) .hover\:bg-white\/40:hover:not(.keep-white),
 html:not(.dark) .hover\:bg-white\/35:hover:not(.keep-white),
 html:not(.dark) .hover\:bg-white\/30:hover:not(.keep-white) {
-  background-color: rgb(239 239 242 / 0.66);
+  background-color: rgb(238 241 245 / 0.72);
 }
 html:not(.dark) .focus-visible\:bg-white\/55:focus-visible:not(.keep-white) {
-  background-color: rgb(239 239 242 / 0.78);
+  background-color: rgb(238 241 245 / 0.78);
 }
 html:not(.dark) .file\:bg-white\/50::file-selector-button {
-  background-color: rgb(239 239 242 / 0.62);
+  background-color: rgb(238 241 245 / 0.58);
 }
 html:not(.dark) .hover\:file\:bg-white\/70:hover::file-selector-button {
-  background-color: rgb(239 239 242 / 0.78);
+  background-color: rgb(238 241 245 / 0.72);
 }
 
 html:not(.dark) .border-white\/70:not(.keep-white),
 html:not(.dark) .border-white\/60:not(.keep-white) {
-  border-color: rgb(199 199 204 / 0.48);
+  border-color: rgb(201 209 219 / 0.48);
 }
 html:not(.dark) .border-white\/55:not(.keep-white),
 html:not(.dark) .border-white\/50:not(.keep-white),
 html:not(.dark) .border-white\/45:not(.keep-white),
 html:not(.dark) .border-white\/40:not(.keep-white) {
-  border-color: rgb(199 199 204 / 0.38);
+  border-color: rgb(201 209 219 / 0.38);
 }
 html:not(.dark) .border-white\/35:not(.keep-white),
 html:not(.dark) .border-white\/30:not(.keep-white),
 html:not(.dark) .border-white\/25:not(.keep-white) {
-  border-color: rgb(199 199 204 / 0.28);
+  border-color: rgb(201 209 219 / 0.28);
 }
 html:not(.dark) .hover\:border-white\/80:hover:not(.keep-white),
 html:not(.dark) .hover\:border-white\/70:hover:not(.keep-white),
 html:not(.dark) .hover\:border-white\/60:hover:not(.keep-white) {
-  border-color: rgb(174 174 178 / 0.45);
+  border-color: rgb(165 175 186 / 0.45);
 }
 
-/* Texto principal y secundario: gris neutro, sin negros duros ni grises lavados. */
+/* Texto principal y secundario: pizarra neutra, sin negros duros ni grises lavados. */
 html:not(.dark) .label-caps {
   color: hsl(var(--muted-foreground));
 }
 html:not(.dark) .text-slate-900 {
-  color: #303033;
+  color: #202730;
 }
 html:not(.dark) .text-slate-800 {
-  color: #3a3a3c;
+  color: #2c3540;
+}
+html:not(.dark) .text-slate-700 {
+  color: #3a4450;
 }
 html:not(.dark) .text-slate-600 {
-  color: #636368;
+  color: #4a5563;
 }
 html:not(.dark) .text-slate-500 {
-  color: #68686e;
+  color: #5f6b79;
 }
 
 /* --------------------------------------------------------------------------
@@ -1027,7 +1245,9 @@ html.dark .tt-tone-break {
 }
 
 /* --------------------------------------------------------------------------
-   IA Studio: aurora radial cian / morado detras del chat.
+   IA Studio: lienzo "Apple Intelligence" en cian, violeta y azul profundo.
+   `data-ai-state` (idle | thinking | responding) modula color, velocidad y
+   opacidad del aurora; el resto de la interfaz no cambia.
    -------------------------------------------------------------------------- */
 @keyframes studio-aurora {
   0% {
@@ -1041,27 +1261,169 @@ html.dark .tt-tone-break {
   }
 }
 
+@keyframes studio-aurora-alt {
+  0% {
+    transform: translate3d(3%, 2%, 0) scale(1.08) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(-4%, -3%, 0) scale(1) rotate(4deg);
+  }
+  100% {
+    transform: translate3d(2%, -4%, 0) scale(1.14) rotate(-3deg);
+  }
+}
+
+@keyframes studio-aurora-burst {
+  0% {
+    transform: translate3d(-2%, -1%, 0) scale(1.04);
+  }
+  50% {
+    transform: translate3d(3%, 2%, 0) scale(1.2);
+  }
+  100% {
+    transform: translate3d(-1%, 3%, 0) scale(1.1);
+  }
+}
+
+@keyframes studio-response-flash {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+}
+
+.studio-canvas {
+  position: absolute;
+  inset: 0;
+  isolation: isolate;
+  overflow: hidden;
+  pointer-events: none;
+  background: #f4f7fc;
+}
+
+.dark .studio-canvas {
+  background: #04060c;
+}
+
+.studio-base {
+  position: absolute;
+  inset: -10%;
+  background:
+    radial-gradient(120% 100% at 50% -20%, rgba(255, 255, 255, 0.96) 0%, rgba(246, 249, 254, 0.9) 46%, rgba(238, 243, 251, 0.96) 100%),
+    radial-gradient(90% 70% at 82% 112%, rgba(30, 64, 175, 0.12) 0%, transparent 70%),
+    linear-gradient(160deg, #f8fafd 0%, #eef3fa 55%, #e9eef7 100%);
+}
+
+.dark .studio-base {
+  background:
+    radial-gradient(120% 100% at 50% -20%, #111c3d 0%, #080d1a 48%, #04060c 100%),
+    radial-gradient(90% 70% at 82% 112%, rgba(29, 78, 216, 0.22) 0%, transparent 70%),
+    linear-gradient(160deg, #0a1020 0%, #060910 60%, #03050a 100%);
+}
+
 .studio-aurora {
   position: absolute;
   inset: -18%;
   pointer-events: none;
   background:
-    radial-gradient(42% 46% at 22% 24%, rgba(0, 214, 255, 0.3) 0%, transparent 72%),
-    radial-gradient(44% 48% at 78% 26%, rgba(139, 92, 246, 0.28) 0%, transparent 74%),
-    radial-gradient(46% 48% at 62% 82%, rgba(0, 102, 255, 0.2) 0%, transparent 76%),
-    radial-gradient(40% 42% at 18% 82%, rgba(217, 70, 239, 0.16) 0%, transparent 74%);
-  filter: blur(38px) saturate(1.08);
-  opacity: 0.68;
-  animation: studio-aurora 20s ease-in-out infinite alternate;
-  will-change: transform;
+    radial-gradient(38% 42% at 24% 26%, rgba(34, 211, 238, 0.34) 0%, transparent 70%),
+    radial-gradient(40% 44% at 76% 22%, rgba(139, 92, 246, 0.34) 0%, transparent 72%),
+    radial-gradient(46% 48% at 64% 80%, rgba(37, 99, 235, 0.3) 0%, transparent 74%),
+    radial-gradient(36% 40% at 16% 78%, rgba(217, 70, 239, 0.18) 0%, transparent 72%);
+  filter: blur(46px) saturate(1.1);
+  opacity: 0.5;
+  animation: studio-aurora 26s ease-in-out infinite alternate;
+  transition: opacity 700ms ease, filter 700ms ease;
+  will-change: transform, opacity;
 }
 
-.dark .studio-aurora {
-  opacity: 1;
+.studio-aurora-alt {
   background:
-    radial-gradient(42% 46% at 22% 24%, rgba(0, 214, 255, 0.3) 0%, transparent 72%),
-    radial-gradient(44% 48% at 78% 26%, rgba(139, 92, 246, 0.34) 0%, transparent 74%),
-    radial-gradient(46% 48% at 62% 82%, rgba(0, 102, 255, 0.26) 0%, transparent 76%),
-    radial-gradient(40% 42% at 18% 82%, rgba(217, 70, 239, 0.2) 0%, transparent 74%);
-  filter: blur(48px) saturate(1.05);
+    radial-gradient(34% 38% at 34% 62%, rgba(56, 189, 248, 0.26) 0%, transparent 72%),
+    radial-gradient(32% 36% at 68% 40%, rgba(167, 139, 250, 0.26) 0%, transparent 74%),
+    radial-gradient(30% 34% at 84% 72%, rgba(59, 130, 246, 0.22) 0%, transparent 72%);
+  filter: blur(56px) saturate(1.05);
+  opacity: 0.3;
+  animation: studio-aurora-alt 34s ease-in-out infinite alternate;
+}
+
+.dark .studio-aurora:not(.studio-aurora-alt) {
+  opacity: 0.82;
+  background:
+    radial-gradient(38% 42% at 24% 26%, rgba(34, 211, 238, 0.3) 0%, transparent 70%),
+    radial-gradient(40% 44% at 76% 22%, rgba(139, 92, 246, 0.38) 0%, transparent 72%),
+    radial-gradient(46% 48% at 64% 80%, rgba(37, 99, 235, 0.36) 0%, transparent 74%),
+    radial-gradient(36% 40% at 16% 78%, rgba(217, 70, 239, 0.24) 0%, transparent 72%);
+  filter: blur(52px) saturate(1.12);
+}
+
+.dark .studio-aurora-alt {
+  opacity: 0.45;
+}
+
+/* Pensando: el aurora se acelera y gana saturación, como una respiración. */
+.studio-canvas[data-ai-state="thinking"] .studio-aurora:not(.studio-aurora-alt) {
+  opacity: 0.72;
+  filter: blur(42px) saturate(1.35);
+  animation-duration: 9s;
+}
+
+.studio-canvas[data-ai-state="thinking"] .studio-aurora-alt {
+  opacity: 0.5;
+  animation-duration: 7s;
+}
+
+.dark .studio-canvas[data-ai-state="thinking"] .studio-aurora:not(.studio-aurora-alt) {
+  opacity: 0.96;
+  filter: blur(46px) saturate(1.4);
+}
+
+/* Respondiendo: destello breve y pulsación amplia. */
+.studio-canvas[data-ai-state="responding"] .studio-aurora:not(.studio-aurora-alt) {
+  opacity: 0.92;
+  filter: blur(40px) saturate(1.55) brightness(1.08);
+  animation: studio-aurora-burst 4.5s ease-in-out infinite alternate;
+}
+
+.studio-canvas[data-ai-state="responding"] .studio-aurora-alt {
+  opacity: 0.55;
+  animation: studio-aurora-alt 3.4s ease-in-out infinite alternate;
+}
+
+.dark .studio-canvas[data-ai-state="responding"] .studio-aurora:not(.studio-aurora-alt) {
+  opacity: 1;
+  filter: blur(44px) saturate(1.6) brightness(1.12);
+}
+
+.studio-response-flash {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(60% 55% at 50% 45%, rgba(103, 232, 249, 0.28) 0%, transparent 70%),
+    radial-gradient(50% 50% at 70% 60%, rgba(167, 139, 250, 0.22) 0%, transparent 72%);
+  mix-blend-mode: screen;
+  animation: studio-response-flash 1.8s ease-out forwards;
+  will-change: opacity, transform;
+}
+
+.studio-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, transparent 22%, transparent 78%, rgba(226, 232, 240, 0.35) 100%);
+  opacity: 0.8;
+}
+
+.dark .studio-vignette {
+  background:
+    radial-gradient(120% 90% at 50% 50%, transparent 52%, rgba(2, 4, 10, 0.55) 100%),
+    linear-gradient(180deg, rgba(3, 6, 14, 0.45) 0%, transparent 20%, transparent 80%, rgba(2, 4, 10, 0.5) 100%);
+  opacity: 1;
 }

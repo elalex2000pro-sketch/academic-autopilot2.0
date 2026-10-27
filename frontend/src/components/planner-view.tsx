@@ -26,6 +26,7 @@ import {
 
 import { ExamCard } from "@/components/exam-card";
 import { ExamDialog, type ExamDialogMode } from "@/components/exam-dialog";
+import { TaskDialog } from "@/components/task-dialog";
 import { useRealtime } from "@/components/realtime-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,7 +94,7 @@ const SUBJECT_TONES = [
 ];
 
 const selectClass =
-  "flex h-9 w-full rounded-xl border border-slate-300/45 bg-slate-100/55 px-3 text-[13px] text-slate-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.32)] backdrop-blur-xl transition-[border-color,box-shadow,background-color] duration-150 focus-visible:border-[#0066FF] focus-visible:bg-slate-100/75 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#0066FF]/20 dark:border-white/10 dark:bg-white/[0.055] dark:text-white/90 dark:focus-visible:bg-white/[0.08]";
+  "flex h-9 w-full rounded-xl border border-slate-300/40 bg-slate-100/70 px-3 text-[13px] text-slate-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-3xl transition-[border-color,box-shadow,background-color] duration-150 focus-visible:border-[#0066FF] focus-visible:bg-slate-100/85 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#0066FF]/20 dark:border-white/10 dark:bg-white/[0.055] dark:text-white/90 dark:focus-visible:bg-white/[0.08]";
 
 type Notice = { tone: "success" | "error" | "info"; text: string };
 type EnrichedClassEvent = ClassEvent & { class_name?: string };
@@ -256,6 +257,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
   const [taskMinutes, setTaskMinutes] = useState(60);
   const [taskTime, setTaskTime] = useState("23:59");
   const [addingTask, setAddingTask] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const [showTools, setShowTools] = useState(defaultOpenTools);
   const [classCourseId, setClassCourseId] = useState("");
@@ -1025,6 +1027,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                 <button
                   key={cell.key}
                   type="button"
+                  data-touch-compact
                   onClick={() => selectDay(cell.key)}
                   aria-pressed={selected}
                   aria-label={`${longDate(cell.key)}: ${dayTasks.length} tareas, ${dayExams.length === 1 ? "1 examen" : `${dayExams.length} exámenes`}, ${dayEvents.length} eventos`}
@@ -1123,7 +1126,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex rounded-full border border-slate-300/40 bg-slate-100/45 p-0.5 shadow-inner backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
+              <div className="flex rounded-full border border-slate-300/40 bg-slate-100/70 p-0.5 shadow-inner backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
                 <button
                   type="button"
                   onClick={() => setViewMode("day")}
@@ -1613,7 +1616,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                     maxLength={500}
                     aria-label="Título de la tarea"
                   />
-                  <div className="grid gap-2 sm:grid-cols-3">
+                  <div className="grid gap-2 md:grid-cols-3">
                     <select
                       className={selectClass}
                       value={taskCourseId}
@@ -1728,6 +1731,17 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
 
                           <button
                             type="button"
+                            onClick={() => setEditingTask(task)}
+                            disabled={busy}
+                            aria-label={`Editar ${task.title}`}
+                            title="Editar tarea"
+                            className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-[#0066FF]/10 hover:text-[#0066FF] disabled:opacity-40 dark:text-white/30 dark:hover:text-[#8ab9ff]"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() => setConfirmDeleteId(confirming ? null : task.id)}
                             disabled={busy}
                             aria-label={`Quitar ${task.title}`}
@@ -1795,7 +1809,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                 horario.
               </p>
             </div>
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-300/45 bg-slate-100/50 text-slate-500 dark:border-white/10 dark:bg-white/[0.05] dark:text-white/50">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-300/40 bg-slate-100/65 text-slate-500 dark:border-white/10 dark:bg-white/[0.05] dark:text-white/50">
               <ChevronDown
                 className={cn(
                   "h-4 w-4 transition-transform duration-200",
@@ -1820,7 +1834,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
             <form
               ref={classFormRef}
               onSubmit={saveClass}
-              className="rounded-2xl border border-slate-300/45 bg-slate-100/45 p-3.5 dark:border-white/[0.07] dark:bg-white/[0.03]"
+              className="rounded-2xl border border-slate-300/40 bg-slate-100/60 p-3.5 dark:border-white/[0.07] dark:bg-white/[0.03]"
             >
               <div className="flex items-center gap-2">
                 {editingClassId ? (
@@ -1837,7 +1851,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                   Los cambios se guardan en este dispositivo y sustituyen a la franja actual.
                 </p>
               )}
-              <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+              <div className="mt-3 grid gap-2.5 md:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="planner-class-course">Asignatura</Label>
                   <select
@@ -1979,7 +1993,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-300/45 bg-slate-100/35 p-3.5 lg:col-span-2 dark:border-white/[0.07] dark:bg-white/[0.02]">
+            <div className="rounded-2xl border border-slate-300/40 bg-slate-100/55 p-3.5 lg:col-span-2 dark:border-white/[0.07] dark:bg-white/[0.02]">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
@@ -2043,6 +2057,18 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
         onClose={() => setExamDialog(null)}
         onSaved={handleExamSaved}
         onDeleted={handleExamDeleted}
+      />
+
+      <TaskDialog
+        open={Boolean(editingTask)}
+        task={editingTask}
+        courses={courses}
+        onClose={() => setEditingTask(null)}
+        onSaved={(_saved, message) => {
+          setEditingTask(null);
+          setNotice({ tone: "success", text: message });
+          void load(true);
+        }}
       />
     </div>
   );

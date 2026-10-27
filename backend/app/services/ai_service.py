@@ -60,8 +60,15 @@ _SYSTEM_PROMPT = (
     "invoca la herramienta de borrado y el sistema pedira confirmacion al usuario. Si falta un dato "
     "clave (fecha de entrega, nota, asignatura), preguntalo antes de actuar. Tras crear o cambiar "
     "algo, confirma en UNA frase con los datos clave.\n"
-    "IMAGENES: si el usuario adjunta una foto (pizarra, examen, lista de tareas...), describe lo que "
-    "ves y ofrece convertirlo en tareas o eventos de su calendario."
+    "IMAGENES Y DOCUMENTOS ESCANEADOS: Analiza el contenido de estas imágenes o fragmentos de "
+    "libro escaneado y responde a la duda del estudiante con precisión. Si es una foto de la "
+    "pizarra, un examen o una lista de tareas, describe lo que ves y ofrece convertirlo en tareas "
+    "o eventos de su calendario."
+)
+
+_VISUAL_PROMPT = (
+    "Analiza el contenido de estas imágenes o fragmentos de libro escaneado y responde a la "
+    "duda del estudiante con precisión."
 )
 
 
@@ -330,7 +337,7 @@ async def generate_reply(
     user: User,
     message: str,
     history: list[dict[str, str]],
-    image_data_url: str | None = None,
+    image_data_urls: list[str] | None = None,
     document_text: str | None = None,
     document_name: str | None = None,
 ) -> AiResult:
@@ -338,7 +345,8 @@ async def generate_reply(
     disponible; si no, cae al motor heuristico.
 
     `document_text` permite chatear con apuntes y examenes en PDF, Word, Excel o
-    texto. Las imagenes siguen enviandose al modelo de vision como data URL.
+    texto. Las fotos y las paginas de PDF escaneado se envian como imagenes
+    (data URL) al modelo de vision.
 
     Devuelve un AiResult con el texto, la fuente, una posible accion pendiente de
     confirmacion (borrados) y los eventos de tiempo real generados.
@@ -355,16 +363,34 @@ async def generate_reply(
             "Si la pregunta no se puede responder con el documento, dilo y ofrece lo que si aparece."
         )
 
+    images = [url for url in (image_data_urls or []) if url]
     prompt = message.strip()
+    if not prompt and images:
+        prompt = _VISUAL_PROMPT
     if not prompt and document_text:
         prompt = "Analiza el documento adjunto y dime lo mas importante."
 
     profile = resolve_profile(user)
     if profile.configured:
         try:
-            result = await _run_model(
-                db, user, profile, system, history, prompt, image_data_url
-            )
+            if profile.provider == "gemini" and images:
+                # Gemini recibe las imagenes con `inlineData` en su API nativa.
+                try:
+                    result = await _run_model_gemini(
+                        db, user, profile, system, history, prompt, images
+                    )
+                except Exception as exc:  # noqa: BLE001 - se intenta la ruta OpenAI
+                    logger.warning(
+                        "Gemini nativo no disponible (%s); probando la API compatible con OpenAI",
+                        exc,
+                    )
+                    result = await _run_model(
+                        db, user, profile, system, history, prompt, images
+                    )
+            else:
+                result = await _run_model(
+                    db, user, profile, system, history, prompt, images
+                )
             if result.reply:
                 return result
             logger.warning("El modelo devolvio una respuesta vacia; usando heuristico")
@@ -377,19 +403,25 @@ async def generate_reply(
 
     if document_text:
         return AiResult(heuristic_document_reply(document_name, document_text), "heuristic")
+    if images:
+        return AiResult(
+            "He recibido tus imágenes, pero el modelo de visión no está disponible ahora mismo. "
+            "Revisa el motor de IA en Ajustes o inténtalo de nuevo en unos minutos.",
+            "heuristic",
+        )
     return AiResult(heuristic_reply(ctx, message), "heuristic")
 
 
-def _user_message(message: str, image_data_url: str | None) -> dict[str, Any]:
-    if not image_data_url:
+def _user_message(message: str, image_data_urls: list[str]) -> dict[str, Any]:
+    if not image_data_urls:
         return {"role": "user", "content": message}
-    return {
-        "role": "user",
-        "content": [
-            {"type": "text", "text": message or "Analiza esta imagen."},
-            {"type": "image_url", "image_url": {"url": image_data_url}},
-        ],
-    }
+    content: list[dict[str, Any]] = [
+        {"type": "text", "text": message or _VISUAL_PROMPT}
+    ]
+    content.extend(
+        {"type": "image_url", "image_url": {"url": url}} for url in image_data_urls
+    )
+    return {"role": "user", "content": content}
 
 
 async def _run_model(
@@ -399,14 +431,17 @@ async def _run_model(
     system: str,
     history: list[dict[str, str]],
     message: str,
-    image_data_url: str | None,
+    image_data_urls: list[str],
 ) -> AiResult:
-    """Bucle de tool-calling. Con imagen usa el modelo de vision."""
-    model = profile.vision_model if image_data_url else profile.model
+    """Bucle de tool-calling por la API compatible con OpenAI.
+
+    Con imagenes usa el modelo de vision y las envia como `image_url`.
+    """
+    model = profile.vision_model if image_data_urls else profile.model
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": system},
         *history,
-        _user_message(message, image_data_url),
+        _user_message(message, image_data_urls),
     ]
     tools = ai_tools.tool_schemas() if profile.tools_enabled else None
     events: list[str] = []
@@ -492,6 +527,215 @@ async def _post_chat(
     if not choices:
         return {}
     return choices[0].get("message", {}) or {}
+
+
+# --------------------------------------------------------------------------- #
+# Gemini nativo (inlineData)
+# --------------------------------------------------------------------------- #
+_GEMINI_TYPES = {
+    "object": "OBJECT",
+    "string": "STRING",
+    "integer": "INTEGER",
+    "number": "NUMBER",
+    "boolean": "BOOLEAN",
+    "array": "ARRAY",
+    "null": "NULL",
+}
+
+
+def _gemini_native_url(profile: AiProfile, model: str) -> str:
+    """Convierte la base compatible con OpenAI en el endpoint nativo de Gemini."""
+    base = profile.base_url.rstrip("/")
+    if base.endswith("/openai"):
+        base = base[: -len("/openai")]
+    return f"{base}/models/{model}:generateContent"
+
+
+def _split_data_url(data_url: str) -> tuple[str, str]:
+    header, separator, data = data_url.partition(",")
+    if not separator or not header.startswith("data:") or ";base64" not in header:
+        raise ValueError("La imagen adjunta no tiene un formato valido")
+    mime_type = header[len("data:") :].split(";", 1)[0] or "image/jpeg"
+    return mime_type, data
+
+
+def _append_gemini_parts(
+    contents: list[dict[str, Any]], role: str, parts: list[dict[str, Any]]
+) -> None:
+    """Agrupa turnos consecutivos del mismo rol (Gemini espera user/model)."""
+    if contents and contents[-1].get("role") == role:
+        contents[-1].setdefault("parts", []).extend(parts)
+    else:
+        contents.append({"role": role, "parts": parts})
+
+
+def _gemini_contents(
+    history: list[dict[str, str]], message: str, image_data_urls: list[str]
+) -> list[dict[str, Any]]:
+    contents: list[dict[str, Any]] = []
+    for item in history:
+        text = (item.get("content") or "").strip()
+        if not text:
+            continue
+        role = "model" if item.get("role") == "assistant" else "user"
+        _append_gemini_parts(contents, role, [{"text": text}])
+
+    parts: list[dict[str, Any]] = [{"text": message or _VISUAL_PROMPT}]
+    for data_url in image_data_urls:
+        mime_type, data = _split_data_url(data_url)
+        parts.append({"inlineData": {"mimeType": mime_type, "data": data}})
+    _append_gemini_parts(contents, "user", parts)
+    return contents
+
+
+def _gemini_schema(schema: Any) -> dict[str, Any]:
+    """Adapta el JSON Schema de OpenAI al subconjunto que acepta Gemini."""
+    if not isinstance(schema, dict):
+        return {"type": "STRING"}
+    result: dict[str, Any] = {}
+    for key, value in schema.items():
+        if key == "type" and isinstance(value, str):
+            result[key] = _GEMINI_TYPES.get(value.lower(), value.upper())
+        elif key == "properties" and isinstance(value, dict):
+            result[key] = {name: _gemini_schema(item) for name, item in value.items()}
+        elif key == "items":
+            result[key] = _gemini_schema(value)
+        elif key in {"description", "required", "enum", "format", "nullable"}:
+            result[key] = value
+    if "type" not in result and result.get("properties"):
+        result["type"] = "OBJECT"
+    return result
+
+
+def _gemini_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    declarations: list[dict[str, Any]] = []
+    for tool in tools:
+        function = tool.get("function") or {}
+        name = function.get("name")
+        if not name:
+            continue
+        declaration: dict[str, Any] = {
+            "name": name,
+            "description": function.get("description") or "",
+        }
+        parameters = function.get("parameters")
+        if isinstance(parameters, dict) and parameters.get("properties"):
+            declaration["parameters"] = _gemini_schema(parameters)
+        declarations.append(declaration)
+    return [{"functionDeclarations": declarations}] if declarations else []
+
+
+async def _run_model_gemini(
+    db: AsyncSession,
+    user: User,
+    profile: AiProfile,
+    system: str,
+    history: list[dict[str, str]],
+    message: str,
+    image_data_urls: list[str],
+) -> AiResult:
+    """Bucle de tool-calling con la API nativa de Gemini e `inlineData`."""
+    model = profile.vision_model if image_data_urls else profile.model
+    contents = _gemini_contents(history, message, image_data_urls)
+    tools = _gemini_tools(ai_tools.tool_schemas()) if profile.tools_enabled else None
+    events: list[str] = []
+    last_text = ""
+
+    for _ in range(max(1, profile.max_tool_iterations)):
+        content = await _post_gemini(profile, model, system, contents, tools)
+        parts = [
+            part for part in (content.get("parts") or []) if isinstance(part, dict)
+        ]
+        last_text = "".join(
+            str(part.get("text") or "")
+            for part in parts
+            if part.get("text") and not part.get("thought")
+        ).strip()
+        calls = [
+            part["functionCall"]
+            for part in parts
+            if isinstance(part.get("functionCall"), dict)
+        ]
+        if not calls:
+            return AiResult(last_text, "ai", events=events)
+
+        # Se devuelve el turno del modelo tal cual (incluye thoughtSignature en
+        # Gemini 2.5), y despues las respuestas de las herramientas.
+        contents.append({"role": "model", "parts": parts})
+        responses: list[dict[str, Any]] = []
+        for call in calls:
+            name = str(call.get("name") or "")
+            args = call.get("args") if isinstance(call.get("args"), dict) else {}
+            if name in ai_tools.DESTRUCTIVE:
+                note = (
+                    last_text
+                    or "Voy a realizar una accion destructiva. Confirma si quieres que continue."
+                )
+                return AiResult(
+                    note,
+                    "ai",
+                    pending_action={"tool": name, "args": args},
+                    events=events,
+                )
+            payload, ev = await ai_tools.execute_tool(db, user, name, args)
+            events.extend(ev)
+            responses.append(
+                {
+                    "functionResponse": {
+                        "name": name,
+                        "response": {"result": payload},
+                    }
+                }
+            )
+        contents.append({"role": "user", "parts": responses})
+
+    return AiResult(
+        last_text or "He realizado las acciones solicitadas. Revisa tus secciones para ver los cambios.",
+        "ai",
+        events=events,
+    )
+
+
+async def _post_gemini(
+    profile: AiProfile,
+    model: str,
+    system: str,
+    contents: list[dict[str, Any]],
+    tools: list[dict[str, Any]] | None,
+) -> dict[str, Any]:
+    """Llama a models/{model}:generateContent y devuelve el contenido del modelo."""
+    url = _gemini_native_url(profile, model)
+    headers = {
+        "Content-Type": "application/json",
+        "x-goog-api-key": profile.api_key,
+    }
+
+    async def _send(include_tools: bool) -> httpx.Response:
+        payload: dict[str, Any] = {
+            "systemInstruction": {"parts": [{"text": system}]},
+            "contents": contents,
+            "generationConfig": {"temperature": profile.temperature},
+        }
+        if include_tools and tools:
+            payload["tools"] = tools
+            payload["toolConfig"] = {"functionCallingConfig": {"mode": "AUTO"}}
+        async with httpx.AsyncClient(timeout=profile.timeout_seconds) as client:
+            return await client.post(url, json=payload, headers=headers)
+
+    response = await _send(bool(tools))
+    if response.status_code == 400 and tools:
+        logger.info("Gemini no acepta herramientas; reintentando sin ellas")
+        response = await _send(False)
+    if response.is_error:
+        logger.warning(
+            "Gemini devolvio %s: %s", response.status_code, response.text[:500]
+        )
+    response.raise_for_status()
+    data = response.json()
+    candidates = data.get("candidates") or []
+    if not candidates:
+        return {}
+    return candidates[0].get("content", {}) or {}
 
 
 def heuristic_document_reply(document_name: str | None, text: str) -> str:

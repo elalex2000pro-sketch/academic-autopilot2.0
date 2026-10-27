@@ -147,7 +147,7 @@ export default function ReviewPage() {
               quieres volver a verla.
             </p>
           </div>
-          <div className="flex rounded-full border border-white/55 bg-white/35 p-0.5 shadow-inner backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
+          <div className="flex rounded-full border border-slate-300/40 bg-slate-100/60 p-0.5 shadow-inner backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
             <button
               type="button"
               onClick={() => setTab("decks")}
@@ -155,7 +155,7 @@ export default function ReviewPage() {
               className={cn(
                 "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors",
                 tab === "decks"
-                  ? "bg-white text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
+                  ? "bg-slate-100/90 text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
                   : "text-slate-500 hover:text-slate-800 dark:text-white/45 dark:hover:text-white/80",
               )}
             >
@@ -168,7 +168,7 @@ export default function ReviewPage() {
               className={cn(
                 "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors",
                 tab === "exams"
-                  ? "bg-white text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
+                  ? "bg-slate-100/90 text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
                   : "text-slate-500 hover:text-slate-800 dark:text-white/45 dark:hover:text-white/80",
               )}
             >
@@ -382,7 +382,7 @@ function DecksView({
               <button
                 type="button"
                 onClick={() => setActiveDeck(null)}
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-white/50 dark:text-white/50 dark:hover:bg-white/10"
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100/70 dark:text-white/50 dark:hover:bg-white/10"
                 aria-label="Volver a los mazos"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -397,14 +397,14 @@ function DecksView({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex rounded-full border border-white/55 bg-white/35 p-0.5 dark:border-white/10 dark:bg-white/[0.06]">
+              <div className="flex rounded-full border border-slate-300/40 bg-slate-100/60 p-0.5 dark:border-white/10 dark:bg-white/[0.06]">
                 <button
                   type="button"
                   onClick={() => changeDueOnly(true)}
                   className={cn(
                     "rounded-full px-2.5 py-1 text-[10px] font-semibold",
                     dueOnly
-                      ? "bg-white text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
+                      ? "bg-slate-100/90 text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
                       : "text-slate-500 dark:text-white/45",
                   )}
                 >
@@ -416,7 +416,7 @@ function DecksView({
                   className={cn(
                     "rounded-full px-2.5 py-1 text-[10px] font-semibold",
                     !dueOnly
-                      ? "bg-white text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
+                      ? "bg-slate-100/90 text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
                       : "text-slate-500 dark:text-white/45",
                   )}
                 >
@@ -500,7 +500,7 @@ function DecksView({
                 style={{ transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)" }}
                 aria-label={flipped ? "Ver pregunta" : "Ver respuesta"}
               >
-                <span className="absolute inset-0 flex flex-col items-center justify-center rounded-3xl border border-white/60 bg-white/55 p-6 text-center shadow-[0_28px_70px_-35px_rgba(15,23,42,0.75)] backdrop-blur-3xl [backface-visibility:hidden] dark:border-white/10 dark:bg-white/[0.08]">
+                <span className="absolute inset-0 flex flex-col items-center justify-center rounded-3xl border border-slate-300/40 bg-slate-100/70 p-6 text-center shadow-[0_28px_70px_-35px_rgba(32,39,48,0.35)] backdrop-blur-3xl [backface-visibility:hidden] dark:border-white/10 dark:bg-white/[0.08]">
                   <span className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#0066FF] dark:text-[#8ab9ff]">
                     Pregunta
                   </span>
@@ -526,7 +526,7 @@ function DecksView({
             </div>
 
             {flipped && (
-              <div className="mx-auto mt-5 grid max-w-2xl grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="mx-auto mt-5 grid max-w-2xl grid-cols-2 gap-2 md:grid-cols-4">
                 <Button variant="secondary" onClick={() => void review(1)} disabled={sessionBusy}>
                   Otra vez
                 </Button>
@@ -591,13 +591,13 @@ function DecksView({
         </div>
 
         {loading ? (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {[0, 1, 2].map((item) => (
               <div key={item} className="h-40 animate-pulse rounded-3xl border border-slate-300/40 bg-slate-200/45 dark:border-white/5 dark:bg-white/[0.03]" />
             ))}
           </div>
         ) : (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {decks.map((deck) => {
               const deckDue = deck.cards.filter((card) => isDue(card)).length;
               const deckLearned = learnedCount(deck.cards);
@@ -607,7 +607,7 @@ function DecksView({
                   key={deck.id}
                   type="button"
                   onClick={() => openDeck(deck.id)}
-                  className="group relative overflow-hidden rounded-3xl border border-white/55 bg-white/35 p-4 text-left shadow-[0_18px_45px_-32px_rgba(15,23,42,0.7)] backdrop-blur-3xl transition-all duration-200 ease-mac hover:-translate-y-0.5 hover:border-white/80 hover:bg-white/45 dark:border-white/10 dark:bg-black/25 dark:hover:border-white/20 dark:hover:bg-white/[0.06]"
+                  className="group relative overflow-hidden rounded-3xl border border-slate-300/40 bg-slate-100/60 p-4 text-left shadow-[0_18px_45px_-32px_rgba(32,39,48,0.3)] backdrop-blur-3xl transition-all duration-200 ease-mac hover:-translate-y-0.5 hover:border-white/80 hover:bg-white/45 dark:border-white/10 dark:bg-black/25 dark:hover:border-white/20 dark:hover:bg-white/[0.06]"
                 >
                   <span
                     className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full opacity-20 blur-2xl"
@@ -620,7 +620,7 @@ function DecksView({
                     >
                       <Layers className="h-4 w-4" />
                     </span>
-                    <span className="rounded-full border border-white/50 bg-white/45 px-2 py-1 text-[9.5px] font-medium text-slate-500 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06] dark:text-white/45">
+                    <span className="rounded-full border border-slate-300/40 bg-slate-100/60 px-2 py-1 text-[9.5px] font-medium text-slate-500 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06] dark:text-white/45">
                       {deck.cards.length} tarjeta{deck.cards.length === 1 ? "" : "s"}
                     </span>
                   </div>
@@ -664,7 +664,7 @@ function DecksView({
             <select
               value={generateNotebook}
               onChange={(event) => setGenerateNotebook(event.target.value)}
-              className="h-9 min-w-0 flex-1 rounded-xl border border-white/60 bg-white/40 px-3 text-[12px] text-slate-800 shadow-inner backdrop-blur-xl outline-none focus:border-[#0066FF] dark:border-white/10 dark:bg-white/[0.055] dark:text-white/90"
+              className="h-9 min-w-0 flex-1 rounded-xl border border-slate-300/40 bg-slate-100/65 px-3 text-[12px] text-slate-800 shadow-inner backdrop-blur-xl outline-none focus:border-[#0066FF] dark:border-white/10 dark:bg-white/[0.055] dark:text-white/90"
               aria-label="Cuaderno de origen"
             >
               <option value="">Selecciona un cuaderno</option>
@@ -696,7 +696,7 @@ function DecksView({
               value={back}
               onChange={(event) => setBack(event.target.value)}
               placeholder="Respuesta o definición"
-              className="min-h-[70px] w-full rounded-xl border border-white/60 bg-white/40 px-3 py-2 text-[12px] text-slate-800 shadow-inner backdrop-blur-xl outline-none placeholder:text-slate-400 focus:border-[#0066FF] dark:border-white/10 dark:bg-white/[0.055] dark:text-white/90 dark:placeholder:text-white/25"
+              className="min-h-[70px] w-full rounded-xl border border-slate-300/40 bg-slate-100/65 px-3 py-2 text-[12px] text-slate-800 shadow-inner backdrop-blur-xl outline-none placeholder:text-slate-400 focus:border-[#0066FF] dark:border-white/10 dark:bg-white/[0.055] dark:text-white/90 dark:placeholder:text-white/25"
               aria-label="Respuesta de la tarjeta"
             />
             <Button onClick={() => void addCard()} disabled={adding} className="w-full">
@@ -816,7 +816,7 @@ function ExamsTab({
             <select
               value={notebookId}
               onChange={(event) => setNotebookId(event.target.value)}
-              className="h-9 w-full rounded-xl border border-white/60 bg-white/40 px-3 text-[12px] text-slate-800 shadow-inner backdrop-blur-xl outline-none focus:border-[#0066FF] dark:border-white/10 dark:bg-white/[0.055] dark:text-white/90"
+              className="h-9 w-full rounded-xl border border-slate-300/40 bg-slate-100/65 px-3 text-[12px] text-slate-800 shadow-inner backdrop-blur-xl outline-none focus:border-[#0066FF] dark:border-white/10 dark:bg-white/[0.055] dark:text-white/90"
             >
               <option value="">Selecciona un cuaderno</option>
               {notebooks.map((notebook) => (
@@ -866,12 +866,12 @@ function ExamsTab({
               return (
                 <div
                   key={questionIndex}
-                  className="rounded-2xl border border-white/55 bg-white/35 p-4 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04]"
+                  className="rounded-2xl border border-slate-300/40 bg-slate-100/60 p-4 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04]"
                 >
                   <p className="text-[13px] font-semibold text-slate-800 dark:text-white/85">
                     {questionIndex + 1}. {question.question}
                   </p>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div className="mt-3 grid gap-2 md:grid-cols-2">
                     {question.options.map((option, optionIndex) => {
                       const selected = answers[questionIndex] === optionIndex;
                       const correct = result && question.answer === optionIndex;
@@ -894,7 +894,7 @@ function ExamsTab({
                                 ? "border-rose-300/40 bg-rose-500/10 text-rose-700 dark:text-rose-200"
                                 : selected
                                   ? "border-[#0066FF]/35 bg-[#0066FF]/10 text-[#004fcc] dark:text-[#9cc4ff]"
-                                  : "border-white/55 bg-white/25 hover:border-[#0066FF]/25 hover:bg-white/40 dark:border-white/10 dark:bg-white/[0.03]",
+                                  : "border-slate-300/40 bg-slate-100/50 hover:border-[#0066FF]/25 hover:bg-slate-100/70 dark:border-white/10 dark:bg-white/[0.03]",
                           )}
                         >
                           {correct ? (
@@ -963,7 +963,7 @@ function ExamsTab({
           {quizzes.map((quiz) => (
             <div
               key={quiz.id}
-              className="flex items-center gap-3 rounded-2xl border border-white/55 bg-white/30 p-3 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04]"
+              className="flex items-center gap-3 rounded-2xl border border-slate-300/40 bg-slate-100/55 p-3 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04]"
             >
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#0066FF]/10 text-[#0066FF] dark:bg-[#0066FF]/15 dark:text-[#8ab9ff]">
                 <GraduationCap className="h-4 w-4" />

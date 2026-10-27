@@ -2,82 +2,30 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
-import {
-  BookOpen,
-  Brain,
-  CalendarCheck,
-  CalendarRange,
-  FolderOpen,
-  GraduationCap,
-  LayoutDashboard,
-  Loader2,
-  LogOut,
-  NotebookPen,
-  Settings,
-  Target,
-  Users,
-  Wand2,
-} from "lucide-react";
+import { lazy, Suspense, useEffect } from "react";
+import { CalendarCheck, Loader2, LogOut, Settings } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
-import { HelpWidget } from "@/components/help-widget";
-import { InstallAppButton } from "@/components/install-app-button";
+import { MobileNavigationBar } from "@/components/mobile-navigation-bar";
 import { OfflineStatus } from "@/components/offline-status";
 import { ThemeCycleButton } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { WindowControls } from "@/components/window-controls";
+import { NAV_GROUPS, SECONDARY_NAV_ITEMS, SETTINGS_ITEM, isActive } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
-const NAV_GROUPS = [
-  {
-    label: "Tu día",
-    items: [
-      { href: "/", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/planner", label: "Planificador", icon: CalendarRange },
-      { href: "/focus", label: "Modo Enfoque", icon: Target },
-    ],
-  },
-  {
-    label: "Estudia",
-    items: [
-      { href: "/library", label: "Biblioteca", icon: BookOpen },
-      { href: "/academics", label: "Académico", icon: GraduationCap },
-      { href: "/notebooks", label: "Cuadernos", icon: NotebookPen },
-      { href: "/review", label: "Repaso", icon: Brain },
-    ],
-  },
-  {
-    label: "Crea",
-    items: [{ href: "/studio", label: "IA Studio", icon: Wand2 }],
-  },
-  {
-    label: "Comparte",
-    items: [
-      { href: "/classes", label: "Clases", icon: Users },
-      { href: "/files", label: "Archivos", icon: FolderOpen },
-    ],
-  },
-];
-
-const SETTINGS_ITEM = { href: "/settings", label: "Ajustes", icon: Settings };
-
-const ALL_ITEMS = [...NAV_GROUPS.flatMap((group) => group.items), SETTINGS_ITEM];
-
-function isActive(pathname: string, href: string) {
-  if (href === "/") return pathname === "/";
-  if (href === "/planner") {
-    return pathname.startsWith("/planner") || pathname.startsWith("/calendar") || pathname.startsWith("/schedule");
-  }
-  if (href === "/academics") {
-    return (
-      pathname.startsWith("/academics") ||
-      pathname.startsWith("/subjects") ||
-      pathname.startsWith("/exams")
-    );
-  }
-  return pathname.startsWith(href);
-}
+// El tutorial y el instalador no participan en el primer pintado: se cargan
+// como chunks aparte y aparecen cuando están listos.
+const HelpWidget = lazy(() =>
+  import("@/components/help-widget").then((module) => ({
+    default: module.HelpWidget,
+  })),
+);
+const InstallAppButton = lazy(() =>
+  import("@/components/install-app-button").then((module) => ({
+    default: module.InstallAppButton,
+  })),
+);
 
 function Logo() {
   return (
@@ -102,7 +50,7 @@ const navItemBase =
 const navItemActive =
   "bg-[#0066FF] font-medium text-white shadow-[0_10px_24px_-12px_rgba(0,102,255,0.95)]";
 const navItemIdle =
-  "font-normal text-slate-600 hover:bg-slate-900/[0.05] hover:text-slate-900 dark:text-white/55 dark:hover:bg-white/[0.055] dark:hover:text-white/90";
+  "font-normal text-slate-600 hover:bg-slate-200/60 hover:text-slate-800 dark:text-white/55 dark:hover:bg-white/[0.055] dark:hover:text-white/90";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
@@ -119,7 +67,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return (
       <>
         {children}
-        <HelpWidget />
+        <Suspense fallback={null}>
+          <HelpWidget />
+        </Suspense>
       </>
     );
   }
@@ -142,7 +92,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app-shell flex min-h-dvh flex-col bg-transparent lg:flex-row">
-      <aside className="sticky top-0 hidden h-dvh w-[236px] shrink-0 flex-col border-r border-slate-300/40 bg-slate-100/55 shadow-[18px_0_60px_-48px_rgba(36,36,38,0.28)] backdrop-blur-3xl dark:border-white/5 dark:bg-black/20 dark:shadow-[18px_0_60px_-48px_rgba(0,0,0,0.9)] lg:flex">
+      <aside className="sticky top-0 hidden h-dvh w-[236px] shrink-0 flex-col border-r border-slate-300/40 bg-slate-100/70 shadow-[18px_0_60px_-48px_rgba(32,39,48,0.22)] backdrop-blur-3xl dark:border-white/5 dark:bg-black/20 dark:shadow-[18px_0_60px_-48px_rgba(0,0,0,0.9)] lg:flex">
         <div className="app-drag flex h-12 shrink-0 items-center px-4">
           <WindowControls />
         </div>
@@ -154,7 +104,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <nav className="flex flex-1 flex-col gap-4 overflow-y-auto px-2.5 pb-3">
           {NAV_GROUPS.map((group) => (
             <div key={group.label}>
-              <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-white/30">
+              <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-white/30">
                 {group.label}
               </p>
               <div className="space-y-0.5">
@@ -186,10 +136,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="shrink-0 space-y-2 border-t border-slate-300/40 px-2.5 py-3 dark:border-white/[0.06]">
-          <InstallAppButton
-            variant="ghost"
-            className="h-9 w-full justify-start rounded-xl px-3 text-[12.5px] font-normal text-slate-600 hover:bg-slate-900/[0.05] hover:text-slate-900 dark:text-white/55 dark:hover:bg-white/[0.06] dark:hover:text-white/90 [&_svg]:text-slate-400 dark:[&_svg]:text-white/40"
-          />
+          <Suspense
+            fallback={
+              <span className="block h-9 w-full rounded-xl bg-slate-200/40 dark:bg-white/[0.03]" />
+            }
+          >
+            <InstallAppButton
+              variant="ghost"
+              className="h-9 w-full justify-start rounded-xl px-3 text-[12.5px] font-normal text-slate-600 hover:bg-slate-200/60 hover:text-slate-800 dark:text-white/55 dark:hover:bg-white/[0.06] dark:hover:text-white/90 [&_svg]:text-slate-400 dark:[&_svg]:text-white/40"
+            />
+          </Suspense>
 
           <div className="flex items-center gap-0.5">
             <Link
@@ -210,10 +166,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               />
               Ajustes
             </Link>
-            <ThemeCycleButton className="text-slate-500 hover:bg-slate-900/[0.05] hover:text-slate-900 dark:text-white/45 dark:hover:bg-white/[0.06] dark:hover:text-white/90" />
+            <ThemeCycleButton className="text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:text-white/45 dark:hover:bg-white/[0.06] dark:hover:text-white/90" />
           </div>
 
-          <div className="flex items-center gap-2 rounded-2xl border border-slate-300/40 bg-slate-100/40 px-2 py-2 dark:border-white/[0.04] dark:bg-white/[0.025]">
+          <div className="flex items-center gap-2 rounded-2xl border border-slate-300/40 bg-slate-100/60 px-2 py-2 dark:border-white/[0.04] dark:bg-white/[0.025]">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0066FF]/10 text-[10px] font-semibold text-[#0066FF] ring-1 ring-[#0066FF]/15 dark:bg-white/10 dark:text-white/90 dark:ring-white/10">
               {initials}
             </span>
@@ -231,7 +187,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onClick={logout}
               aria-label="Cerrar sesión"
               title="Cerrar sesión"
-              className="h-7 w-7 text-slate-400 hover:bg-slate-900/[0.05] hover:text-slate-700 dark:text-white/40 dark:hover:bg-white/[0.06] dark:hover:text-white/90"
+              className="h-7 w-7 text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 dark:text-white/40 dark:hover:bg-white/[0.06] dark:hover:text-white/90"
             >
               <LogOut className="h-3.5 w-3.5" />
             </Button>
@@ -241,25 +197,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col bg-transparent">
         {/* Barra superior móvil, con la translucidez de una toolbar. */}
-        <header className="sticky top-0 z-40 border-b border-slate-300/40 bg-slate-100/60 backdrop-blur-3xl dark:border-white/[0.06] dark:bg-black/40 lg:hidden">
+        <header className="sticky top-0 z-40 border-b border-slate-300/40 bg-slate-100/70 pt-[env(safe-area-inset-top,0px)] backdrop-blur-3xl dark:border-white/[0.06] dark:bg-black/40 lg:hidden">
           <div className="flex items-center justify-between gap-2 px-3 py-2">
             <Logo />
             <div className="flex shrink-0 items-center gap-0.5">
-              <InstallAppButton compact />
-              <ThemeCycleButton className="text-slate-500 hover:bg-slate-900/[0.05] hover:text-slate-900 dark:text-white/50 dark:hover:bg-white/10 dark:hover:text-white" />
+              <Suspense fallback={<span className="block h-8 w-8" />}>
+                <InstallAppButton compact />
+              </Suspense>
+              <ThemeCycleButton className="text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:text-white/50 dark:hover:bg-white/10 dark:hover:text-white" />
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={logout}
                 aria-label="Cerrar sesión"
-                className="text-slate-500 hover:bg-slate-900/[0.05] hover:text-slate-900 dark:text-white/50 dark:hover:bg-white/10 dark:hover:text-white"
+                className="text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:text-white/50 dark:hover:bg-white/10 dark:hover:text-white"
               >
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
           </div>
           <nav className="hide-scrollbar flex gap-1 overflow-x-auto px-2.5 pb-2">
-            {ALL_ITEMS.map(({ href, label, icon: Icon }) => {
+            {SECONDARY_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
               const active = isActive(pathname, href);
               return (
                 <Link
@@ -267,13 +225,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   href={href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex h-8 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium transition-colors",
+                    "flex h-11 shrink-0 items-center gap-1.5 rounded-xl px-3 text-xs font-medium transition-colors",
                     active
                       ? "bg-[#0066FF] text-white shadow-[0_8px_18px_-10px_rgba(0,102,255,0.9)]"
-                      : "text-slate-600 hover:bg-slate-900/[0.05] hover:text-slate-900 dark:text-white/45 dark:hover:bg-white/[0.06] dark:hover:text-white/85",
+                      : "text-slate-600 hover:bg-slate-200/60 hover:text-slate-800 dark:text-white/45 dark:hover:bg-white/[0.06] dark:hover:text-white/85",
                   )}
                 >
-                  <Icon className="h-3.5 w-3.5" strokeWidth={1.8} />
+                  <Icon className="h-4 w-4" strokeWidth={1.8} />
                   {label}
                 </Link>
               );
@@ -287,13 +245,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main
           className={cn(
             "min-w-0 flex-1 overflow-x-hidden bg-transparent",
-            !isImmersive && "pt-10 lg:pt-12",
+            !isImmersive &&
+              "pt-10 pb-[calc(var(--mobile-nav-offset)+1.25rem)] lg:pb-0 lg:pt-12",
           )}
         >
           {children}
-          <HelpWidget />
+          <Suspense fallback={null}>
+            <HelpWidget />
+          </Suspense>
         </main>
       </div>
+
+      <MobileNavigationBar />
     </div>
   );
 }

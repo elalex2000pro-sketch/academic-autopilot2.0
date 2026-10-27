@@ -15,6 +15,7 @@ import {
   Mic,
   Network,
   NotebookPen,
+  Paperclip,
   Send,
   ShieldAlert,
   Sparkles,
@@ -30,10 +31,17 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api";
+import {
+  MAX_ATTACHMENTS,
+  MAX_PDF_PAGES,
+  isSupportedAttachment,
+  prepareAttachmentFile,
+} from "@/lib/pdf-to-images";
 import type {
   AiOutput,
   AssistantMessage,
   AssistantStatus,
+  ChatAttachment,
   DocumentFile,
   PendingAction,
 } from "@/lib/types";
@@ -140,6 +148,23 @@ function tempId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function attachmentPreviews(items: ChatAttachment[]): ChatAttachment[] {
+  return items.map((item) => ({
+    name: item.name,
+    mime_type: item.mime_type,
+    preview: item.preview ?? null,
+    page: item.page ?? null,
+    total_pages: item.total_pages ?? null,
+  }));
+}
+
+function attachmentCaption(item: ChatAttachment): string {
+  if (item.page) {
+    return `Página ${item.page}${item.total_pages ? ` de ${item.total_pages}` : ""}`;
+  }
+  return item.name;
+}
+
 function timeLabel(value: string): string {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return "";
@@ -236,7 +261,7 @@ function ModeTabs({
       <div
         role="tablist"
         aria-label="Modos de IA Studio"
-        className="mx-auto flex w-full max-w-3xl gap-1 overflow-x-auto rounded-2xl border border-slate-300/45 bg-slate-100/50 p-1 shadow-[0_16px_40px_-30px_rgba(36,36,38,0.35)] backdrop-blur-3xl dark:border-white/10 dark:bg-black/30"
+        className="mx-auto flex w-full max-w-3xl gap-1 overflow-x-auto rounded-2xl border border-slate-300/40 bg-slate-100/70 p-1 shadow-[0_16px_40px_-30px_rgba(32,39,48,0.35)] backdrop-blur-3xl dark:border-white/10 dark:bg-black/30"
       >
         {MODES.map(({ id, label, shortLabel, icon: Icon, hint }) => {
           const active = mode === id;
@@ -252,7 +277,7 @@ function ModeTabs({
                 "flex h-9 min-w-[104px] flex-1 items-center justify-center gap-1.5 rounded-xl px-2.5 text-[11px] font-medium transition-all duration-200 sm:text-[11.5px]",
                 active
                   ? "bg-[#0066FF] text-white shadow-[0_10px_24px_-14px_rgba(0,102,255,0.95)]"
-                  : "text-slate-600 hover:bg-white/55 hover:text-slate-900 dark:text-white/50 dark:hover:bg-white/[0.08] dark:hover:text-white/85",
+                  : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-800 dark:text-white/50 dark:hover:bg-white/[0.08] dark:hover:text-white/85",
               )}
             >
               <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={1.9} />
@@ -269,51 +294,146 @@ function ModeTabs({
 function MessageBubble({ message }: { message: AssistantMessage }) {
   const isUser = message.role === "user";
   const label = sourceLabel(message.source);
+  const attachments = message.attachments ?? [];
+  const [preview, setPreview] = useState<ChatAttachment | null>(null);
   return (
-    <div
-      className={cn(
-        "flex w-full animate-fade-up gap-2.5",
-        isUser ? "justify-end" : "justify-start",
-      )}
-    >
-      {!isUser && (
-        <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/50 bg-white/55 text-[#0066FF] shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/10 dark:text-[#8ab9ff]">
-          <Wand2 className="h-3.5 w-3.5" />
-        </span>
-      )}
+    <>
       <div
         className={cn(
-          "max-w-[86%] rounded-3xl px-4 py-3 text-[13px] leading-6 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.65)] backdrop-blur-xl sm:max-w-[78%]",
-          isUser
-            ? "rounded-br-lg border border-white/25 bg-[#0066FF]/85 text-white shadow-[0_18px_40px_-28px_rgba(0,102,255,0.9)]"
-            : "rounded-bl-lg border border-slate-300/45 bg-slate-100/65 text-slate-800 dark:border-white/10 dark:bg-white/[0.08] dark:text-white/90",
+          "flex w-full animate-fade-up gap-2.5",
+          isUser ? "justify-end" : "justify-start",
         )}
       >
-        <p className="whitespace-pre-wrap break-words">{message.content}</p>
+        {!isUser && (
+          <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-slate-300/40 bg-slate-100/70 text-[#0066FF] shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/10 dark:text-[#8ab9ff]">
+            <Wand2 className="h-3.5 w-3.5" />
+          </span>
+        )}
         <div
           className={cn(
-            "mt-1.5 flex items-center gap-1.5 text-[9px]",
-            isUser ? "justify-end text-white/65" : "text-slate-400 dark:text-white/35",
+            "max-w-[86%] rounded-3xl px-4 py-3 text-[13px] leading-6 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.65)] backdrop-blur-xl sm:max-w-[78%]",
+            isUser
+              ? "rounded-br-lg border border-white/25 bg-[#0066FF]/85 text-white shadow-[0_18px_40px_-28px_rgba(0,102,255,0.9)]"
+              : "rounded-bl-lg border border-slate-300/45 bg-slate-100/65 text-slate-800 dark:border-white/10 dark:bg-white/[0.08] dark:text-white/90",
           )}
         >
-          {!isUser && label && <span>{label}</span>}
-          <span>{timeLabel(message.created_at)}</span>
-          {isUser && <Check className="h-2.5 w-2.5" />}
+          {attachments.length > 0 && (
+            <div
+              className={cn(
+                "mb-2 grid gap-1.5",
+                attachments.length > 1 ? "grid-cols-2" : "grid-cols-1",
+              )}
+            >
+              {attachments.map((attachment, index) => {
+                const caption = attachmentCaption(attachment);
+                return (
+                  <button
+                    key={`${attachment.name}-${attachment.page ?? "img"}-${index}`}
+                    type="button"
+                    onClick={() => setPreview(attachment)}
+                    className={cn(
+                      "overflow-hidden rounded-2xl border text-left transition-transform hover:-translate-y-0.5",
+                      isUser
+                        ? "border-white/25 bg-white/10"
+                        : "border-slate-300/40 bg-slate-100/60 dark:border-white/10 dark:bg-white/[0.06]",
+                    )}
+                    aria-label={`Ampliar ${caption}`}
+                  >
+                    {attachment.preview ? (
+                      <img
+                        src={attachment.preview}
+                        alt={caption}
+                        className="h-32 w-full bg-slate-100/80 object-contain"
+                      />
+                    ) : (
+                      <span className="flex h-20 items-center justify-center gap-1.5 px-2 text-[10px] opacity-70">
+                        <FileText className="h-3.5 w-3.5" /> {caption}
+                      </span>
+                    )}
+                    <span
+                      className={cn(
+                        "block truncate px-2 py-1 text-[9px]",
+                        isUser ? "text-white/70" : "text-slate-500 dark:text-white/40",
+                      )}
+                    >
+                      {caption}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {message.content && (
+            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+          )}
+          <div
+            className={cn(
+              "mt-1.5 flex items-center gap-1.5 text-[9px]",
+              isUser ? "justify-end text-white/65" : "text-slate-400 dark:text-white/35",
+            )}
+          >
+            {!isUser && label && <span>{label}</span>}
+            <span>{timeLabel(message.created_at)}</span>
+            {isUser && <Check className="h-2.5 w-2.5" />}
+          </div>
         </div>
+        {isUser && (
+          <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0066FF]/15 text-[10px] font-semibold text-[#0066FF] ring-1 ring-[#0066FF]/20 dark:bg-[#0066FF]/20 dark:text-[#8ab9ff]">
+            Tú
+          </span>
+        )}
       </div>
-      {isUser && (
-        <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0066FF]/15 text-[10px] font-semibold text-[#0066FF] ring-1 ring-[#0066FF]/20 dark:bg-[#0066FF]/20 dark:text-[#8ab9ff]">
-          Tú
-        </span>
+
+      {preview && (
+        <div
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Vista previa de ${attachmentCaption(preview)}`}
+          onClick={() => setPreview(null)}
+        >
+          <div
+            className="relative max-h-full max-w-3xl overflow-hidden rounded-2xl border border-slate-300/40 bg-slate-100/95 shadow-[0_28px_90px_-30px_rgba(32,39,48,0.45)] backdrop-blur-3xl dark:border-white/10 dark:bg-slate-900"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {preview.preview ? (
+              <img
+                src={preview.preview}
+                alt={attachmentCaption(preview)}
+                className="max-h-[80vh] w-auto max-w-full object-contain"
+              />
+            ) : (
+              <div className="p-6 text-[12px] text-slate-600 dark:text-white/70">
+                {preview.name}
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-3 border-t border-slate-200/70 px-3 py-2 text-[10px] text-slate-500 dark:border-white/10 dark:text-white/50">
+              <span className="truncate">
+                {preview.name}
+                {preview.page
+                  ? ` · ${attachmentCaption(preview).toLowerCase()}`
+                  : ""}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPreview(null)}
+                className="rounded-full p-1 hover:bg-slate-200/60 dark:hover:bg-white/10"
+                aria-label="Cerrar vista previa"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
       )}
-    </div>
+    </>
   );
 }
 
 function TypingBubble({ label = "Pensando…" }: { label?: string }) {
   return (
     <div className="flex w-full animate-fade-up items-center gap-2.5">
-      <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/50 bg-white/55 text-[#0066FF] shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/10 dark:text-[#8ab9ff]">
+      <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-slate-300/40 bg-slate-100/70 text-[#0066FF] shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/10 dark:text-[#8ab9ff]">
         <Wand2 className="h-3.5 w-3.5" />
       </span>
       <div className="flex items-center gap-2 rounded-3xl rounded-bl-lg border border-slate-300/45 bg-slate-100/65 px-4 py-3 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.08]">
@@ -347,9 +467,9 @@ function PendingActionCard({
         <ShieldAlert className="h-4 w-4 text-amber-600 dark:text-amber-300" /> Confirmar acción
       </p>
       <p className="mt-1 text-[11px] leading-5 text-slate-600 dark:text-white/50">
-        La IA quiere ejecutar <code className="rounded bg-white/60 px-1 py-0.5 dark:bg-white/10">{pending.tool}</code>.
+        La IA quiere ejecutar <code className="rounded bg-slate-100/70 px-1 py-0.5 dark:bg-white/10">{pending.tool}</code>.
       </p>
-      <pre className="mt-1.5 max-h-24 overflow-auto rounded-xl bg-white/45 p-2 text-[9.5px] leading-4 text-slate-500 dark:bg-black/20 dark:text-white/40">
+      <pre className="mt-1.5 max-h-24 overflow-auto rounded-xl bg-slate-100/55 p-2 text-[9.5px] leading-4 text-slate-500 dark:bg-black/20 dark:text-white/40">
         {JSON.stringify(pending.args, null, 2)}
       </pre>
       <div className="mt-2.5 flex gap-1.5">
@@ -376,6 +496,10 @@ function ChatComposer({
   disabled = false,
   contextLabel,
   onClearContext,
+  attachments,
+  onAttachFiles,
+  onRemoveAttachment,
+  attaching = false,
   hint = "La IA puede cometer errores. Comprueba la información importante.",
 }: {
   value: string;
@@ -388,18 +512,47 @@ function ChatComposer({
   disabled?: boolean;
   contextLabel?: string | null;
   onClearContext?: () => void;
+  attachments: ChatAttachment[];
+  onAttachFiles: (files: FileList | File[] | null | undefined) => void;
+  onRemoveAttachment: (index: number) => void;
+  attaching?: boolean;
   hint?: string;
 }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const blocked = disabled || sending || attaching;
+  const canSend = !blocked && (value.trim().length > 0 || attachments.length > 0);
+
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
         onSend();
       }}
+      onDragEnter={(event) => {
+        event.preventDefault();
+        if (!blocked) setDragging(true);
+      }}
+      onDragOver={(event) => {
+        event.preventDefault();
+        if (!blocked) setDragging(true);
+      }}
+      onDragLeave={(event) => {
+        // Al pasar sobre un hijo (texto, botones) el navegador emite
+        // dragleave en el formulario; solo se oculta si se sale de verdad.
+        const related = event.relatedTarget;
+        if (related instanceof Node && event.currentTarget.contains(related)) return;
+        setDragging(false);
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        setDragging(false);
+        if (!blocked) onAttachFiles(event.dataTransfer.files);
+      }}
     >
       {contextLabel && (
         <div className="mb-1.5 flex justify-center px-3">
-          <div className="flex max-w-full items-center gap-1.5 rounded-full border border-slate-300/45 bg-slate-100/75 px-3 py-1 shadow-[0_10px_30px_-20px_rgba(36,36,38,0.35)] backdrop-blur-3xl dark:border-white/10 dark:bg-black/45">
+          <div className="flex max-w-full items-center gap-1.5 rounded-full border border-slate-300/45 bg-slate-100/75 px-3 py-1 shadow-[0_10px_30px_-20px_rgba(32,39,48,0.35)] backdrop-blur-3xl dark:border-white/10 dark:bg-black/45">
             <FileText className="h-3 w-3 shrink-0 text-slate-400 dark:text-white/30" />
             <span className="max-w-[230px] truncate text-[10px] font-medium text-slate-500 dark:text-white/40">
               {contextLabel}
@@ -417,8 +570,91 @@ function ChatComposer({
           </div>
         </div>
       )}
-      <div className="rounded-[26px] border border-slate-300/45 bg-slate-100/70 p-2 shadow-[0_24px_70px_-28px_rgba(36,36,38,0.35)] backdrop-blur-3xl dark:border-white/10 dark:bg-black/45">
+      <div
+        className={cn(
+          "rounded-[26px] border border-slate-300/45 bg-slate-100/70 p-2 shadow-[0_24px_70px_-28px_rgba(32,39,48,0.35)] backdrop-blur-3xl transition-colors dark:border-white/10 dark:bg-black/45",
+          dragging && "border-[#0066FF]/60 bg-[#0066FF]/[0.07]",
+        )}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf"
+          multiple
+          className="hidden"
+          onChange={(event) => {
+            const files = Array.from(event.currentTarget.files ?? []);
+            event.currentTarget.value = "";
+            onAttachFiles(files);
+          }}
+        />
+
+        {attachments.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-1.5 px-1">
+            {attachments.map((attachment, index) => (
+              <div
+                key={`${attachment.name}-${attachment.page ?? "img"}-${index}`}
+                className="flex items-center gap-2 rounded-2xl border border-slate-300/40 bg-slate-100/70 p-1.5 pr-2 dark:border-white/10 dark:bg-white/[0.06]"
+              >
+                {attachment.preview ? (
+                  <img
+                    src={attachment.preview}
+                    alt=""
+                    className="h-10 w-10 rounded-xl object-cover"
+                  />
+                ) : (
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-200/60 dark:bg-white/10">
+                    <FileText className="h-4 w-4 text-slate-400 dark:text-white/35" />
+                  </span>
+                )}
+                <div className="min-w-0">
+                  <p className="max-w-[130px] truncate text-[10px] font-medium text-slate-700 dark:text-white/75">
+                    {attachment.name}
+                  </p>
+                  <p className="text-[9px] text-slate-400 dark:text-white/35">
+                    {attachment.page ? attachmentCaption(attachment) : "Imagen"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onRemoveAttachment(index)}
+                  disabled={sending}
+                  className="ml-0.5 rounded-full p-0.5 text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 disabled:opacity-40 dark:text-white/30 dark:hover:text-rose-300"
+                  aria-label={`Quitar ${attachmentCaption(attachment)}`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {dragging && (
+          <p className="px-2 pb-1 text-[10px] font-medium text-[#0066FF] dark:text-[#8ab9ff]">
+            Suelta las imágenes o el PDF aquí
+          </p>
+        )}
+
         <div className="flex items-end gap-1.5">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={disabled || attaching || sending}
+            className={cn(
+              "mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-40",
+              attaching
+                ? "bg-[#0066FF]/12 text-[#0066FF] dark:bg-[#0066FF]/15 dark:text-[#8ab9ff]"
+                : "text-slate-500 hover:bg-slate-100/80 hover:text-slate-800 dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white/80",
+            )}
+            aria-label="Adjuntar imágenes o PDF"
+            title="Adjuntar imágenes o PDF"
+          >
+            {attaching ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Paperclip className="h-4 w-4" />
+            )}
+          </button>
           <button
             type="button"
             onClick={onToggleMic}
@@ -427,7 +663,7 @@ function ChatComposer({
               "mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-40",
               listening
                 ? "bg-[#FF3B30]/12 text-[#d92b22] dark:bg-[#FF3B30]/15 dark:text-[#ff8a80]"
-                : "text-slate-500 hover:bg-white/60 hover:text-slate-800 dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white/80",
+                : "text-slate-500 hover:bg-slate-100/80 hover:text-slate-800 dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white/80",
             )}
             aria-label={listening ? "Detener dictado" : "Dictar mensaje"}
           >
@@ -439,7 +675,7 @@ function ChatComposer({
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
-                onSend();
+                if (canSend) onSend();
               }
             }}
             rows={1}
@@ -450,7 +686,7 @@ function ChatComposer({
           <Button
             type="submit"
             size="icon"
-            disabled={disabled || !value.trim() || sending}
+            disabled={!canSend}
             className="mb-0.5 h-9 w-9 shrink-0 rounded-full"
             aria-label="Enviar mensaje"
           >
@@ -487,6 +723,9 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
 
   const [chatInput, setChatInput] = useState("");
   const [docInput, setDocInput] = useState("");
+  const [chatAttachments, setChatAttachments] = useState<ChatAttachment[]>([]);
+  const [docAttachments, setDocAttachments] = useState<ChatAttachment[]>([]);
+  const [attachingMode, setAttachingMode] = useState<"chat" | "document" | null>(null);
   const [sendingMode, setSendingMode] = useState<"chat" | "document" | null>(null);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -513,6 +752,8 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
   const [copied, setCopied] = useState(false);
   const [summarizing, setSummarizing] = useState(false);
   const [summaryOutput, setSummaryOutput] = useState<AiOutput | null>(null);
+  const [responsePulse, setResponsePulse] = useState(false);
+  const responsePulseTimer = useRef<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -562,6 +803,7 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
       recognitionRef.current?.stop();
       mediaRecorderRef.current?.stop();
       mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      if (responsePulseTimer.current) window.clearTimeout(responsePulseTimer.current);
     };
   }, []);
 
@@ -650,29 +892,119 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
     setListening(true);
   }
 
+  async function attachFiles(
+    files: FileList | File[] | null | undefined,
+    target: "chat" | "document",
+  ) {
+    const list = files ? Array.from(files) : [];
+    if (list.length === 0) return;
+
+    const current = target === "chat" ? chatAttachments : docAttachments;
+    const room = MAX_ATTACHMENTS - current.length;
+    if (room <= 0) {
+      setNotice(`Puedes adjuntar hasta ${MAX_ATTACHMENTS} imágenes por mensaje.`);
+      return;
+    }
+
+    const supported = list.filter(isSupportedAttachment);
+    const rejected = list.length - supported.length;
+    const valid = supported.slice(0, room);
+    const ignored = supported.length - valid.length;
+    const warnings: string[] = [];
+    if (ignored > 0) {
+      warnings.push(
+        `Se han ignorado ${ignored} archivo(s): el máximo es ${MAX_ATTACHMENTS} adjuntos por mensaje.`,
+      );
+    }
+    if (rejected > 0) {
+      warnings.push("Solo se admiten imágenes PNG, JPG, WEBP o PDF.");
+    }
+    if (valid.length === 0) {
+      if (warnings.length > 0) setNotice(warnings.join(" "));
+      return;
+    }
+
+    setAttachingMode(target);
+    setNotice(warnings.length > 0 ? warnings.join(" ") : null);
+    try {
+      const prepared: ChatAttachment[] = [];
+      for (const file of valid) {
+        prepared.push(...(await prepareAttachmentFile(file)));
+      }
+
+      const next = prepared.slice(0, room);
+      if (prepared.length > room) {
+        warnings.push(
+          `Se han añadido los primeros ${room} adjuntos: el máximo es ${MAX_ATTACHMENTS} por mensaje.`,
+        );
+      } else {
+        const truncated = new Set(
+          prepared
+            .filter((item) => item.total_pages && item.total_pages > MAX_PDF_PAGES)
+            .map((item) => item.name),
+        );
+        if (truncated.size > 0) {
+          const names = [...truncated].map((name) => `«${name}»`).join(" y ");
+          warnings.push(
+            `Se han añadido las primeras ${MAX_PDF_PAGES} páginas de ${names}.`,
+          );
+        }
+      }
+      setNotice(warnings.length > 0 ? warnings.join(" ") : null);
+      if (next.length === 0) return;
+
+      if (target === "chat") {
+        setChatAttachments((previous) => [...previous, ...next]);
+      } else {
+        setDocAttachments((previous) => [...previous, ...next]);
+      }
+    } catch (error) {
+      setNotice(errorMessage(error));
+    } finally {
+      setAttachingMode(null);
+    }
+  }
+
+  function removeAttachment(target: "chat" | "document", index: number) {
+    const setter = target === "chat" ? setChatAttachments : setDocAttachments;
+    setter((current) => current.filter((_, position) => position !== index));
+  }
+
+  /** Destello breve del fondo cuando la IA termina de responder. */
+  function markResponsePulse() {
+    setResponsePulse(true);
+    if (responsePulseTimer.current) window.clearTimeout(responsePulseTimer.current);
+    responsePulseTimer.current = window.setTimeout(() => setResponsePulse(false), 1800);
+  }
+
   async function sendChat() {
     const content = chatInput.trim();
-    if (!content || sendingMode !== null) return;
+    const attachments = chatAttachments;
+    if ((!content && attachments.length === 0) || sendingMode !== null) return;
     const optimistic: AssistantMessage = {
       id: tempId("temp"),
       role: "user",
       content,
       source: null,
       document_id: chatDocumentId || null,
+      attachments: attachmentPreviews(attachments),
       created_at: new Date().toISOString(),
     };
     setMessages((current) => [...current, optimistic]);
     setChatInput("");
+    setChatAttachments([]);
     setSendingMode("chat");
     setPending(null);
     setNotice(null);
     try {
-      const response = await api.chat(content, chatDocumentId || null);
+      const response = await api.chat(content, chatDocumentId || null, attachments);
       if (response.pending_action) setPending(response.pending_action);
       setMessages(await api.assistantMessages(120));
+      markResponsePulse();
     } catch (error) {
       setMessages((current) => current.filter((message) => message.id !== optimistic.id));
       setChatInput(content);
+      setChatAttachments(attachments);
       setNotice(errorMessage(error));
     } finally {
       setSendingMode(null);
@@ -681,22 +1013,25 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
 
   async function sendDocument() {
     const content = docInput.trim();
-    if (!content || !docId || sendingMode !== null) return;
+    const attachments = docAttachments;
+    if ((!content && attachments.length === 0) || !docId || sendingMode !== null) return;
     const optimistic: AssistantMessage = {
       id: tempId("doc"),
       role: "user",
       content,
       source: null,
       document_id: docId,
+      attachments: attachmentPreviews(attachments),
       created_at: new Date().toISOString(),
     };
     setDocMessages((current) => [...current, optimistic]);
     setDocInput("");
+    setDocAttachments([]);
     setSendingMode("document");
     setPending(null);
     setNotice(null);
     try {
-      const response = await api.chat(content, docId);
+      const response = await api.chat(content, docId, attachments);
       if (response.pending_action) setPending(response.pending_action);
       setDocMessages((current) => [
         ...current,
@@ -709,9 +1044,11 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
           created_at: response.created_at || new Date().toISOString(),
         },
       ]);
+      markResponsePulse();
     } catch (error) {
       setDocMessages((current) => current.filter((message) => message.id !== optimistic.id));
       setDocInput(content);
+      setDocAttachments(attachments);
       setNotice(errorMessage(error));
     } finally {
       setSendingMode(null);
@@ -740,6 +1077,7 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
       } else {
         setMessages(await api.assistantMessages(120));
       }
+      markResponsePulse();
     } catch (error) {
       setNotice(errorMessage(error));
     } finally {
@@ -754,6 +1092,8 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
       await api.clearAssistant();
       setMessages([]);
       setDocMessages([]);
+      setChatAttachments([]);
+      setDocAttachments([]);
       setPending(null);
       setNotice(null);
     } catch (error) {
@@ -1113,11 +1453,22 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
   const sendingChat = sendingMode === "chat";
   const sendingDocument = sendingMode === "document";
   const hasConversation = messages.length > 0 || docMessages.length > 0;
+  const aiState: "idle" | "thinking" | "responding" =
+    sendingMode !== null || confirming || summarizing || busyKind !== null || audioLoading
+      ? "thinking"
+      : responsePulse
+        ? "responding"
+        : "idle";
 
   return (
-    <div className="relative flex h-[calc(100dvh-104px)] min-h-[620px] flex-col overflow-hidden lg:h-dvh">
-      <div className="studio-aurora" />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-100/25 via-transparent to-slate-200/30 dark:from-black/5 dark:to-black/35" />
+    <div className="relative flex h-[calc(100dvh-var(--mobile-header-height))] min-h-[620px] flex-col overflow-hidden lg:h-dvh">
+      <div className="studio-canvas" data-ai-state={aiState} aria-hidden="true">
+        <div className="studio-base" />
+        <div className="studio-aurora" />
+        <div className="studio-aurora studio-aurora-alt" />
+        {responsePulse && <div className="studio-response-flash" />}
+        <div className="studio-vignette" />
+      </div>
 
       <header className="relative z-10 flex shrink-0 items-center justify-between gap-3 px-3 py-3 sm:px-5">
         <div className="flex min-w-0 items-center gap-2.5">
@@ -1137,9 +1488,25 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
         <div className="flex shrink-0 items-center gap-0.5">
           <Badge
             variant="secondary"
-            className="mr-1 hidden rounded-full border border-white/45 bg-white/40 text-[9.5px] font-semibold text-slate-500 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06] dark:text-white/45 sm:flex"
+            className={cn(
+              "mr-1 hidden rounded-full border text-[9.5px] font-semibold backdrop-blur-xl transition-colors duration-500 sm:flex",
+              aiState === "idle" &&
+                "border-slate-300/40 bg-slate-100/60 text-slate-500 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/45",
+              aiState === "thinking" &&
+                "border-violet-400/30 bg-violet-500/10 text-violet-600 dark:border-violet-300/20 dark:bg-violet-400/10 dark:text-violet-200",
+              aiState === "responding" &&
+                "border-cyan-400/35 bg-cyan-400/10 text-cyan-700 dark:border-cyan-300/20 dark:bg-cyan-400/10 dark:text-cyan-200",
+            )}
           >
-            <span className="mr-1 h-1.5 w-1.5 rounded-full bg-[#34C759]" /> En línea
+            <span
+              className={cn(
+                "mr-1 h-1.5 w-1.5 rounded-full transition-colors duration-500",
+                aiState === "idle" && "bg-[#34C759]",
+                aiState === "thinking" && "animate-pulse bg-violet-500 dark:bg-violet-300",
+                aiState === "responding" && "bg-cyan-500 dark:bg-cyan-300",
+              )}
+            />
+            {aiState === "idle" ? "En línea" : aiState === "thinking" ? "Pensando…" : "Respondiendo"}
           </Badge>
           {mode === "chat" && (
             <>
@@ -1203,7 +1570,7 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
       )}
 
       {notice && (
-        <div className="relative z-10 mx-3 mb-1 mt-1.5 flex items-start gap-2 rounded-2xl border border-white/45 bg-white/50 px-3 py-2 text-[11px] text-slate-600 backdrop-blur-xl dark:border-white/10 dark:bg-black/35 dark:text-white/60 sm:mx-5">
+        <div className="relative z-10 mx-3 mb-1 mt-1.5 flex items-start gap-2 rounded-2xl border border-slate-300/40 bg-slate-100/65 px-3 py-2 text-[11px] text-slate-600 backdrop-blur-xl dark:border-white/10 dark:bg-black/35 dark:text-white/60 sm:mx-5">
           <span className="min-w-0 flex-1">{notice}</span>
           <button type="button" onClick={() => setNotice(null)} aria-label="Cerrar aviso">
             <X className="h-3.5 w-3.5 opacity-50" />
@@ -1215,12 +1582,12 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
         <div className="relative z-10 flex min-h-0 flex-1 flex-col">
           <div
             ref={chatScrollRef}
-            className="min-h-0 flex-1 overflow-y-auto px-3 pb-44 pt-2 sm:px-6"
+            className="min-h-0 flex-1 overflow-y-auto px-3 pb-[calc(var(--mobile-nav-offset)+9rem)] pt-2 sm:px-6 lg:pb-44"
           >
             <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-end gap-4">
               {loading ? (
                 <div className="flex flex-1 items-center justify-center pb-20">
-                  <span className="flex items-center gap-2 rounded-full border border-white/40 bg-white/45 px-4 py-2 text-[11px] text-slate-500 backdrop-blur-xl dark:border-white/10 dark:bg-black/35 dark:text-white/45">
+                  <span className="flex items-center gap-2 rounded-full border border-slate-300/40 bg-slate-100/60 px-4 py-2 text-[11px] text-slate-500 backdrop-blur-xl dark:border-white/10 dark:bg-black/35 dark:text-white/45">
                     <Loader2 className="h-3.5 w-3.5 animate-spin text-[#0066FF]" /> Abriendo el chat…
                   </span>
                 </div>
@@ -1234,9 +1601,9 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
                   </h2>
                   <p className="mt-1 max-w-md text-[12px] leading-5 text-slate-600 dark:text-white/45">
                     Pregunta por tus tareas, pide un plan de estudio o resuelve un problema de
-                    clase. También puedes elegir un documento para dar contexto.
+                    clase. También puedes adjuntar una foto, un apunte o un PDF escaneado.
                   </p>
-                  <div className="mt-5 grid w-full max-w-2xl gap-2 sm:grid-cols-2">
+                  <div className="mt-5 grid w-full max-w-2xl gap-2 md:grid-cols-2">
                     {CHAT_SUGGESTIONS.map((suggestion) => (
                       <button
                         key={suggestion}
@@ -1273,10 +1640,10 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
             </div>
           </div>
 
-          <div className="fixed bottom-6 left-1/2 z-40 w-[calc(100%-1.5rem)] max-w-3xl -translate-x-1/2 lg:left-[calc(50%+118px)]">
+          <div className="fixed bottom-[calc(var(--mobile-nav-offset)+0.75rem)] left-1/2 z-40 w-[calc(100%-1.5rem)] max-w-3xl -translate-x-1/2 lg:bottom-6 lg:left-[calc(50%+118px)]">
             {sourceFiles.length > 0 && (
               <div className="mb-1.5 flex justify-center px-3">
-                <div className="flex max-w-full items-center gap-1.5 rounded-full border border-slate-300/45 bg-slate-100/75 px-3 py-1 shadow-[0_10px_30px_-20px_rgba(36,36,38,0.35)] backdrop-blur-3xl dark:border-white/10 dark:bg-black/45">
+                <div className="flex max-w-full items-center gap-1.5 rounded-full border border-slate-300/45 bg-slate-100/75 px-3 py-1 shadow-[0_10px_30px_-20px_rgba(32,39,48,0.35)] backdrop-blur-3xl dark:border-white/10 dark:bg-black/45">
                   <FileText className="h-3 w-3 shrink-0 text-slate-400 dark:text-white/30" />
                   <select
                     value={chatDocumentId}
@@ -1312,13 +1679,17 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
               listening={listening}
               onToggleMic={() => toggleMicrophone("chat")}
               placeholder="Pregunta lo que necesites…"
+              attachments={chatAttachments}
+              onAttachFiles={(files) => void attachFiles(files, "chat")}
+              onRemoveAttachment={(index) => removeAttachment("chat", index)}
+              attaching={attachingMode === "chat"}
             />
           </div>
         </div>
       )}
 
       {mode === "audio" && (
-        <div className="relative z-10 min-h-0 flex-1 overflow-y-auto px-3 pb-8 pt-2 sm:px-5">
+        <div className="relative z-10 min-h-0 flex-1 overflow-y-auto px-3 pb-[calc(var(--mobile-nav-offset)+1.5rem)] pt-2 sm:px-5 lg:pb-8">
           <div className="mx-auto max-w-5xl space-y-3">
             <section className="grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
               <div className="app-glass rounded-3xl p-4 sm:p-5">
@@ -1409,7 +1780,7 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
                       "flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-semibold",
                       recording
                         ? "bg-[#FF3B30]/12 text-[#d92b22] dark:bg-[#FF3B30]/15 dark:text-[#ff8a80]"
-                        : "bg-white/45 text-slate-500 dark:bg-white/[0.06] dark:text-white/45",
+                        : "bg-slate-100/60 text-slate-500 dark:bg-white/[0.06] dark:text-white/45",
                     )}
                   >
                     <span
@@ -1422,7 +1793,7 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
                   </span>
                 </div>
 
-                <div className="mt-4 rounded-3xl border border-white/40 bg-slate-900/[0.03] p-4 dark:border-white/10 dark:bg-black/20">
+                <div className="mt-4 rounded-3xl border border-slate-300/40 bg-slate-900/[0.03] p-4 dark:border-white/10 dark:bg-black/20">
                   <div className="flex h-16 items-center justify-center gap-[3px]">
                     {Array.from({ length: 36 }, (_, index) => (
                       <span
@@ -1484,7 +1855,7 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
 
             {audioText && (
               <section className="app-glass overflow-hidden rounded-3xl">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/45 px-4 py-3 dark:border-white/10 sm:px-5">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-300/40 px-4 py-3 dark:border-white/10 sm:px-5">
                   <div className="min-w-0 flex-1">
                     <p className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#0066FF] dark:text-[#8ab9ff]">
                       Modo lectura
@@ -1497,7 +1868,7 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
                     />
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="rounded-full border border-white/45 bg-white/40 px-2.5 py-1 text-[9.5px] font-medium text-slate-500 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/45">
+                    <span className="rounded-full border border-slate-300/40 bg-slate-100/60 px-2.5 py-1 text-[9.5px] font-medium text-slate-500 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/45">
                       {clock(audioDuration)} · {audioSegments.length} fragmentos
                     </span>
                     <Button variant="secondary" size="sm" onClick={() => void copyText()} className="h-8">
@@ -1529,7 +1900,7 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
                   </div>
                 </article>
 
-                <div className="border-t border-white/45 px-4 py-4 dark:border-white/10 sm:px-5">
+                <div className="border-t border-slate-300/40 px-4 py-4 dark:border-white/10 sm:px-5">
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
                       onClick={() => void saveNotebook()}
@@ -1566,7 +1937,7 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
                   )}
 
                   {summaryOutput && (
-                    <div className="mt-3 rounded-2xl border border-white/55 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+                    <div className="mt-3 rounded-2xl border border-slate-300/40 bg-slate-100/55 p-3 dark:border-white/10 dark:bg-white/[0.04]">
                       <p className="text-[11px] font-medium text-slate-800 dark:text-white/80">
                         {summaryOutput.title}
                       </p>
@@ -1600,7 +1971,7 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
       )}
 
       {mode === "document" && (
-        <div className="relative z-10 min-h-0 flex-1 overflow-y-auto px-3 pb-6 pt-2 sm:px-5 lg:overflow-hidden">
+        <div className="relative z-10 min-h-0 flex-1 overflow-y-auto px-3 pb-[calc(var(--mobile-nav-offset)+1.5rem)] pt-2 sm:px-5 lg:overflow-hidden lg:pb-6">
           <div className="mx-auto grid max-w-6xl gap-3 lg:h-full lg:grid-cols-[300px_minmax(0,1fr)]">
             <aside className="space-y-3 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
               <div className="app-glass rounded-3xl p-3.5">
@@ -1681,7 +2052,7 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
                           "w-full rounded-2xl border px-2.5 py-2 text-left transition-all",
                           active
                             ? "border-[#0066FF]/45 bg-[#0066FF]/10 shadow-[0_10px_24px_-20px_rgba(0,102,255,0.8)] dark:border-[#8ab9ff]/25 dark:bg-[#0066FF]/15"
-                            : "border-white/45 bg-white/25 hover:border-white/70 hover:bg-white/40 dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/[0.06]",
+                            : "border-slate-300/40 bg-slate-100/50 hover:border-slate-400/45 hover:bg-slate-100/70 dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/[0.06]",
                         )}
                       >
                         <div className="flex items-start gap-2">
@@ -1707,7 +2078,7 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
                     );
                   })}
                   {!loading && sourceFiles.length === 0 && (
-                    <p className="rounded-2xl border border-dashed border-white/55 px-3 py-4 text-center text-[10px] text-slate-500 dark:border-white/10 dark:text-white/35">
+                    <p className="rounded-2xl border border-dashed border-slate-300/40 px-3 py-4 text-center text-[10px] text-slate-500 dark:border-white/10 dark:text-white/35">
                       Sube tus apuntes para empezar.
                     </p>
                   )}
@@ -1756,7 +2127,7 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
                   {outputs.slice(0, 8).map((output) => (
                     <div
                       key={output.id}
-                      className="rounded-2xl border border-white/55 bg-white/35 p-2.5 dark:border-white/10 dark:bg-white/[0.04]"
+                      className="rounded-2xl border border-slate-300/40 bg-slate-100/55 p-2.5 dark:border-white/10 dark:bg-white/[0.04]"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
@@ -1807,7 +2178,7 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
                     </div>
                   ))}
                   {outputs.length === 0 && (
-                    <p className="rounded-2xl border border-dashed border-white/55 px-3 py-4 text-center text-[10px] text-slate-500 dark:border-white/10 dark:text-white/35">
+                    <p className="rounded-2xl border border-dashed border-slate-300/40 px-3 py-4 text-center text-[10px] text-slate-500 dark:border-white/10 dark:text-white/35">
                       Todavía no has generado ningún resumen, infografía ni mapa mental.
                     </p>
                   )}
@@ -1815,8 +2186,8 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
               </div>
             </aside>
 
-            <section className="flex min-h-[540px] flex-col overflow-hidden rounded-3xl border border-slate-300/45 bg-slate-100/50 shadow-[0_28px_80px_-48px_rgba(36,36,38,0.35)] backdrop-blur-3xl dark:border-white/10 dark:bg-black/25 lg:min-h-0">
-              <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/45 px-3 py-2.5 dark:border-white/10 sm:px-4">
+            <section className="flex min-h-[540px] flex-col overflow-hidden rounded-3xl border border-slate-300/40 bg-slate-100/70 shadow-[0_28px_80px_-48px_rgba(32,39,48,0.35)] backdrop-blur-3xl dark:border-white/10 dark:bg-black/25 lg:min-h-0">
+              <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-300/40 px-3 py-2.5 dark:border-white/10 sm:px-4">
                 <div className="min-w-0">
                   <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#0066FF] dark:text-[#8ab9ff]">
                     Analizar documento
@@ -1843,15 +2214,16 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
                 <div className="flex min-h-full flex-col justify-end gap-3">
                   {docMessages.length === 0 && !pending ? (
                     <div className="flex flex-1 flex-col items-center justify-center py-10 text-center">
-                      <span className="flex h-14 w-14 items-center justify-center rounded-3xl border border-white/50 bg-white/50 text-[#0066FF] shadow-[0_24px_60px_-28px_rgba(0,102,255,0.7)] backdrop-blur-3xl dark:border-white/10 dark:bg-white/[0.08] dark:text-[#8ab9ff]">
+                      <span className="flex h-14 w-14 items-center justify-center rounded-3xl border border-slate-300/40 bg-slate-100/65 text-[#0066FF] shadow-[0_24px_60px_-28px_rgba(0,102,255,0.7)] backdrop-blur-3xl dark:border-white/10 dark:bg-white/[0.08] dark:text-[#8ab9ff]">
                         <FileText className="h-6 w-6" />
                       </span>
                       <h3 className="mt-3 text-[18px] font-semibold tracking-[-0.03em] text-slate-900 dark:text-white/95">
                         Chatea con tus apuntes
                       </h3>
                       <p className="mt-1 max-w-sm text-[11px] leading-5 text-slate-500 dark:text-white/40">
-                        Sube un PDF, Word, Excel, texto o una foto de la pizarra y pregúntale lo
-                        que necesites. También puedes generar un resumen o un mapa mental.
+                        Sube un PDF (aunque esté escaneado), Word, Excel, texto o una foto de la
+                        pizarra y pregúntale lo que necesites. También puedes generar un resumen
+                        o un mapa mental.
                       </p>
                       <div className="mt-3 flex flex-wrap justify-center gap-1.5">
                         {DOCUMENT_SUGGESTIONS.map((suggestion) => (
@@ -1860,7 +2232,7 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
                             type="button"
                             onClick={() => setDocInput(suggestion)}
                             disabled={!selectedDocument}
-                            className="rounded-full border border-white/50 bg-white/35 px-2.5 py-1 text-[9.5px] font-medium text-slate-600 backdrop-blur-xl transition-colors hover:bg-white/55 disabled:opacity-40 dark:border-white/10 dark:bg-white/[0.05] dark:text-white/50 dark:hover:bg-white/[0.09]"
+                            className="rounded-full border border-slate-300/40 bg-slate-100/55 px-2.5 py-1 text-[9.5px] font-medium text-slate-600 backdrop-blur-xl transition-colors hover:bg-slate-100/75 disabled:opacity-40 dark:border-white/10 dark:bg-white/[0.05] dark:text-white/50 dark:hover:bg-white/[0.09]"
                           >
                             {suggestion}
                           </button>
@@ -1885,7 +2257,7 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
                 </div>
               </div>
 
-              <div className="shrink-0 border-t border-white/45 p-2.5 dark:border-white/10 sm:p-3">
+              <div className="shrink-0 border-t border-slate-300/40 p-2.5 dark:border-white/10 sm:p-3">
                 <ChatComposer
                   value={docInput}
                   onChange={setDocInput}
@@ -1901,6 +2273,10 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
                   disabled={!selectedDocument}
                   contextLabel={selectedDocument?.filename ?? null}
                   onClearContext={() => selectDocument("")}
+                  attachments={docAttachments}
+                  onAttachFiles={(files) => void attachFiles(files, "document")}
+                  onRemoveAttachment={(index) => removeAttachment("document", index)}
+                  attaching={attachingMode === "document"}
                   hint="El documento se usa como contexto. Comprueba los datos importantes."
                 />
               </div>

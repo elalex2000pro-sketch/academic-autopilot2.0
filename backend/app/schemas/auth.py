@@ -12,6 +12,9 @@ class UserRegister(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     full_name: str | None = Field(default=None, max_length=200)
     timezone: str = "UTC"
+    # Recuperacion opcional en el momento del registro.
+    recovery_question: str | None = Field(default=None, max_length=200)
+    recovery_answer: str | None = Field(default=None, max_length=72)
 
 
 class UserLogin(BaseModel):
@@ -32,3 +35,25 @@ class UserRead(BaseModel):
     full_name: str | None
     timezone: str
     created_at: datetime
+    recovery_question: str | None = None
+    has_recovery: bool = False
+
+
+class RecoveryQuestionRequest(BaseModel):
+    email: EmailStr
+
+
+class RecoveryQuestionRead(BaseModel):
+    available: bool
+    question: str | None = None
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+    answer: str = Field(min_length=2, max_length=72)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class RecoverySetup(BaseModel):
+    question: str = Field(min_length=4, max_length=200)
+    answer: str = Field(min_length=2, max_length=72)

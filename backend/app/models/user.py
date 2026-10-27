@@ -29,6 +29,15 @@ class User(UUIDPkMixin, TimestampMixin, Base):
     full_name: Mapped[str | None] = mapped_column(String(200))
     timezone: Mapped[str] = mapped_column(String(64), default="UTC", nullable=False)
 
+    # Recuperacion de contrasena sin depender de correo: pregunta de seguridad
+    # y respuesta hasheada. La respuesta nunca se devuelve por la API.
+    recovery_question: Mapped[str | None] = mapped_column(String(200))
+    recovery_answer_hash: Mapped[str | None] = mapped_column(String(255))
+
+    # Se incrementa al restablecer la contrasena para invalidar los JWT
+    # emitidos antes del cambio.
+    token_version: Mapped[int] = mapped_column(default=0, nullable=False)
+
     # Proveedor de IA elegido por el usuario: local | gemini | openai | claude |
     # openrouter | custom (ver app/services/ai_service.py).
     ai_provider: Mapped[str] = mapped_column(String(16), default="local", nullable=False)
@@ -69,6 +78,11 @@ class User(UUIDPkMixin, TimestampMixin, Base):
     sync_logs: Mapped[list["SyncLog"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+
+    @property
+    def has_recovery(self) -> bool:
+        """Indica si la cuenta puede recuperarse con pregunta de seguridad."""
+        return bool(self.recovery_question and self.recovery_answer_hash)
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<User {self.email}>"

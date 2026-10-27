@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
-import { IAStudio, type StudioMode } from "@/components/ia-studio";
+import type { StudioMode } from "@/components/ia-studio";
+import { StudioPageView } from "@/components/studio-page-view";
 
 export const metadata: Metadata = {
   title: "IA Studio",
@@ -16,5 +17,5 @@ export default function StudioPage({
 }) {
   const raw = Array.isArray(searchParams?.mode) ? searchParams?.mode[0] : searchParams?.mode;
   const initialMode = MODES.includes(raw as StudioMode) ? (raw as StudioMode) : "chat";
-  return <IAStudio initialMode={initialMode} />;
+  return <StudioPageView initialMode={initialMode} />;
 }

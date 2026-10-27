@@ -366,7 +366,7 @@ export function InstallAppButton({
         role="dialog"
         aria-modal="true"
         aria-labelledby="install-app-title"
-        className="my-auto w-full max-w-lg rounded-xl border border-border bg-card p-5 shadow-xl sm:p-6"
+        className="my-auto w-full max-w-lg rounded-3xl border border-slate-300/40 bg-slate-100/85 p-5 shadow-[0_28px_80px_-36px_rgba(32,39,48,0.45)] backdrop-blur-3xl dark:border-white/10 dark:bg-[#0b0f18]/90 sm:p-6"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
@@ -387,7 +387,7 @@ export function InstallAppButton({
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Cerrar"
-            className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-200/60 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
           >
             <X className="h-4 w-4" />
           </button>
@@ -397,7 +397,7 @@ export function InstallAppButton({
           {installCard}
         </div>
 
-        <div className="mt-4 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+        <div className="mt-4 rounded-2xl border border-slate-300/40 bg-slate-100/55 p-4 dark:border-slate-700 dark:bg-slate-800/50">
           <p className="flex items-center gap-1.5 text-sm font-semibold">
             <HardDrive className="h-4 w-4 text-indigo-500" /> Copia local en este dispositivo
           </p>

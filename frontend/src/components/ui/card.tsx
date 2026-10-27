@@ -2,12 +2,12 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-/** Panel de cristal translúcido con borde luminoso y desenfoque del fondo. */
+/** Panel de cristal translúcido: pizarra suave, borde tenue y desenfoque extremo. */
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn("glass-card text-card-foreground", className)}
+      className={cn("glass-card text-slate-800 dark:text-card-foreground", className)}
       {...props}
     />
   ),
@@ -25,7 +25,7 @@ const CardTitle = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLHead
   ({ className, ...props }, ref) => (
     <h3
       ref={ref}
-      className={cn("text-[15px] font-semibold leading-snug tracking-[-0.01em]", className)}
+      className={cn("text-[15px] font-semibold leading-snug tracking-[-0.01em] text-slate-800 dark:text-white/90", className)}
       {...props}
     />
   ),
@@ -36,7 +36,7 @@ const CardDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
-  <p ref={ref} className={cn("text-[13px] text-muted-foreground", className)} {...props} />
+  <p ref={ref} className={cn("text-[13px] text-slate-500 dark:text-white/45", className)} {...props} />
 ));
 CardDescription.displayName = "CardDescription";
 

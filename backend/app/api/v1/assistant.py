@@ -7,9 +7,11 @@ solo se ejecutan cuando el usuario confirma (endpoint /confirm).
 from __future__ import annotations
 
 import base64
+import binascii
 import os
 import uuid
 from datetime import timedelta, timezone
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import delete, select
@@ -27,9 +29,11 @@ from app.schemas.assistant import (
     AssistantImportRequest,
     AssistantMessageRead,
     AssistantStatus,
+    ChatAttachment,
     ChatRequest,
     ChatResponse,
     ConfirmRequest,
+    MessageAttachment,
     PendingAction,
 )
 from app.services import ai_service, ai_studio_service, ai_tools
@@ -40,6 +44,9 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/assistant", tags=["assistant"])
 
 _IMAGE_TYPES = {"image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"}
+# Las páginas de PDF se renderizan en el cliente como JPEG; nunca se sube el PDF
+# original en el cuerpo JSON.
+_ATTACHMENT_TYPES = {"image/png", "image/jpeg", "image/webp"}
 
 
 @router.get("/status", response_model=AssistantStatus)
@@ -103,19 +110,22 @@ async def list_messages(
 async def chat(
     payload: ChatRequest, current_user: CurrentUser, db: DbSession
 ) -> ChatResponse:
-    if not payload.message.strip() and payload.document_id is None:
+    prepared = _prepare_attachments(payload.attachments)
+    if not payload.message.strip() and payload.document_id is None and not prepared:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Escribe un mensaje o adjunta un documento",
+            detail="Escribe un mensaje o adjunta una imagen o un documento",
         )
 
-    image_data_url: str | None = None
+    image_data_urls = [item["data_url"] for item in prepared]
     document_text: str | None = None
     document_name: str | None = None
     if payload.document_id is not None:
         image_data_url, document_text, document_name = await _load_attachment(
             db, current_user.id, payload.document_id
         )
+        if image_data_url:
+            image_data_urls.insert(0, image_data_url)
 
     # Historial reciente (orden cronologico) para dar contexto al modelo.
     result = await db.execute(
@@ -128,14 +138,15 @@ async def chat(
     history = [
         {"role": m.role, "content": m.content}
         for m in recent
-        if m.role in ("user", "assistant")
+        if m.role in ("user", "assistant") and m.content.strip()
     ]
 
     user_message = AssistantMessage(
         user_id=current_user.id,
         role="user",
-        content=payload.message.strip() or "(documento adjunto)",
+        content=payload.message.strip(),
         document_id=payload.document_id,
+        attachments=_stored_attachments(prepared),
     )
     db.add(user_message)
     await db.commit()
@@ -146,7 +157,7 @@ async def chat(
             current_user,
             payload.message,
             history,
-            image_data_url=image_data_url,
+            image_data_urls=image_data_urls,
             document_text=document_text,
             document_name=document_name,
         )
@@ -261,6 +272,120 @@ async def import_messages(
     notify(current_user.id, "assistant", {"action": "imported", "count": len(payload.messages)})
     logger.info("Importados %d mensajes para %s", len(payload.messages), current_user.email)
     return {"imported": len(payload.messages)}
+
+
+def _prepare_attachments(attachments: list[ChatAttachment]) -> list[dict[str, Any]]:
+    """Valida las imágenes Base64 y las prepara para Gemini y el historial."""
+    if not attachments:
+        return []
+    if len(attachments) > settings.ai_max_attachments:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Puedes adjuntar hasta {settings.ai_max_attachments} imágenes.",
+        )
+
+    max_image_bytes = settings.ai_max_image_mb * 1024 * 1024
+    max_total_bytes = settings.ai_max_total_attachment_mb * 1024 * 1024
+    total_bytes = 0
+    prepared: list[dict[str, Any]] = []
+
+    for item in attachments:
+        mime_type = (item.mime_type or "").strip().lower()
+        if mime_type == "image/jpg":
+            mime_type = "image/jpeg"
+        if mime_type not in _ATTACHMENT_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Solo se admiten imágenes PNG, JPG o WEBP.",
+            )
+
+        try:
+            raw = base64.b64decode(item.data, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Una de las imágenes adjuntas no es válida.",
+            ) from exc
+
+        if not raw:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Una de las imágenes adjuntas está vacía.",
+            )
+        if len(raw) > max_image_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"Cada imagen debe pesar menos de {settings.ai_max_image_mb} MB.",
+            )
+        total_bytes += len(raw)
+        if total_bytes > max_total_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=(
+                    "Los adjuntos superan el límite total de "
+                    f"{settings.ai_max_total_attachment_mb} MB."
+                ),
+            )
+        if not _looks_like_image(raw, mime_type):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El contenido del adjunto no coincide con una imagen válida.",
+            )
+
+        prepared.append(
+            {
+                "name": item.name.strip()[:200] or "imagen",
+                "mime_type": mime_type,
+                "data_url": (
+                    f"data:{mime_type};base64,"
+                    f"{base64.b64encode(raw).decode('ascii')}"
+                ),
+                "preview": _sanitize_preview(item.preview),
+                "page": item.page,
+                "total_pages": item.total_pages,
+            }
+        )
+
+    return prepared
+
+
+def _stored_attachments(prepared: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Solo se guardan las miniaturas: las imágenes completas no van a la BD."""
+    return [
+        MessageAttachment(
+            name=item["name"],
+            mime_type=item["mime_type"],
+            preview=item["preview"],
+            page=item["page"],
+            total_pages=item["total_pages"],
+        ).model_dump()
+        for item in prepared
+    ]
+
+
+def _sanitize_preview(value: str | None) -> str | None:
+    """Solo se aceptan miniaturas raster en data URL (nunca SVG ni HTML)."""
+    if not value:
+        return None
+    preview = value.strip()
+    allowed = (
+        "data:image/png;base64,",
+        "data:image/jpeg;base64,",
+        "data:image/webp;base64,",
+    )
+    if not preview.startswith(allowed) or len(preview) > 400_000:
+        return None
+    return preview
+
+
+def _looks_like_image(raw: bytes, mime_type: str) -> bool:
+    if mime_type == "image/png":
+        return raw.startswith(b"\x89PNG\r\n\x1a\n")
+    if mime_type == "image/jpeg":
+        return raw.startswith(b"\xff\xd8\xff")
+    if mime_type == "image/webp":
+        return len(raw) >= 12 and raw[:4] == b"RIFF" and raw[8:12] == b"WEBP"
+    return False
 
 
 async def _load_attachment(

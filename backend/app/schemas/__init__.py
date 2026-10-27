@@ -5,7 +5,16 @@ from app.schemas.assistant import (
     ChatRequest,
     ChatResponse,
 )
-from app.schemas.auth import Token, UserLogin, UserRead, UserRegister
+from app.schemas.auth import (
+    PasswordResetRequest,
+    RecoveryQuestionRead,
+    RecoveryQuestionRequest,
+    RecoverySetup,
+    Token,
+    UserLogin,
+    UserRead,
+    UserRegister,
+)
 from app.schemas.classroom import (
     ClassCreate,
     ClassDetail,
@@ -69,6 +78,10 @@ __all__ = [
     "AssistantStatus",
     "ChatRequest",
     "ChatResponse",
+    "PasswordResetRequest",
+    "RecoveryQuestionRead",
+    "RecoveryQuestionRequest",
+    "RecoverySetup",
     "Token",
     "UserLogin",
     "UserRead",

@@ -73,6 +73,9 @@ class Settings(BaseSettings):
     ai_vision_model: str = "llava"
     # Tamano maximo de imagen que se envia al modelo de vision (MB).
     ai_max_image_mb: int = 8
+    # Limites de los adjuntos multimodales de un mismo mensaje.
+    ai_max_attachments: int = 6
+    ai_max_total_attachment_mb: int = 12
 
     # Control de la app por parte de la IA mediante herramientas (tool calling).
     ai_tools_enabled: bool = True

@@ -153,6 +153,42 @@ export async function deleteNotebookDraft(id: string): Promise<void> {
   }
 }
 
+/**
+ * Borra una respuesta cacheada concreta. Se usa al eliminar entidades para que
+ * la copia offline no resucite datos que el servidor ya no tiene.
+ */
+export async function deleteCachedApiResponse(path: string): Promise<void> {
+  const db = await openDatabase();
+  if (!db) return;
+  try {
+    const tx = db.transaction(RESPONSES, "readwrite");
+    tx.objectStore(RESPONSES).delete(path);
+    await transactionDone(tx);
+  } catch {
+    // La app sigue funcionando aunque IndexedDB no esté disponible.
+  }
+}
+
+/** Borra todas las respuestas cacheadas cuya ruta empiece por `prefix`. */
+export async function deleteCachedApiResponsesByPrefix(prefix: string): Promise<void> {
+  const db = await openDatabase();
+  if (!db) return;
+  try {
+    const tx = db.transaction(RESPONSES, "readwrite");
+    const store = tx.objectStore(RESPONSES);
+    const request = store.openCursor();
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor) return;
+      if (String(cursor.key).startsWith(prefix)) cursor.delete();
+      cursor.continue();
+    };
+    await transactionDone(tx);
+  } catch {
+    // La app sigue funcionando aunque IndexedDB no esté disponible.
+  }
+}
+
 export async function clearLocalAppData(): Promise<void> {
   try {
     const db = await openDatabase();

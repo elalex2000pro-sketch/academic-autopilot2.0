@@ -13,6 +13,15 @@ const {
 const fs = require("node:fs");
 const path = require("node:path");
 
+// electron-updater se carga de forma tolerante para que `npm start` siga
+// funcionando aunque las dependencias aún no se hayan instalado.
+let autoUpdater = null;
+try {
+  ({ autoUpdater } = require("electron-updater"));
+} catch (error) {
+  console.warn("electron-updater no está disponible:", error.message);
+}
+
 const APP_URL = (
   process.env.AUTOPILOT_APP_URL || "https://academicautopilot.vercel.app"
 ).replace(/\/+$/, "");
@@ -26,6 +35,25 @@ const CHROME_UA = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
 let mainWindow = null;
 let smokeFinished = false;
 let smokeTimer = null;
+
+// --- Auto-actualizaciones silenciosas -------------------------------------
+// `electron-updater` descarga el instalador en segundo plano y lo aplica al
+// reiniciar. El renderer solo recibe el estado por IPC y muestra el aviso.
+const UPDATE_START_DELAY_MS = 4000;
+const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 horas
+let updateCheckTimer = null;
+let updateInstallStarted = false;
+let updateState = {
+  status: "idle", // idle | checking | available | downloading | ready | current | error | disabled
+  version: null,
+  progress: 0,
+  transferred: 0,
+  total: 0,
+  bytesPerSecond: 0,
+  releaseNotes: "",
+  releaseDate: null,
+  error: null,
+};
 
 app.setAppUserModelId("com.academicautopilot.desktop");
 
@@ -43,7 +71,10 @@ if (!gotTheLock) {
   app.whenReady().then(() => {
     configureSession(session.fromPartition(PARTITION));
     registerWindowControls();
+    registerUpdaterControls();
+    configureAutoUpdater();
     createWindow();
+    scheduleUpdateChecks();
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
@@ -251,6 +282,191 @@ function registerWindowControls() {
   );
 }
 
+function normalizeReleaseNotes(value) {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => (item && typeof item.note === "string" ? item.note : ""))
+      .filter(Boolean)
+      .join("\n");
+  }
+  return "";
+}
+
+function broadcastUpdateState() {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (win.isDestroyed()) continue;
+    win.webContents.send("updater:state", { ...updateState });
+  }
+}
+
+function setUpdateState(patch) {
+  updateState = { ...updateState, ...patch };
+  broadcastUpdateState();
+}
+
+function configureAutoUpdater() {
+  if (!autoUpdater) {
+    updateState = { ...updateState, status: "disabled" };
+    return;
+  }
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.allowPrerelease = false;
+  autoUpdater.allowDowngrade = false;
+  autoUpdater.logger = console;
+
+  autoUpdater.on("checking-for-update", () => {
+    setUpdateState({ status: "checking", error: null });
+  });
+
+  autoUpdater.on("update-available", (info) => {
+    setUpdateState({
+      status: "available",
+      version: info?.version ?? null,
+      releaseNotes: normalizeReleaseNotes(info?.releaseNotes),
+      releaseDate: info?.releaseDate ?? null,
+      progress: 0,
+      transferred: 0,
+      total: 0,
+      error: null,
+    });
+  });
+
+  autoUpdater.on("update-not-available", () => {
+    setUpdateState({ status: "current", progress: 0, error: null });
+  });
+
+  autoUpdater.on("download-progress", (progress) => {
+    setUpdateState({
+      status: "downloading",
+      progress: Math.max(0, Math.min(100, Math.round(progress?.percent ?? 0))),
+      transferred: progress?.transferred ?? 0,
+      total: progress?.total ?? 0,
+      bytesPerSecond: progress?.bytesPerSecond ?? 0,
+      error: null,
+    });
+  });
+
+  autoUpdater.on("update-downloaded", (info) => {
+    setUpdateState({
+      status: "ready",
+      version: info?.version ?? updateState.version,
+      releaseNotes: normalizeReleaseNotes(info?.releaseNotes),
+      releaseDate: info?.releaseDate ?? updateState.releaseDate,
+      progress: 100,
+      error: null,
+    });
+  });
+
+  autoUpdater.on("update-cancelled", () => {
+    setUpdateState({ status: "available", progress: 0 });
+  });
+
+  autoUpdater.on("error", (error) => {
+    console.error("Error del actualizador:", error);
+    setUpdateState({
+      status: "error",
+      error: error?.message || "No se pudo comprobar la actualización.",
+    });
+  });
+}
+
+function scheduleUpdateChecks() {
+  if (SMOKE) return;
+
+  if (!autoUpdater || !app.isPackaged) {
+    // En desarrollo no hay app-update.yml ni instalador que actualizar.
+    setUpdateState({ status: "disabled" });
+    return;
+  }
+
+  const check = () => {
+    autoUpdater.checkForUpdates().catch((error) => {
+      console.error("No se pudo comprobar la actualización:", error);
+      setUpdateState({
+        status: "error",
+        error: error?.message || "No se pudo comprobar la actualización.",
+      });
+    });
+  };
+
+  // Espera a que la ventana termine de pintar para no competir con el arranque.
+  setTimeout(check, UPDATE_START_DELAY_MS);
+  updateCheckTimer = setInterval(check, UPDATE_CHECK_INTERVAL_MS);
+  if (typeof updateCheckTimer.unref === "function") updateCheckTimer.unref();
+}
+
+function isTrustedRenderer(event) {
+  try {
+    const rawUrl = event.senderFrame?.url || event.sender.getURL();
+    return new URL(rawUrl).origin === APP_ORIGIN;
+  } catch {
+    return false;
+  }
+}
+
+function registerUpdaterControls() {
+  ipcMain.handle("updater:get-state", (event) => {
+    if (!isTrustedRenderer(event)) throw new Error("Origen no autorizado");
+    return { ...updateState };
+  });
+
+  ipcMain.handle("updater:check", async (event) => {
+    if (!isTrustedRenderer(event)) throw new Error("Origen no autorizado");
+    if (!autoUpdater || !app.isPackaged) {
+      setUpdateState({ status: "disabled" });
+      return { ...updateState };
+    }
+    try {
+      await autoUpdater.checkForUpdates();
+    } catch (error) {
+      setUpdateState({
+        status: "error",
+        error: error?.message || "No se pudo comprobar la actualización.",
+      });
+    }
+    return { ...updateState };
+  });
+
+  ipcMain.handle("updater:download", async (event) => {
+    if (!isTrustedRenderer(event)) throw new Error("Origen no autorizado");
+    if (!autoUpdater || !app.isPackaged) {
+      return { ...updateState, status: "disabled" };
+    }
+    try {
+      await autoUpdater.downloadUpdate();
+    } catch (error) {
+      // Si ya hay una descarga en curso, no es un fallo real.
+      if (!/already|in progress/i.test(String(error?.message ?? ""))) {
+        setUpdateState({
+          status: "error",
+          error: error?.message || "No se pudo descargar la actualización.",
+        });
+      }
+    }
+    return { ...updateState };
+  });
+
+  ipcMain.handle("updater:install", (event) => {
+    if (!isTrustedRenderer(event)) throw new Error("Origen no autorizado");
+    if (!autoUpdater || !app.isPackaged) {
+      return { ok: false, reason: "not-packaged" };
+    }
+    if (updateState.status !== "ready") {
+      return { ok: false, reason: "not-ready" };
+    }
+    if (updateInstallStarted) return { ok: true };
+
+    updateInstallStarted = true;
+    // Instalación silenciosa y relanzado automático al terminar.
+    setImmediate(() => autoUpdater.quitAndInstall(true, true));
+    return { ok: true };
+  });
+}
+
 function configureSession(appSession) {
   const allowedPermissions = new Set([
     "notifications",
@@ -383,6 +599,13 @@ if (SMOKE) {
     finishSmoke(false, "Tiempo de espera agotado al cargar la app.");
   }, 45000);
 }
+
+app.on("will-quit", () => {
+  if (updateCheckTimer) {
+    clearInterval(updateCheckTimer);
+    updateCheckTimer = null;
+  }
+});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();

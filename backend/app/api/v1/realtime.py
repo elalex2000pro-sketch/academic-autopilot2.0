@@ -28,13 +28,16 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)) -> N
     try:
         payload = decode_access_token(token)
         user_id = uuid.UUID(str(payload.get("sub")))
+        token_version = int(payload.get("ver", 0) or 0)
     except Exception:  # noqa: BLE001
         await websocket.close(code=1008)
         return
 
     async with AsyncSessionLocal() as session:
         user = await session.get(User, user_id)
-    if user is None:
+    # Igual que en las rutas REST: un reset de contrasena invalida los tokens
+    # anteriores tambien para el WebSocket.
+    if user is None or token_version != int(user.token_version or 0):
         await websocket.close(code=1008)
         return
 

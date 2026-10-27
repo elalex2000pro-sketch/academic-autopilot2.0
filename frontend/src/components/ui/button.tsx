@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
  * El relleno azul lleva un brillo interior de un píxel para dar volumen.
  */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-xl text-[13px] font-medium leading-none transition-[background-color,box-shadow,filter] duration-150 ease-mac focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/25 disabled:pointer-events-none disabled:opacity-45 [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-xl text-[13px] font-medium leading-none transition-[background-color,box-shadow,filter] duration-150 ease-mac focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/25 disabled:pointer-events-none disabled:opacity-45 max-md:min-h-11 max-md:min-w-11 [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -18,9 +18,9 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive text-destructive-foreground shadow-button hover:brightness-[1.07] active:brightness-[0.95]",
         outline:
-          "border border-slate-300/45 bg-slate-100/55 text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] backdrop-blur-xl hover:bg-slate-100/75 active:bg-slate-200/50 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/80 dark:hover:bg-white/[0.1]",
+          "border border-slate-300/40 bg-slate-100/70 text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_8px_20px_-14px_rgba(32,39,48,0.2)] backdrop-blur-3xl hover:bg-slate-100/85 active:bg-slate-200/60 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/80 dark:hover:bg-white/[0.1]",
         secondary:
-          "border border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/70 active:bg-secondary/50",
+          "border border-border bg-secondary text-secondary-foreground hover:bg-secondary/70 active:bg-secondary/50",
         ghost: "text-foreground hover:bg-foreground/[0.055] active:bg-foreground/[0.09]",
         link: "text-primary underline-offset-4 hover:underline",
       },

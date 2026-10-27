@@ -8,7 +8,11 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win nsis --x64"
+    "dist": "electron-builder --win nsis --x64",
+    "dist:publish": "electron-builder --win nsis --x64 --publish always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
   },
   "devDependencies": {
     "electron": "^45.0.0",
@@ -54,7 +58,17 @@
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": false,
       "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico"
-    }
+      "uninstallerIcon": "build/icon.ico",
+      "differentialPackage": true
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "elalex2000pro-sketch",
+        "repo": "academic-autopilot2.0",
+        "releaseType": "release"
+      }
+    ],
+    "generateUpdatesFilesForAllChannels": true
   }
 }

@@ -89,19 +89,19 @@ const red = {
   950: "#3d0806",
 };
 
-/** Grises tiza del tema claro: neutros fríos, sin tinte cálido ni blancos puros. */
+/** Grises pizarra suaves del tema claro: fríos, mate, sin tintes cálidos ni blancos puros. */
 const gray = {
-  50: "#f7f7f9",
-  100: "#efeff2",
-  200: "#e1e1e6",
-  300: "#c7c7cc",
-  400: "#aeaeb2",
-  500: "#8e8e93",
-  600: "#6e6e73",
-  700: "#545458",
-  800: "#3a3a3c",
-  900: "#242426",
-  950: "#141415",
+  50: "#f7f9fb",
+  100: "#eef1f5",
+  200: "#e0e5eb",
+  300: "#c9d1db",
+  400: "#a5afba",
+  500: "#5f6b79",
+  600: "#4a5563",
+  700: "#3a4450",
+  800: "#2c3540",
+  900: "#202730",
+  950: "#141a21",
 };
 
 const config: Config = {
@@ -231,9 +231,13 @@ const config: Config = {
       },
       boxShadow: {
         liquid:
-          "0 12px 32px -16px rgba(36, 36, 38, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.32)",
+          "0 12px 32px -16px rgba(32, 39, 48, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.32)",
         "liquid-soft":
-          "0 10px 28px -18px rgba(36, 36, 38, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.28)",
+          "0 10px 28px -18px rgba(32, 39, 48, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.28)",
+        glass:
+          "0 18px 44px -28px rgba(32, 39, 48, 0.14), 0 4px 12px -8px rgba(32, 39, 48, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.34)",
+        "glass-soft":
+          "0 10px 30px -24px rgba(32, 39, 48, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.28)",
         "liquid-dark": "0 8px 32px 0 rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.035)",
         "liquid-blue": "0 14px 34px -18px rgba(0, 102, 255, 0.75)",
         sm: "0 0 0 0.5px rgb(0 0 0 / 0.05), 0 1px 2px rgb(0 0 0 / 0.06)",

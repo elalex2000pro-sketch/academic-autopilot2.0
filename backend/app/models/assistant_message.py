@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPkMixin
@@ -30,6 +30,10 @@ class AssistantMessage(UUIDPkMixin, TimestampMixin, Base):
     role: Mapped[str] = mapped_column(String(20), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     source: Mapped[str | None] = mapped_column(String(20))  # ai | heuristic
+    # Miniaturas de las fotos o páginas de PDF enviadas con el mensaje.
+    attachments: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, default=list, nullable=False
+    )
 
     user: Mapped["User"] = relationship(back_populates="assistant_messages")
     document: Mapped["Document | None"] = relationship()

@@ -26,6 +26,15 @@ def verify_password(plain: str, hashed: str) -> bool:
         return False
 
 
+def normalize_recovery_answer(value: str) -> str:
+    """Normaliza la respuesta de seguridad antes de hashearla o compararla.
+
+    Se ignoran mayusculas, espacios sobrantes y saltos de linea para que la
+    respuesta sea tolerante con la forma de escribir del usuario.
+    """
+    return " ".join(str(value or "").strip().lower().split())
+
+
 def create_access_token(subject: str, extra: dict[str, Any] | None = None) -> str:
     """Genera un JWT firmado con el `sub` = user id."""
     now = datetime.now(tz=timezone.utc)

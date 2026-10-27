@@ -26,6 +26,7 @@ class TaskUpdate(BaseModel):
     description: str | None = None
     due_at: datetime | None = None
     estimated_minutes: int | None = Field(default=None, ge=5, le=60 * 40)
+    course_id: uuid.UUID | None = None
     status: TaskStatus | None = None
     priority: TaskPriority | None = None
 

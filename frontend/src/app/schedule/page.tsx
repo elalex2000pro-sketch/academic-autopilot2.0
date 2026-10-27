@@ -1,6 +1,6 @@
-import { PlannerView } from "@/components/planner-view";
+import { PlannerPageView } from "@/components/planner-page-view";
 
 // Ruta heredada: abre el planificador con las herramientas de horario visibles.
 export default function SchedulePage() {
-  return <PlannerView defaultOpenTools />;
+  return <PlannerPageView defaultOpenTools />;
 }
