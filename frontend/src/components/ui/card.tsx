@@ -2,12 +2,23 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-/** Panel de cristal translúcido: pizarra suave, borde tenue y desenfoque extremo. */
+/**
+ * Panel de cristal translúcido: pizarra suave, borde tenue y desenfoque extremo.
+ *
+ * `overflow-hidden` evita que los hijos con fondo o radios propios rompan el
+ * borde; `relative` + `isolate` mantienen la luz del cursor y los z-index de
+ * los hijos dentro de la propia tarjeta. El radio base es 24 px (rounded-3xl)
+ * y cualquier vista puede sustituirlo por `rounded-2xl` sin desalinearse.
+ */
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn("glass-card text-slate-800 dark:text-card-foreground", className)}
+      data-spotlight=""
+      className={cn(
+        "glass-card relative isolate overflow-hidden rounded-3xl border border-white/50 text-slate-800 dark:border-white/10 dark:text-card-foreground",
+        className,
+      )}
       {...props}
     />
   ),

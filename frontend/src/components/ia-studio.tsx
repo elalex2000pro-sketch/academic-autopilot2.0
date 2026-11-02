@@ -30,6 +30,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { NotificationBell } from "@/components/notification-center";
 import { api, ApiError } from "@/lib/api";
 import {
   MAX_ATTACHMENTS,
@@ -1486,6 +1487,7 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
         </div>
 
         <div className="flex shrink-0 items-center gap-0.5">
+          <NotificationBell className="hidden lg:inline-flex" />
           <Badge
             variant="secondary"
             className={cn(

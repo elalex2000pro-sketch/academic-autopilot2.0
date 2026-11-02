@@ -2,16 +2,24 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { CalendarCheck, Loader2, LogOut, Settings } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
 import { MobileNavigationBar } from "@/components/mobile-navigation-bar";
+import { NotificationBell, NotificationCenter } from "@/components/notification-center";
 import { OfflineStatus } from "@/components/offline-status";
 import { ThemeCycleButton } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { WindowControls } from "@/components/window-controls";
-import { NAV_GROUPS, SECONDARY_NAV_ITEMS, SETTINGS_ITEM, isActive } from "@/lib/navigation";
+import {
+  ALL_ITEMS,
+  NAV_GROUPS,
+  SECONDARY_NAV_ITEMS,
+  SETTINGS_ITEM,
+  isActive,
+} from "@/lib/navigation";
+import { hasCompletedOnboarding, markOnboardingCompleted } from "@/lib/onboarding";
 import { cn } from "@/lib/utils";
 
 // El tutorial y el instalador no participan en el primer pintado: se cargan
@@ -24,6 +32,13 @@ const HelpWidget = lazy(() =>
 const InstallAppButton = lazy(() =>
   import("@/components/install-app-button").then((module) => ({
     default: module.InstallAppButton,
+  })),
+);
+// El tour de bienvenida solo se descarga si la marca local dice que aún no se
+// ha completado. Los usuarios que ya lo vieron no pagan su JavaScript.
+const OnboardingModal = lazy(() =>
+  import("@/components/onboarding-modal").then((module) => ({
+    default: module.OnboardingModal,
   })),
 );
 
@@ -57,11 +72,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const isPublic = pathname === "/login";
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Guard de rutas: sin sesión -> /login.
   useEffect(() => {
     if (!loading && !user && !isPublic) router.replace("/login");
   }, [loading, user, isPublic, router]);
+
+  // El tour solo aparece la primera vez que se abre la app en este
+  // dispositivo. Se comprueba tras montar para no romper la hidratación y se
+  // espera a tener sesión para no tapar la pantalla de carga.
+  useEffect(() => {
+    if (loading || !user || isPublic) return;
+    if (!hasCompletedOnboarding()) setShowOnboarding(true);
+  }, [loading, user, isPublic]);
+
+  const finishOnboarding = useCallback(() => {
+    markOnboardingCompleted();
+    setShowOnboarding(false);
+  }, []);
 
   if (isPublic) {
     return (
@@ -89,9 +118,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // Studio y el lector de libros ocupan toda la altura disponible y ya
   // gestionan su propia cabecera; el inset del shell les haría desbordar.
   const isImmersive = pathname === "/studio" || pathname.startsWith("/library/");
+  const currentSection =
+    ALL_ITEMS.find((item) => isActive(pathname, item.href))?.label ?? "Academic Autopilot";
 
   return (
-    <div className="app-shell flex min-h-dvh flex-col bg-transparent lg:flex-row">
+    <NotificationCenter>
+      <div className="app-shell flex min-h-dvh flex-col bg-transparent lg:flex-row">
       <aside className="sticky top-0 hidden h-dvh w-[236px] shrink-0 flex-col border-r border-slate-300/40 bg-slate-100/70 shadow-[18px_0_60px_-48px_rgba(32,39,48,0.22)] backdrop-blur-3xl dark:border-white/5 dark:bg-black/20 dark:shadow-[18px_0_60px_-48px_rgba(0,0,0,0.9)] lg:flex">
         <div className="app-drag flex h-12 shrink-0 items-center px-4">
           <WindowControls />
@@ -196,6 +228,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col bg-transparent">
+        {/* Barra superior de escritorio: ocupa el alto que antes reservaba el
+            contenido y aloja el centro de avisos. */}
+        {!isImmersive && (
+          <header className="app-drag sticky top-0 z-40 hidden h-12 shrink-0 items-center justify-between gap-3 border-b border-slate-300/40 bg-slate-100/70 px-5 backdrop-blur-3xl dark:border-white/[0.06] dark:bg-black/40 lg:flex">
+            <span className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">
+              {currentSection}
+            </span>
+            <div className="app-no-drag flex shrink-0 items-center gap-0.5">
+              <NotificationBell />
+            </div>
+          </header>
+        )}
+
         {/* Barra superior móvil, con la translucidez de una toolbar. */}
         <header className="sticky top-0 z-40 border-b border-slate-300/40 bg-slate-100/70 pt-[env(safe-area-inset-top,0px)] backdrop-blur-3xl dark:border-white/[0.06] dark:bg-black/40 lg:hidden">
           <div className="flex items-center justify-between gap-2 px-3 py-2">
@@ -204,6 +249,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Suspense fallback={<span className="block h-8 w-8" />}>
                 <InstallAppButton compact />
               </Suspense>
+              <NotificationBell />
               <ThemeCycleButton className="text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:text-white/50 dark:hover:bg-white/10 dark:hover:text-white" />
               <Button
                 variant="ghost"
@@ -241,12 +287,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <OfflineStatus />
 
-        {/* 40 px en móvil y 48 px en escritorio: alinea el contenido con la barra de título. */}
+        {/* 40 px en móvil; en escritorio la barra superior ya ocupa 48 px. */}
         <main
           className={cn(
             "min-w-0 flex-1 overflow-x-hidden bg-transparent",
             !isImmersive &&
-              "pt-10 pb-[calc(var(--mobile-nav-offset)+1.25rem)] lg:pb-0 lg:pt-12",
+              "pt-10 pb-[calc(var(--mobile-nav-offset)+1.25rem)] lg:pb-0 lg:pt-0",
           )}
         >
           {children}
@@ -257,6 +303,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <MobileNavigationBar />
-    </div>
+      </div>
+
+      {showOnboarding && (
+        <Suspense fallback={null}>
+          <OnboardingModal onClose={finishOnboarding} />
+        </Suspense>
+      )}
+    </NotificationCenter>
   );
 }

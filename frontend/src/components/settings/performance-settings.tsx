@@ -46,11 +46,12 @@ const ANIMATION_OPTIONS: PreferenceOption<AnimationLevel>[] = [
     tag: "Recomendado",
   },
   {
-    value: "fluid",
-    label: "Máximo / Fluido",
-    description: "Animaciones completas, elevación 3D y desenfoque dinámico al interactuar.",
+    value: "ultra",
+    label: "Ultra",
+    description:
+      "Resortes suaves, aceleración GPU, elevación 3D y luz que sigue al cursor.",
     icon: Sparkles,
-    tag: "Más expresivo",
+    tag: "GPU + resortes",
   },
 ];
 
@@ -76,7 +77,7 @@ const PERFORMANCE_OPTIONS: PreferenceOption<PerformanceProfile>[] = [
 const ANIMATION_LABEL: Record<AnimationLevel, string> = {
   reduced: "Animaciones reducidas",
   standard: "Animaciones estándar",
-  fluid: "Animaciones fluidas",
+  ultra: "Animaciones Ultra",
 };
 
 const PERFORMANCE_LABEL: Record<PerformanceProfile, string> = {

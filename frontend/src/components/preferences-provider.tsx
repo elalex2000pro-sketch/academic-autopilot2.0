@@ -12,7 +12,7 @@ import {
 
 const STORAGE_KEY = "academic-autopilot-preferences";
 
-export type AnimationLevel = "reduced" | "standard" | "fluid";
+export type AnimationLevel = "reduced" | "standard" | "ultra";
 export type PerformanceProfile = "efficiency" | "quality";
 
 export interface Preferences {
@@ -37,8 +37,19 @@ const DEFAULT_PREFERENCES: Preferences = {
   performanceProfile: "quality",
 };
 
-const ANIMATION_LEVELS: AnimationLevel[] = ["reduced", "standard", "fluid"];
+const ANIMATION_LEVELS: AnimationLevel[] = ["reduced", "standard", "ultra"];
 const PERFORMANCE_PROFILES: PerformanceProfile[] = ["efficiency", "quality"];
+
+/**
+ * Acepta el antiguo valor `fluid` y lo migra a `ultra`. Así las preferencias
+ * guardadas antes de este cambio siguen funcionando sin perder el nivel máximo.
+ */
+function normalizeAnimationLevel(value: unknown): AnimationLevel | null {
+  if (value === "fluid") return "ultra";
+  return typeof value === "string" && (ANIMATION_LEVELS as string[]).includes(value)
+    ? (value as AnimationLevel)
+    : null;
+}
 
 interface PreferencesContextValue extends Preferences {
   setAutoStrikeOverdue: (value: boolean) => void;
@@ -49,10 +60,6 @@ interface PreferencesContextValue extends Preferences {
 }
 
 const PreferencesContext = createContext<PreferencesContextValue | null>(null);
-
-function isAnimationLevel(value: unknown): value is AnimationLevel {
-  return typeof value === "string" && (ANIMATION_LEVELS as string[]).includes(value);
-}
 
 function isPerformanceProfile(value: unknown): value is PerformanceProfile {
   return typeof value === "string" && (PERFORMANCE_PROFILES as string[]).includes(value);
@@ -75,9 +82,9 @@ function readPreferences(): Preferences {
         typeof parsed.useCustomTitlebar === "boolean"
           ? parsed.useCustomTitlebar
           : DEFAULT_PREFERENCES.useCustomTitlebar,
-      animationLevel: isAnimationLevel(parsed.animationLevel)
-        ? parsed.animationLevel
-        : DEFAULT_PREFERENCES.animationLevel,
+      animationLevel:
+        normalizeAnimationLevel(parsed.animationLevel) ??
+        DEFAULT_PREFERENCES.animationLevel,
       performanceProfile: isPerformanceProfile(parsed.performanceProfile)
         ? parsed.performanceProfile
         : DEFAULT_PREFERENCES.performanceProfile,

@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 
 import { AddToNotebookButton } from "@/components/add-to-notebook";
+import { NotificationBell } from "@/components/notification-center";
 import { PdfCanvasViewer } from "@/components/pdf-canvas-viewer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -381,6 +382,7 @@ export default function BookReaderView() {
               </div>
               <Progress value={progress} className="mt-1 h-1.5 bg-white/35 dark:bg-white/10" />
             </div>
+            <NotificationBell className="hidden lg:inline-flex" />
             <Badge
               variant="secondary"
               className="rounded-full border border-white/50 bg-white/55 text-[10px] font-semibold text-slate-600 backdrop-blur-xl dark:border-white/10 dark:bg-white/10 dark:text-white/65"
@@ -483,6 +485,7 @@ export default function BookReaderView() {
             <Progress value={progress} className="mt-1 h-1.5" />
           </div>
           <div className="flex items-center gap-1.5">
+            <NotificationBell className="hidden lg:inline-flex" />
             <AddToNotebookButton bookId={book.id} label="Cuaderno" />
             <button
               type="button"

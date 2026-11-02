@@ -310,8 +310,11 @@
    -------------------------------------------------------------------------- */
 @layer components {
   .glass-card {
-    border-radius: 28px;
-    border: 1px solid rgb(201 209 219 / 0.4);
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: 24px;
+    border: 1px solid rgb(255 255 255 / 0.55);
     background-color: rgb(238 241 245 / 0.7);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.34),
@@ -322,7 +325,7 @@
   }
 
   .dark .glass-card {
-    border-color: rgb(255 255 255 / 0.055);
+    border-color: rgb(255 255 255 / 0.1);
     background-color: rgb(0 0 0 / 0.22);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.035),
@@ -330,8 +333,11 @@
   }
 
   .glass-strong {
-    border-radius: 28px;
-    border: 1px solid rgb(201 209 219 / 0.45);
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: 24px;
+    border: 1px solid rgb(255 255 255 / 0.55);
     background-image: linear-gradient(145deg, rgb(241 244 247 / 0.82), rgb(232 236 241 / 0.7));
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.4),
@@ -341,7 +347,7 @@
   }
 
   .dark .glass-strong {
-    border-color: rgb(255 255 255 / 0.06);
+    border-color: rgb(255 255 255 / 0.1);
     background-image: linear-gradient(145deg, rgb(0 0 0 / 0.3), rgb(0 0 0 / 0.18));
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.045),
@@ -362,7 +368,11 @@
 
   /* Cristal principal: tiza pizarra en claro y acrílico oscuro en oscuro. */
   .app-glass {
-    border: 1px solid rgb(201 209 219 / 0.4);
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: 24px;
+    border: 1px solid rgb(255 255 255 / 0.55);
     background-color: rgb(238 241 245 / 0.68);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.34),
@@ -373,7 +383,7 @@
   }
 
   .dark .app-glass {
-    border-color: rgb(255 255 255 / 0.055);
+    border-color: rgb(255 255 255 / 0.1);
     background-color: rgb(0 0 0 / 0.22);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.03),
@@ -381,7 +391,11 @@
   }
 
   .app-glass-strong {
-    border: 1px solid rgb(201 209 219 / 0.45);
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: 24px;
+    border: 1px solid rgb(255 255 255 / 0.55);
     background-color: rgb(238 241 245 / 0.8);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.4),
@@ -391,7 +405,7 @@
   }
 
   .dark .app-glass-strong {
-    border-color: rgb(255 255 255 / 0.06);
+    border-color: rgb(255 255 255 / 0.1);
     background-color: rgb(0 0 0 / 0.3);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.035),
@@ -466,13 +480,13 @@
   display: none;
 }
 
-/* Luz que sigue al cursor sobre cualquier superficie con data-spotlight. */
-[data-spotlight] {
+/* Luz que sigue al cursor sobre tarjetas y paneles de cristal. */
+:is([data-spotlight], .glass-card, .glass-strong, .app-glass, .app-glass-strong) {
   position: relative;
   isolation: isolate;
 }
 
-[data-spotlight]::before {
+:is([data-spotlight], .glass-card, .glass-strong, .app-glass, .app-glass-strong)::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -480,15 +494,15 @@
   border-radius: inherit;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.3s ease;
   background: radial-gradient(
-    260px circle at var(--mx, 50%) var(--my, 0%),
-    hsl(var(--primary) / 0.12),
-    transparent 68%
+    600px circle at var(--mx, 50%) var(--my, 0%),
+    rgb(255 255 255 / 0.06),
+    transparent 40%
   );
 }
 
-[data-spotlight]::after {
+:is([data-spotlight], .glass-card, .glass-strong, .app-glass, .app-glass-strong)::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -497,11 +511,11 @@
   padding: 1px;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.3s ease;
   background: radial-gradient(
-    200px circle at var(--mx, 50%) var(--my, 0%),
-    hsl(var(--primary) / 0.5),
-    transparent 70%
+    600px circle at var(--mx, 50%) var(--my, 0%),
+    rgb(255 255 255 / 0.32),
+    transparent 40%
   );
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
@@ -513,9 +527,36 @@
   mask-composite: exclude;
 }
 
-[data-spotlight]:hover::before,
-[data-spotlight]:hover::after {
-  opacity: 1;
+/* Sobre cristal claro el blanco necesita un poco más de presencia. */
+html:not(.dark) :is([data-spotlight], .glass-card, .glass-strong, .app-glass, .app-glass-strong)::before {
+  background: radial-gradient(
+    600px circle at var(--mx, 50%) var(--my, 0%),
+    rgb(255 255 255 / 0.34),
+    transparent 42%
+  );
+}
+
+html:not(.dark) :is([data-spotlight], .glass-card, .glass-strong, .app-glass, .app-glass-strong)::after {
+  background: radial-gradient(
+    600px circle at var(--mx, 50%) var(--my, 0%),
+    rgb(255 255 255 / 0.72),
+    transparent 40%
+  );
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :is([data-spotlight], .glass-card, .glass-strong, .app-glass, .app-glass-strong):hover::before,
+  :is([data-spotlight], .glass-card, .glass-strong, .app-glass, .app-glass-strong):hover::after {
+    opacity: 1;
+  }
+}
+
+/* Sin movimiento o en modo ahorro no dibujamos la luz. */
+html[data-animations="reduced"] :is([data-spotlight], .glass-card, .glass-strong, .app-glass, .app-glass-strong)::before,
+html[data-animations="reduced"] :is([data-spotlight], .glass-card, .glass-strong, .app-glass, .app-glass-strong)::after,
+html[data-performance="efficiency"] :is([data-spotlight], .glass-card, .glass-strong, .app-glass, .app-glass-strong)::before,
+html[data-performance="efficiency"] :is([data-spotlight], .glass-card, .glass-strong, .app-glass, .app-glass-strong)::after {
+  display: none;
 }
 
 .lift {
@@ -652,6 +693,86 @@
 }
 
 /* --------------------------------------------------------------------------
+   Movimiento Ultra.
+   Curva de resorte calculada para stiffness: 300, damping: 25 (masa 1):
+   ζ = 0.722 y rebote máximo ≈ 3.8 %. `linear()` reproduce la curva exacta;
+   el cubic-bezier es el fallback para navegadores sin soporte.
+   -------------------------------------------------------------------------- */
+:root {
+  --ease-ultra: cubic-bezier(0.32, 1.12, 0.58, 1);
+  --duration-ultra: 0.55s;
+}
+
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    --ease-ultra: linear(
+      0,
+      0.0308,
+      0.1079,
+      0.2121,
+      0.3288,
+      0.4473,
+      0.5602,
+      0.6627,
+      0.7522,
+      0.8276,
+      0.889,
+      0.9374,
+      0.974,
+      1.0005,
+      1.0186,
+      1.0298,
+      1.0358,
+      1.0378,
+      1.0369,
+      1.0342,
+      1.0304,
+      1.0261,
+      1.0216,
+      1.0172,
+      1.0133,
+      1.0098,
+      1.0069,
+      1.0045,
+      1.0026,
+      1.0012,
+      1.0001,
+      0.9994,
+      0.9989,
+      0.9987,
+      0.9986,
+      0.9986,
+      1
+    );
+  }
+}
+
+/* Transición de página: el template de App Router se remonta en cada ruta. */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.page-enter {
+  animation: page-enter 0.28s cubic-bezier(0.32, 0.72, 0, 1) backwards;
+}
+
+html[data-animations="ultra"] .page-enter {
+  animation-duration: var(--duration-ultra);
+  animation-timing-function: var(--ease-ultra);
+}
+
+html[data-animations="reduced"] .page-enter {
+  animation: none !important;
+}
+
+/* --------------------------------------------------------------------------
    Preferencias globales de interfaz.
    `PreferencesProvider` publica data-animations y data-performance en <html>.
    -------------------------------------------------------------------------- */
@@ -678,54 +799,91 @@ html[data-animations="reduced"] .stagger-in > * {
   animation: none !important;
 }
 
-/* Nivel fluido: transiciones largas y una elevación 3D contenida. */
-html[data-animations="fluid"] .glass-card,
-html[data-animations="fluid"] .glass-strong,
-html[data-animations="fluid"] .app-glass,
-html[data-animations="fluid"] .app-glass-strong,
-html[data-animations="fluid"] .app-glass-soft {
+/* Nivel Ultra: resortes, aceleración GPU y elevación 3D contenida.
+   `translateZ(0)` promueve la capa una sola vez; `will-change` se activa
+   únicamente durante la interacción para no reservar VRAM de forma permanente. */
+html[data-animations="ultra"] .glass-card,
+html[data-animations="ultra"] .glass-strong,
+html[data-animations="ultra"] .app-glass,
+html[data-animations="ultra"] .app-glass-strong {
+  transform: translateZ(0);
   transition:
-    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-    background-color 0.45s ease,
-    border-color 0.45s ease,
-    backdrop-filter 0.45s ease,
-    -webkit-backdrop-filter 0.45s ease;
+    transform var(--duration-ultra) var(--ease-ultra),
+    box-shadow var(--duration-ultra) var(--ease-ultra),
+    background-color 0.4s ease,
+    border-color 0.4s ease,
+    backdrop-filter 0.4s ease,
+    -webkit-backdrop-filter 0.4s ease;
   transform-style: preserve-3d;
 }
 
-html[data-animations="fluid"] .glass-card:hover,
-html[data-animations="fluid"] .glass-strong:hover,
-html[data-animations="fluid"] .app-glass:hover,
-html[data-animations="fluid"] .app-glass-strong:hover {
-  transform: translateY(-2px) scale(1.002);
+html[data-animations="ultra"] .app-glass-soft {
+  transition:
+    background-color 0.4s ease,
+    border-color 0.4s ease,
+    box-shadow 0.4s ease;
+}
+
+html[data-animations="ultra"] .glass-card:hover,
+html[data-animations="ultra"] .glass-strong:hover {
+  transform: translate3d(0, -2px, 0) scale(1.002);
+  will-change: transform;
   box-shadow:
     0 22px 52px -32px rgb(32 39 48 / 0.22),
     0 8px 18px -12px rgb(32 39 48 / 0.1);
 }
 
-html[data-animations="fluid"].dark .glass-card:hover,
-html[data-animations="fluid"].dark .glass-strong:hover,
-html[data-animations="fluid"].dark .app-glass:hover,
-html[data-animations="fluid"].dark .app-glass-strong:hover {
+html[data-animations="ultra"] .app-glass:hover,
+html[data-animations="ultra"] .app-glass-strong:hover {
+  transform: translate3d(0, -1px, 0);
+  will-change: transform;
+  box-shadow:
+    0 22px 52px -32px rgb(32 39 48 / 0.22),
+    0 8px 18px -12px rgb(32 39 48 / 0.1);
+}
+
+html[data-animations="ultra"].dark .glass-card:hover,
+html[data-animations="ultra"].dark .glass-strong:hover,
+html[data-animations="ultra"].dark .app-glass:hover,
+html[data-animations="ultra"].dark .app-glass-strong:hover {
   box-shadow:
     0 22px 52px -28px rgb(0 0 0 / 0.55),
     0 8px 18px -12px rgb(0 0 0 / 0.35);
 }
 
-html[data-animations="fluid"][data-performance="quality"] .glass-card:hover,
-html[data-animations="fluid"][data-performance="quality"] .app-glass:hover,
-html[data-animations="fluid"][data-performance="quality"] .app-glass-strong:hover {
+html[data-animations="ultra"][data-performance="quality"] .glass-card:hover,
+html[data-animations="ultra"][data-performance="quality"] .app-glass:hover,
+html[data-animations="ultra"][data-performance="quality"] .app-glass-strong:hover {
   backdrop-filter: blur(76px) saturate(150%);
   -webkit-backdrop-filter: blur(76px) saturate(150%);
 }
 
-html[data-animations="fluid"] .animate-fade-up {
-  animation-duration: 0.4s;
+html[data-animations="ultra"] .animate-fade-up {
+  animation-duration: 0.5s;
+  animation-timing-function: var(--ease-ultra);
 }
 
-html[data-animations="fluid"] .animate-fade-in {
-  animation-duration: 0.34s;
+html[data-animations="ultra"] .animate-fade-in {
+  animation-duration: 0.32s;
+  animation-timing-function: ease-out;
+}
+
+html[data-animations="ultra"] .animate-pop,
+html[data-animations="ultra"] .animate-update-in,
+html[data-animations="ultra"] .animate-check-pop {
+  animation-duration: var(--duration-ultra);
+  animation-timing-function: var(--ease-ultra);
+}
+
+html[data-animations="ultra"] .stagger-in > * {
+  animation-duration: 0.4s;
+  animation-timing-function: var(--ease-ultra);
+}
+
+html[data-animations="ultra"] .lift {
+  transition:
+    transform var(--duration-ultra) var(--ease-ultra),
+    box-shadow var(--duration-ultra) var(--ease-ultra);
 }
 
 /* Modo Ahorro: sin desenfoque de fondo y con sombras planas. */
@@ -798,11 +956,20 @@ html[data-performance="efficiency"].dark .app-shell [data-mobile-nav] {
   background-color: rgb(8 11 17 / 0.97) !important;
 }
 
-html[data-performance="efficiency"][data-animations="fluid"] .glass-card:hover,
-html[data-performance="efficiency"][data-animations="fluid"] .glass-strong:hover,
-html[data-performance="efficiency"][data-animations="fluid"] .app-glass:hover,
-html[data-performance="efficiency"][data-animations="fluid"] .app-glass-strong:hover {
+html[data-performance="efficiency"][data-animations="ultra"] .glass-card,
+html[data-performance="efficiency"][data-animations="ultra"] .glass-strong,
+html[data-performance="efficiency"][data-animations="ultra"] .app-glass,
+html[data-performance="efficiency"][data-animations="ultra"] .app-glass-strong {
   transform: none !important;
+  will-change: auto !important;
+}
+
+html[data-performance="efficiency"][data-animations="ultra"] .glass-card:hover,
+html[data-performance="efficiency"][data-animations="ultra"] .glass-strong:hover,
+html[data-performance="efficiency"][data-animations="ultra"] .app-glass:hover,
+html[data-performance="efficiency"][data-animations="ultra"] .app-glass-strong:hover {
+  transform: none !important;
+  will-change: auto !important;
   box-shadow: 0 1px 2px rgb(32 39 48 / 0.07) !important;
 }
 

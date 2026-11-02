@@ -1059,27 +1059,29 @@ export default function DashboardPage() {
                 }}
               >
                 <span className="absolute inset-x-0 top-0 h-px bg-slate-400/20 dark:bg-white/10" />
-                <BookOpen className="h-4 w-4 text-white/80" strokeWidth={1.8} />
+                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-600 text-white shadow-[0_4px_10px_-4px_rgba(37,99,235,0.8)]">
+                  <BookOpen className="h-3.5 w-3.5" strokeWidth={1.9} />
+                </span>
                 <span className="text-[8px] font-semibold uppercase tracking-wider text-white/55">
                   {continueBook.format}
                 </span>
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="text-[9.5px] font-medium uppercase tracking-[0.12em] text-slate-400 dark:text-white/30">
+                <p className="text-[9.5px] font-medium uppercase tracking-[0.12em] text-slate-600 dark:text-white/70">
                   Continuar leyendo
                 </p>
-                <p className="mt-1 truncate text-[13px] font-medium text-slate-800 dark:text-white/85">
+                <p className="mt-1 truncate text-[13px] font-medium text-slate-900 dark:text-white/90">
                   {continueBook.title}
                 </p>
-                <p className="mt-0.5 truncate text-[10.5px] text-slate-500 dark:text-white/35">
+                <p className="mt-0.5 truncate text-[10.5px] text-slate-600 dark:text-white/70">
                   {continueBook.current_section_title ||
                     `Sección ${continueBook.current_section_index + 1}`}{" "}
                   · {Math.round(continueBook.progress_percent)}%
                 </p>
                 <div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-900/[0.06] dark:bg-white/[0.08]">
                   <div
-                    className="h-full rounded-full bg-[#0a84ff]"
+                    className="h-full rounded-full bg-blue-600 dark:bg-blue-500"
                     style={{ width: `${Math.max(2, Math.min(100, continueBook.progress_percent))}%` }}
                   />
                 </div>

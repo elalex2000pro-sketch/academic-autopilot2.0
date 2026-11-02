@@ -428,36 +428,42 @@ export default function LibraryView() {
           </section>
 
           {continueBook && (
-            <section className="overflow-hidden rounded-xl border border-border bg-foreground p-5 text-background sm:p-6">
+            <section className="overflow-hidden rounded-3xl border border-white/60 bg-white/[0.5] p-5 text-slate-900 shadow-[0_18px_44px_-28px_rgba(32,39,48,0.18)] backdrop-blur-3xl dark:border-white/10 dark:bg-slate-900/40 dark:text-white/90 sm:p-6">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
                 <div
-                  className="flex h-24 w-20 shrink-0 flex-col justify-between rounded-xl bg-white/15 p-3 shadow-inner ring-1 ring-white/25"
-                  style={{ background: "linear-gradient(160deg, rgba(255,255,255,.28), rgba(255,255,255,.08))" }}
+                  className="flex h-24 w-20 shrink-0 flex-col justify-between rounded-xl p-3 text-white shadow-[0_10px_24px_-14px_rgba(15,23,42,0.7)] ring-1 ring-white/20"
+                  style={{
+                    background: `linear-gradient(160deg, ${continueBook.cover_color}, #0f172a)`,
+                  }}
                 >
-                  <BookOpen className="h-5 w-5" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-white/80">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white shadow-[0_4px_10px_-4px_rgba(37,99,235,0.8)]">
+                    <BookOpen className="h-4 w-4" strokeWidth={1.9} />
+                  </span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-white/70">
                     {FORMAT_LABEL[continueBook.format] || continueBook.format}
                   </span>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/75">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-600 dark:text-white/70">
                     Continuar leyendo
                   </p>
-                  <h2 className="mt-1 truncate text-xl font-bold sm:text-2xl">{continueBook.title}</h2>
-                  <p className="mt-1 text-sm text-white/80">
+                  <h2 className="mt-1 truncate text-xl font-bold text-slate-900 dark:text-white/95 sm:text-2xl">
+                    {continueBook.title}
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-white/70">
                     {continueBook.current_section_title || `Sección ${continueBook.current_section_index + 1}`}
                     {" · "}
                     {Math.round(continueBook.progress_percent)}% leído
                   </p>
-                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/20">
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-900/10 dark:bg-white/15">
                     <div
-                      className="h-full rounded-full bg-white keep-white transition-all"
+                      className="h-full rounded-full bg-blue-600 transition-all dark:bg-blue-500"
                       style={{ width: `${Math.max(2, continueBook.progress_percent)}%` }}
                     />
                   </div>
                 </div>
                 <Link href={`/library/${continueBook.id}`} className="shrink-0">
-                  <Button className="bg-white keep-white text-indigo-700 hover:bg-indigo-50">
+                  <Button className="bg-blue-600 text-white shadow-[0_10px_24px_-12px_rgba(37,99,235,0.9)] hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400">
                     Seguir leyendo <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>

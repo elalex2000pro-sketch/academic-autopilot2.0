@@ -49,7 +49,7 @@ const THEME_SCRIPT = `(function(){try{var k="academic-autopilot-theme";var s=loc
 
 // Aplica animaciones y perfil de rendimiento antes del primer pintado para que
 // el modo ahorro no muestre un destello de cristal pesado al cargar.
-const INTERFACE_SCRIPT = `(function(){try{var p=JSON.parse(localStorage.getItem("academic-autopilot-preferences")||"{}");var r=document.documentElement;var a=p&&p.animationLevel;var f=p&&p.performanceProfile;r.dataset.animations=a==="reduced"||a==="fluid"?a:"standard";r.dataset.performance=f==="efficiency"?"efficiency":"quality";}catch(e){}})();`;
+const INTERFACE_SCRIPT = `(function(){try{var p=JSON.parse(localStorage.getItem("academic-autopilot-preferences")||"{}");var r=document.documentElement;var a=p&&p.animationLevel;var f=p&&p.performanceProfile;r.dataset.animations=a==="reduced"?"reduced":a==="ultra"||a==="fluid"?"ultra":"standard";r.dataset.performance=f==="efficiency"?"efficiency":"quality";}catch(e){}})();`;
 
 // Captura el aviso de instalación en cuanto llega. Si se espera a que React
 // hidrate, algunos navegadores pueden emitirlo antes y perder la oportunidad
