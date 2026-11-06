@@ -6,6 +6,7 @@ import {
   AudioLines,
   BookOpen,
   Check,
+  ChevronDown,
   Download,
   FileSpreadsheet,
   FileText,
@@ -14,6 +15,7 @@ import {
   Loader2,
   NotebookPen,
   Plus,
+  Settings2,
   Share2,
   Sparkles,
   Trash2,
@@ -120,6 +122,7 @@ export default function NotebooksPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showTools, setShowTools] = useState(false);
   const [classes, setClasses] = useState<SharedClass[]>([]);
   const [shareClassId, setShareClassId] = useState("");
   const [sharePermission, setSharePermission] = useState<"read" | "edit">("read");
@@ -543,28 +546,31 @@ export default function NotebooksPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-6 animate-fade-up">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <NotebookPen className="h-6 w-6 text-indigo-600" />
-            Cuadernos
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Apuntes, resúmenes y esquemas por materia. Se guardan solos y puedes exportarlos a Word
-            o Excel.
-          </p>
+    <div className="mx-auto max-w-6xl space-y-6 p-5 sm:p-7 animate-fade-up">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-900/[0.06] pb-4 dark:border-white/[0.07]">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#0066FF]/10 text-[#0066FF] dark:text-[#8ab9ff]">
+            <NotebookPen className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-[22px] font-semibold tracking-[-0.03em] text-slate-900 dark:text-white/95">
+              Cuadernos
+            </h1>
+            <p className="text-[11.5px] text-slate-500 dark:text-white/40">
+              Apuntes que se guardan solos. Sin ruido, solo tú y las ideas.
+            </p>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           <Link href="/studio?mode=audio">
-            <Button variant="secondary">
-              <AudioLines className="h-4 w-4" /> Transcribir audio
+            <Button variant="ghost" size="sm">
+              <AudioLines className="h-4 w-4" /> Audio
             </Button>
           </Link>
-          <Button variant="secondary" onClick={downloadExcel} disabled={notebooks.length === 0}>
+          <Button variant="ghost" size="sm" onClick={downloadExcel} disabled={notebooks.length === 0}>
             <FileSpreadsheet className="h-4 w-4" /> Excel
           </Button>
-          <Button onClick={() => setShowTemplates(true)} disabled={creating}>
+          <Button size="sm" onClick={() => setShowTemplates(true)} disabled={creating}>
             {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             Nuevo cuaderno
           </Button>
@@ -572,13 +578,13 @@ export default function NotebooksPage() {
       </header>
 
       {notice && (
-        <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">
+        <p className="rounded-xl bg-rose-500/10 px-3 py-2 text-[12px] text-rose-700 dark:text-rose-200">
           {notice}
         </p>
       )}
 
       {notebooks.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-indigo-200 bg-slate-100/55 p-12 text-center backdrop-blur-3xl">
+        <div className="rounded-3xl bg-white/45 p-12 text-center backdrop-blur-xl dark:bg-white/[0.03]">
           <NotebookPen className="mx-auto h-10 w-10 text-indigo-400" />
           <h2 className="mt-3 text-lg font-semibold">Todavía no tienes cuadernos</h2>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
@@ -590,28 +596,33 @@ export default function NotebooksPage() {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
-          <aside className="space-y-2">
+        <div className="grid gap-6 lg:grid-cols-[250px_minmax(0,1fr)]">
+          <aside className="space-y-1">
+            <p className="px-3 pb-1 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
+              Tus cuadernos
+            </p>
             {notebooks.map((notebook) => (
               <button
                 key={notebook.id}
                 type="button"
                 onClick={() => selectNotebook(notebook.id)}
                 className={cn(
-                  "w-full rounded-2xl border border-slate-300/40 bg-slate-100/70 px-4 py-3 text-left shadow-lg shadow-slate-900/5 backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:shadow-md",
+                  "w-full rounded-xl px-3 py-2.5 text-left transition-colors",
                   notebook.id === selectedId
-                    ? "border-indigo-300 ring-2 ring-indigo-100"
-                    : "border-slate-200/80",
+                    ? "bg-slate-900/[0.055] dark:bg-white/[0.075]"
+                    : "hover:bg-slate-900/[0.03] dark:hover:bg-white/[0.04]",
                 )}
               >
                 <span className="flex items-center gap-2">
                   <span
-                    className="h-2.5 w-2.5 rounded-full"
+                    className="h-2 w-2 shrink-0 rounded-full"
                     style={{ backgroundColor: notebook.color }}
                   />
-                  <span className="truncate text-sm font-semibold">{notebook.title}</span>
+                  <span className="truncate text-[13px] font-medium text-slate-700 dark:text-white/80">
+                    {notebook.title}
+                  </span>
                 </span>
-                <span className="mt-1 block truncate text-xs text-muted-foreground">
+                <span className="mt-0.5 block truncate pl-4 text-[10.5px] text-slate-400 dark:text-white/30">
                   {notebook.content.trim()
                     ? notebook.content.trim().slice(0, 60)
                     : "Cuaderno vacío"}
@@ -620,212 +631,233 @@ export default function NotebooksPage() {
             ))}
           </aside>
 
-          <section className="rounded-3xl border border-slate-300/40 bg-slate-100/70 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-3xl">
+          <section className="min-w-0 rounded-3xl bg-white/55 p-4 shadow-[0_24px_70px_-45px_rgba(32,39,48,0.4)] backdrop-blur-2xl dark:bg-white/[0.035] sm:p-7">
             {selected ? (
               <div className="space-y-4">
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="space-y-2">
                   <input
                     value={draft.title}
                     onChange={(event) => updateDraft({ title: event.target.value })}
-                    className="min-w-0 flex-1 rounded-xl border border-transparent bg-transparent px-2 py-1 text-xl font-bold outline-none transition-colors focus:border-indigo-200 focus:bg-indigo-50/40"
-                    placeholder="Título del cuaderno"
+                    className="w-full bg-transparent px-1 py-1 text-[24px] font-semibold tracking-[-0.035em] text-slate-900 outline-none placeholder:text-slate-300 dark:text-white/90 dark:placeholder:text-white/20"
+                    placeholder="Cuaderno sin título"
                   />
-                  <div className="flex flex-wrap gap-1.5">
-                    {COLORS.map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        aria-label={`Color ${color}`}
-                        onClick={() => updateDraft({ color })}
-                        className={cn(
-                          "h-6 w-6 rounded-full border-2 transition-transform hover:scale-110",
-                          draft.color === color ? "border-slate-800" : "border-white",
-                        )}
-                        style={{ backgroundColor: color }}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap gap-1.5">
+                      {COLORS.map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          aria-label={`Color ${color}`}
+                          onClick={() => updateDraft({ color })}
+                          className={cn(
+                            "h-5 w-5 rounded-full transition-transform hover:scale-110",
+                            draft.color === color
+                              ? "ring-2 ring-slate-700 dark:ring-white/70"
+                              : "opacity-70",
+                          )}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowTools((value) => !value)}
+                      aria-expanded={showTools}
+                      className="text-slate-500 dark:text-white/45"
+                    >
+                      <Settings2 className="h-3.5 w-3.5" />
+                      Herramientas
+                      <ChevronDown
+                        className={cn("h-3.5 w-3.5 transition-transform", showTools && "rotate-180")}
                       />
-                    ))}
+                    </Button>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-indigo-100 bg-indigo-50/30 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
+                {showTools && (
+                  <div className="space-y-3 rounded-2xl bg-slate-900/[0.025] p-3 dark:bg-white/[0.03]">
                     <div>
-                      <p className="flex items-center gap-1.5 text-xs font-bold text-indigo-800">
-                        <BookOpen className="h-3.5 w-3.5" /> Fuentes del cuaderno
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-indigo-700/70">
-                        Libros y archivos que quieres tener a mano mientras estudias.
-                      </p>
-                    </div>
-                    {canManageSources && (
-                      <Button size="sm" variant="secondary" onClick={() => setShowSourcePicker(true)}>
-                        <Plus className="h-3.5 w-3.5" /> Añadir fuente
-                      </Button>
-                    )}
-                  </div>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="flex items-center gap-1.5 text-[11.5px] font-semibold text-slate-700 dark:text-white/75">
+                            <BookOpen className="h-3.5 w-3.5" /> Fuentes del cuaderno
+                          </p>
+                          <p className="mt-0.5 text-[10.5px] text-slate-500 dark:text-white/35">
+                            Libros y archivos que quieres tener a mano mientras estudias.
+                          </p>
+                        </div>
+                        {canManageSources && (
+                          <Button size="sm" variant="secondary" onClick={() => setShowSourcePicker(true)}>
+                            <Plus className="h-3.5 w-3.5" /> Añadir fuente
+                          </Button>
+                        )}
+                      </div>
 
-                  {sourcesLoading ? (
-                    <div className="flex items-center gap-2 py-3 text-xs text-muted-foreground">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Cargando fuentes...
-                    </div>
-                  ) : sources.length === 0 ? (
-                    <p className="mt-3 rounded-xl border border-dashed border-indigo-200 bg-slate-100/60 px-3 py-3 text-xs text-muted-foreground">
-                      Aún no hay fuentes. {canManageSources
-                        ? "Añade un libro de la Biblioteca o un archivo de Archivos para tenerlo junto a tus apuntes."
-                        : "El propietario del cuaderno todavía no ha añadido libros ni archivos."}
-                    </p>
-                  ) : (
-                    <div className="mt-3 grid gap-2 md:grid-cols-2">
-                      {sources.map((source) => (
-                        <div
-                          key={source.id}
-                          className="rounded-xl border border-indigo-100 bg-slate-100/70 p-3 shadow-lg shadow-slate-900/5"
-                        >
-                          <div className="flex items-start gap-2">
-                            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-                              {source.kind === "book" ? (
-                                <BookOpen className="h-3.5 w-3.5" />
-                              ) : (
-                                <FileText className="h-3.5 w-3.5" />
-                              )}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-xs font-semibold" title={source.title}>
-                                {source.title}
-                              </p>
-                              <p className="truncate text-[10px] text-muted-foreground">
-                                {source.format ? `${source.format} · ` : ""}
-                                {source.subtitle || (source.kind === "book" ? "Libro" : "Archivo")}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-1">
-                            {source.kind === "book" && source.book_id ? (
-                              canManageSources ? (
-                                <>
-                                  <Link href={`/library/${source.book_id}`}>
-                                    <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px]">
-                                      Abrir libro
-                                    </Button>
-                                  </Link>
+                      {sourcesLoading ? (
+                        <div className="flex items-center gap-2 py-3 text-xs text-muted-foreground">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Cargando fuentes...
+                        </div>
+                      ) : sources.length === 0 ? (
+                        <p className="mt-2 rounded-xl bg-slate-900/[0.03] px-3 py-3 text-[10.5px] text-slate-500 dark:bg-white/[0.03] dark:text-white/35">
+                          Aún no hay fuentes. {canManageSources
+                            ? "Añade un libro de la Biblioteca o un archivo de Archivos para tenerlo junto a tus apuntes."
+                            : "El propietario del cuaderno todavía no ha añadido libros ni archivos."}
+                        </p>
+                      ) : (
+                        <div className="mt-2 grid gap-2 md:grid-cols-2">
+                          {sources.map((source) => (
+                            <div
+                              key={source.id}
+                              className="rounded-xl bg-white/50 p-2.5 dark:bg-white/[0.04]"
+                            >
+                              <div className="flex items-start gap-2">
+                                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500">
+                                  {source.kind === "book" ? (
+                                    <BookOpen className="h-3.5 w-3.5" />
+                                  ) : (
+                                    <FileText className="h-3.5 w-3.5" />
+                                  )}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-xs font-semibold" title={source.title}>
+                                    {source.title}
+                                  </p>
+                                  <p className="truncate text-[10px] text-muted-foreground">
+                                    {source.format ? `${source.format} · ` : ""}
+                                    {source.subtitle || (source.kind === "book" ? "Libro" : "Archivo")}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="mt-2 flex flex-wrap items-center gap-1">
+                                {source.kind === "book" && source.book_id ? (
+                                  canManageSources ? (
+                                    <>
+                                      <Link href={`/library/${source.book_id}`}>
+                                        <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px]">
+                                          Abrir libro
+                                        </Button>
+                                      </Link>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-7 px-2 text-[10px]"
+                                        onClick={() => void insertSummary(source)}
+                                        disabled={sourceActionId === source.id}
+                                      >
+                                        {sourceActionId === source.id ? (
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                          <Sparkles className="h-3 w-3" />
+                                        )}
+                                        Insertar resumen
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <span className="px-1 text-[10px] text-muted-foreground">
+                                      Fuente compartida
+                                    </span>
+                                  )
+                                ) : source.document_id ? (
                                   <Button
                                     size="sm"
                                     variant="ghost"
                                     className="h-7 px-2 text-[10px]"
-                                    onClick={() => void insertSummary(source)}
-                                    disabled={sourceActionId === source.id}
+                                    onClick={() => void downloadSourceFile(source)}
                                   >
-                                    {sourceActionId === source.id ? (
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                    ) : (
-                                      <Sparkles className="h-3 w-3" />
-                                    )}
-                                    Insertar resumen
+                                    <Download className="h-3 w-3" /> Abrir archivo
                                   </Button>
-                                </>
-                              ) : (
-                                <span className="px-1 text-[10px] text-muted-foreground">
-                                  Fuente compartida
-                                </span>
-                              )
-                            ) : source.document_id ? (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 px-2 text-[10px]"
-                                onClick={() => void downloadSourceFile(source)}
-                              >
-                                <Download className="h-3 w-3" /> Abrir archivo
-                              </Button>
-                            ) : null}
-                            {canManageSources && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="ml-auto h-7 px-2 text-[10px] text-rose-500 hover:text-rose-700"
-                                onClick={() => void removeSource(source)}
-                                aria-label={`Quitar ${source.title}`}
-                              >
-                                <X className="h-3 w-3" /> Quitar
-                              </Button>
-                            )}
-                          </div>
+                                ) : null}
+                                {canManageSources && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="ml-auto h-7 px-2 text-[10px] text-rose-500 hover:text-rose-700"
+                                    onClick={() => void removeSource(source)}
+                                    aria-label={`Quitar ${source.title}`}
+                                  >
+                                    <X className="h-3 w-3" /> Quitar
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
-                  )}
-                </div>
+
+                    <div className="border-t border-slate-900/[0.05] pt-3 dark:border-white/[0.06]">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="flex items-center gap-1.5 text-[11.5px] font-semibold text-slate-700 dark:text-white/75">
+                          <Users className="h-3.5 w-3.5" /> Compartir con una clase
+                        </span>
+                        {selected.shared_class_id && (
+                          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+                            {selected.share_permission === "edit" ? "Edición" : "Solo lectura"}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <select
+                          value={shareClassId}
+                          onChange={(event) => setShareClassId(event.target.value)}
+                          className="min-w-[180px] flex-1 rounded-xl bg-slate-900/[0.035] px-3 py-1.5 text-xs outline-none dark:bg-white/[0.05]"
+                        >
+                          <option value="">Selecciona una clase</option>
+                          {classes.map((sharedClass) => (
+                            <option key={sharedClass.id} value={sharedClass.id}>
+                              {sharedClass.name}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={sharePermission}
+                          onChange={(event) =>
+                            setSharePermission(event.target.value === "edit" ? "edit" : "read")
+                          }
+                          className="rounded-xl bg-slate-900/[0.035] px-3 py-1.5 text-xs outline-none dark:bg-white/[0.05]"
+                        >
+                          <option value="read">Solo lectura</option>
+                          <option value="edit">Pueden editar</option>
+                        </select>
+                        <Button size="sm" onClick={shareWithClass} disabled={sharing || !shareClassId}>
+                          {sharing ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Share2 className="h-3.5 w-3.5" />
+                          )}
+                          Compartir
+                        </Button>
+                        {selected.shared_class_id && (
+                          <Button size="sm" variant="ghost" onClick={stopSharing} disabled={sharing}>
+                            Dejar de compartir
+                          </Button>
+                        )}
+                      </div>
+                      {classes.length === 0 && (
+                        <p className="mt-2 text-[10.5px] text-slate-500 dark:text-white/35">
+                          Aún no perteneces a ninguna clase.{" "}
+                          <Link href="/classes" className="font-semibold underline">
+                            Crea o únete a una clase
+                          </Link>{" "}
+                          para compartir apuntes.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <textarea
                   value={draft.content}
                   onChange={(event) => updateDraft({ content: event.target.value })}
                   placeholder={
-                    "Escribe aquí tus apuntes...\n\nConsejos:\n# Título de sección\n## Subtítulo\n- Idea o dato clave\n\nPuedes pegar resúmenes generados en IA Studio."
+                    "Escribe aquí tus apuntes...\n\n# Título de sección\n## Subtítulo\n- Idea o dato clave"
                   }
-                  className="min-h-[430px] w-full resize-y rounded-2xl border border-slate-300/40 bg-slate-100/60 p-4 text-sm leading-6 outline-none backdrop-blur-xl transition-colors focus:border-indigo-300 focus:bg-slate-100/80"
+                  className="min-h-[520px] w-full resize-y bg-transparent px-1 py-2 text-[14.5px] leading-7 text-slate-700 outline-none placeholder:text-slate-300 dark:text-white/75 dark:placeholder:text-white/20"
                 />
 
-                <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="flex items-center gap-1.5 text-xs font-semibold text-indigo-700">
-                      <Users className="h-3.5 w-3.5" /> Compartir con una clase
-                    </span>
-                    {selected.shared_class_id && (
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                        {selected.share_permission === "edit" ? "Edición" : "Solo lectura"}
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <select
-                      value={shareClassId}
-                      onChange={(event) => setShareClassId(event.target.value)}
-                      className="min-w-[180px] flex-1 rounded-xl border border-slate-300/40 bg-slate-100/70 px-3 py-1.5 text-xs outline-none backdrop-blur-xl focus:border-indigo-400"
-                    >
-                      <option value="">Selecciona una clase</option>
-                      {classes.map((sharedClass) => (
-                        <option key={sharedClass.id} value={sharedClass.id}>
-                          {sharedClass.name}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      value={sharePermission}
-                      onChange={(event) =>
-                        setSharePermission(event.target.value === "edit" ? "edit" : "read")
-                      }
-                      className="rounded-xl border border-slate-300/40 bg-slate-100/70 px-3 py-1.5 text-xs outline-none backdrop-blur-xl"
-                    >
-                      <option value="read">Solo lectura</option>
-                      <option value="edit">Pueden editar</option>
-                    </select>
-                    <Button size="sm" onClick={shareWithClass} disabled={sharing || !shareClassId}>
-                      {sharing ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Share2 className="h-3.5 w-3.5" />
-                      )}
-                      Compartir
-                    </Button>
-                    {selected.shared_class_id && (
-                      <Button size="sm" variant="ghost" onClick={stopSharing} disabled={sharing}>
-                        Dejar de compartir
-                      </Button>
-                    )}
-                  </div>
-                  {classes.length === 0 && (
-                    <p className="mt-2 text-[11px] text-indigo-700/80">
-                      Aún no perteneces a ninguna clase.{" "}
-                      <Link href="/classes" className="font-semibold underline">
-                        Crea o únete a una clase
-                      </Link>{" "}
-                      para compartir apuntes.
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-900/[0.05] pt-3 dark:border-white/[0.06]">
+                  <span className="flex items-center gap-2 text-[10.5px] text-slate-400 dark:text-white/30">
                     {saving ? (
                       <>
                         <Loader2 className="h-3.5 w-3.5 animate-spin" /> Guardando...
@@ -845,7 +877,7 @@ export default function NotebooksPage() {
                       "Autoguardado activo"
                     )}
                   </span>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <Button
                       variant="secondary"
                       size="sm"
@@ -854,7 +886,7 @@ export default function NotebooksPage() {
                     >
                       <Check className="h-4 w-4" /> {localOnly ? "Sincronizar" : "Guardar"}
                     </Button>
-                    <Button variant="secondary" size="sm" onClick={downloadWord}>
+                    <Button variant="ghost" size="sm" onClick={downloadWord}>
                       <Download className="h-4 w-4" /> Word
                     </Button>
                     <Button

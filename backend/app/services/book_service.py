@@ -28,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.core.text import normalize_filename
 from app.db.session import AsyncSessionLocal
 from app.models.book import Book, BookSection
 from app.models.document import Document
@@ -86,7 +87,7 @@ def _clean_text(text: str) -> str:
 
 
 def _stem(filename: str) -> str:
-    return re.sub(r"[_-]+", " ", Path(filename).stem).strip() or "Libro"
+    return re.sub(r"[_-]+", " ", Path(normalize_filename(filename)).stem).strip() or "Libro"
 
 
 def _split_long_text(text: str, limit: int = MAX_SECTION_CHARS) -> list[str]:

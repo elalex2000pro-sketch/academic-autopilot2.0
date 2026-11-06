@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.core.text import normalize_filename
 from app.db.base import utcnow
 from app.models.ai_output import AiOutput
 from app.models.document import Document
@@ -230,11 +231,11 @@ async def generate(
         logger.warning("AI Studio usando heuristico: %s", exc)
         source = "heuristic"
         if kind == "summary":
-            data = _heuristic_summary(document.filename, text)
+            data = _heuristic_summary(normalize_filename(document.filename), text)
         elif kind == "mindmap":
-            data = _heuristic_mindmap(document.filename, text)
+            data = _heuristic_mindmap(normalize_filename(document.filename), text)
         else:
-            data = _heuristic_infographic(document.filename, text)
+            data = _heuristic_infographic(normalize_filename(document.filename), text)
 
     if kind == "summary":
         pdf_bytes = build_summary_pdf(
@@ -263,7 +264,7 @@ async def generate(
         source_document_id=document.id,
         output_document_id=out_doc.id,
         kind=kind,
-        title=str(data.get("title", f"{kind} - {document.filename}"))[:500],
+        title=normalize_filename(str(data.get("title", f"{kind} - {document.filename}")))[:500],
         content=(data.get("summary") if kind == "summary" else json.dumps(data))[:200000],
         source=source,
     )
@@ -298,7 +299,7 @@ async def _save_generated_pdf(
         id=uuid.uuid4(),
         user_id=user.id,
         course_id=document.course_id,
-        filename=f"{data.get('title','Documento')} [{kind}].pdf",
+        filename=normalize_filename(f"{data.get('title', 'Documento')} [{kind}].pdf"),
         content_type="application/pdf",
         size_bytes=len(pdf_bytes),
         storage_path=rel_path,

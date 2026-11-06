@@ -4,7 +4,9 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
+
+from app.core.text import normalize_filename
 
 
 class DocumentRead(BaseModel):
@@ -18,3 +20,8 @@ class DocumentRead(BaseModel):
     content_type: str
     size_bytes: int
     created_at: datetime
+
+    @field_validator("filename", mode="before")
+    @classmethod
+    def _normalize_filename(cls, value: str) -> str:
+        return normalize_filename(value)

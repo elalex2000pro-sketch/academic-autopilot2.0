@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import os
 import uuid
-from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import select
@@ -18,6 +17,7 @@ from sqlalchemy import select
 from app.api.deps import CurrentUser, DbSession
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.core.text import normalize_filename
 from app.models.course import Course
 from app.models.document import Document
 from app.models.shared_class import ClassMembership
@@ -39,7 +39,7 @@ async def create_upload(
     """Crea una sesion de subida y devuelve el tamano de trozo a usar."""
     await upload_service.purge_stale_sessions(db)
 
-    original = Path(payload.filename).name
+    original = normalize_filename(payload.filename)
     extension = original.rsplit(".", 1)[-1].lower() if "." in original else ""
     if extension not in settings.allowed_extensions:
         allowed = ", ".join(sorted(settings.allowed_extensions))

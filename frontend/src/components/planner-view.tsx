@@ -94,7 +94,7 @@ const SUBJECT_TONES = [
 ];
 
 const selectClass =
-  "flex h-9 w-full rounded-xl border border-slate-300/40 bg-slate-100/70 px-3 text-[13px] text-slate-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-3xl transition-[border-color,box-shadow,background-color] duration-150 focus-visible:border-[#0066FF] focus-visible:bg-slate-100/85 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#0066FF]/20 dark:border-white/10 dark:bg-white/[0.055] dark:text-white/90 dark:focus-visible:bg-white/[0.08]";
+  "flex h-9 w-full rounded-xl bg-slate-900/[0.035] px-3 text-[13px] text-slate-800 backdrop-blur-3xl transition-[background-color,box-shadow] duration-150 focus-visible:bg-slate-900/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF]/25 dark:bg-white/[0.055] dark:text-white/90 dark:focus-visible:bg-white/[0.08]";
 
 type Notice = { tone: "success" | "error" | "info"; text: string };
 type EnrichedClassEvent = ClassEvent & { class_name?: string };
@@ -205,7 +205,7 @@ function subjectSubtitle(entry: TimetableEntry, course: Course | undefined): str
 
 function MonthEmpty({ weekend }: { weekend: boolean }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-400/35 bg-slate-100/30 px-6 py-10 text-center dark:border-white/10 dark:bg-white/[0.02]">
+    <div className="flex flex-col items-center justify-center rounded-2xl bg-slate-900/[0.02] px-6 py-10 text-center dark:bg-white/[0.02]">
       <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0066FF]/10 text-[#0066FF] ring-1 ring-[#0066FF]/15 dark:bg-[#0066FF]/15 dark:text-[#7fb2ff] dark:ring-[#0066FF]/20">
         {weekend ? <Coffee className="h-6 w-6" strokeWidth={1.7} /> : <CalendarDays className="h-6 w-6" strokeWidth={1.7} />}
       </span>
@@ -891,24 +891,22 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
   const monthLabel = `${MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`;
 
   return (
-    <div className="mx-auto max-w-[1500px] px-5 pb-12 pt-6 sm:px-7 lg:pt-8">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+    <div className="mx-auto max-w-[1500px] px-4 pb-10 pt-5 sm:px-6 lg:pt-7">
+      <header className="flex flex-wrap items-end justify-between gap-5">
         <div className="min-w-0">
           <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-white/35">
             <CalendarRange className="h-3.5 w-3.5" strokeWidth={1.9} />
             Planificador
           </p>
-          <h1 className="mt-2 text-[30px] font-light leading-[1.05] tracking-[-0.035em] text-slate-800 dark:text-white/90 sm:text-[36px]">
+          <h1 className="mt-2 text-[28px] font-light leading-[1.05] tracking-[-0.035em] text-slate-800 dark:text-white/90 sm:text-[33px]">
             Tu semana, <span className="font-semibold">en orden.</span>
           </h1>
-          <p className="mt-2 max-w-2xl text-[12.5px] leading-5 text-slate-500 dark:text-white/45">
-            Calendario y horario en una sola vista. Pulsa un día para ver sus clases, entregas y
-            exámenes; los días con examen se marcan en rojo y su nota actualiza la media de
-            Académico.
+          <p className="mt-2 max-w-xl text-[12px] leading-5 text-slate-500 dark:text-white/45">
+            Calendario, horario y entregas en una sola vista. Toca un día para ver su detalle.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           {monthPendingExamCount > 0 && (
             <span className="inline-flex h-9 items-center gap-2 rounded-xl border border-[#FF3B30]/20 bg-[#FF3B30]/[0.07] px-3 text-[11.5px] font-medium text-[#d92b22] dark:border-[#FF3B30]/20 dark:bg-[#FF3B30]/10 dark:text-[#ff8a80]">
               <CalendarClock className="h-3.5 w-3.5" />
@@ -961,9 +959,9 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
         </div>
       )}
 
-      <div className="mt-5 grid items-start gap-4 lg:grid-cols-[1fr_1.2fr]">
+      <div className="mt-6 grid items-start gap-5 lg:grid-cols-[1fr_1.2fr]">
         {/* Columna izquierda: calendario mensual compacto */}
-        <section className="app-glass rounded-3xl p-4 sm:p-5">
+        <section className="rounded-3xl bg-white/35 p-4 backdrop-blur-xl dark:bg-white/[0.025] sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
@@ -998,7 +996,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-7 gap-1.5">
+          <div className="mt-5 grid grid-cols-7 gap-1">
             {WEEKDAYS.map((day) => (
               <div
                 key={day}
@@ -1033,16 +1031,16 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                   aria-label={`${longDate(cell.key)}: ${dayTasks.length} tareas, ${dayExams.length === 1 ? "1 examen" : `${dayExams.length} exámenes`}, ${dayEvents.length} eventos`}
                   title={hasExam ? dayExams.map((exam) => exam.title).join(" · ") : undefined}
                   className={cn(
-                    "group relative flex min-h-[58px] flex-col items-center justify-start gap-1 rounded-2xl border px-1 py-2 text-center transition-all duration-200 ease-mac sm:min-h-[64px]",
+                    "group relative flex min-h-[58px] flex-col items-center justify-start gap-1 rounded-xl px-1 py-2 text-center transition-all duration-200 ease-mac sm:min-h-[64px]",
                     selected
-                      ? "border-[#0066FF]/30 bg-[#0066FF] text-white shadow-[0_12px_28px_-16px_rgba(0,102,255,0.95)]"
+                      ? "bg-[#0066FF] text-white shadow-[0_12px_28px_-16px_rgba(0,102,255,0.95)]"
                       : todayCell
-                        ? "border-[#0066FF]/30 bg-[#0066FF]/10 text-[#0066FF] dark:bg-[#0066FF]/15 dark:text-[#7fb2ff]"
+                        ? "bg-[#0066FF]/10 text-[#0066FF] dark:bg-[#0066FF]/15 dark:text-[#7fb2ff]"
                         : hasExam
-                          ? "border-[#FF3B30]/35 bg-[#FF3B30]/[0.06] text-slate-700 hover:border-[#FF3B30]/55 hover:bg-[#FF3B30]/[0.1] dark:border-[#FF3B30]/25 dark:bg-[#FF3B30]/10 dark:text-white/75 dark:hover:bg-[#FF3B30]/15"
-                          : "border-transparent text-slate-600 hover:border-white/70 hover:bg-white/40 dark:text-white/60 dark:hover:border-white/10 dark:hover:bg-white/[0.05]",
+                          ? "bg-[#FF3B30]/[0.07] text-slate-700 hover:bg-[#FF3B30]/[0.12] dark:bg-[#FF3B30]/10 dark:text-white/75 dark:hover:bg-[#FF3B30]/15"
+                          : "text-slate-600 hover:bg-slate-900/[0.035] dark:text-white/60 dark:hover:bg-white/[0.05]",
                     weekendCell && !selected && !todayCell && !hasExam && "text-slate-400 dark:text-white/35",
-                    hasExam && !selected && "ring-1 ring-inset ring-[#FF3B30]/45",
+                    hasExam && !selected && "ring-1 ring-inset ring-[#FF3B30]/30",
                   )}
                 >
                   <span
@@ -1084,7 +1082,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
             })}
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-white/50 pt-3 text-[10.5px] text-slate-500 dark:border-white/5 dark:text-white/35">
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-2 pt-1 text-[10.5px] text-slate-500 dark:text-white/35">
             <div className="flex flex-wrap items-center gap-3">
               <span className="inline-flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#FF3B30]" /> Urgente
@@ -1110,7 +1108,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
         </section>
 
         {/* Columna derecha: semana compacta o línea temporal del día */}
-        <section className="app-glass rounded-3xl p-4 sm:p-5">
+        <section className="rounded-3xl bg-white/35 p-4 backdrop-blur-xl dark:bg-white/[0.025] sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
@@ -1126,7 +1124,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex rounded-full border border-slate-300/40 bg-slate-100/70 p-0.5 shadow-inner backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
+              <div className="flex rounded-full bg-slate-900/[0.04] p-0.5 dark:bg-white/[0.06]">
                 <button
                   type="button"
                   onClick={() => setViewMode("day")}
@@ -1190,11 +1188,11 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                         setViewMode("day");
                       }}
                       className={cn(
-                        "group flex min-h-[280px] min-w-0 flex-col rounded-2xl border p-1.5 text-left transition-all duration-200 ease-mac sm:p-2",
+                        "group flex min-h-[280px] min-w-0 flex-col rounded-xl p-1.5 text-left transition-all duration-200 ease-mac sm:p-2",
                         dayIsToday
-                          ? "border-[#0066FF]/25 bg-[#0066FF]/[0.06] dark:border-[#0066FF]/25 dark:bg-[#0066FF]/10"
-                          : "border-white/55 bg-white/25 hover:border-white/80 hover:bg-white/40 dark:border-white/[0.06] dark:bg-white/[0.025] dark:hover:border-white/15 dark:hover:bg-white/[0.05]",
-                        dayExams.length > 0 && "ring-1 ring-inset ring-[#FF3B30]/35",
+                          ? "bg-[#0066FF]/[0.07] dark:bg-[#0066FF]/10"
+                          : "bg-slate-900/[0.02] hover:bg-slate-900/[0.04] dark:bg-white/[0.025] dark:hover:bg-white/[0.05]",
+                        dayExams.length > 0 && "ring-1 ring-inset ring-[#FF3B30]/25",
                       )}
                     >
                       <span className="flex items-baseline justify-between gap-1 px-0.5">
@@ -1224,7 +1222,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                       )}
                       <span className="mt-1.5 flex min-h-0 flex-1 flex-col gap-1">
                         {dayClasses.length === 0 ? (
-                          <span className="rounded-lg border border-dashed border-white/60 px-1.5 py-2 text-center text-[9px] leading-3 text-slate-400 dark:border-white/10 dark:text-white/25">
+                          <span className="rounded-md bg-slate-900/[0.025] px-1.5 py-2 text-center text-[9px] leading-3 text-slate-400 dark:bg-white/[0.025] dark:text-white/25">
                             Sin clases
                           </span>
                         ) : (
@@ -1236,7 +1234,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                             return (
                               <span
                                 key={entry.id}
-                                className="min-w-0 rounded-lg border border-white/60 bg-white/45 px-1.5 py-1 shadow-[0_4px_12px_-10px_rgba(15,23,42,0.5)] backdrop-blur-md dark:border-white/10 dark:bg-white/[0.07]"
+                                className="min-w-0 rounded-md bg-slate-900/[0.035] px-1.5 py-1 dark:bg-white/[0.06]"
                                 style={{ borderLeftColor: color, borderLeftWidth: 2 }}
                               >
                                 <span className="block text-[8.5px] font-semibold tabular-nums text-slate-400 dark:text-white/30">
@@ -1251,7 +1249,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                         )}
                       </span>
                       {(dayTasks.length > 0 || dayEvents.length > 0 || dayExams.length > 0) && (
-                        <span className="mt-1 flex flex-wrap items-center gap-1 border-t border-white/40 px-0.5 pt-1 text-[8.5px] font-medium text-slate-500 dark:border-white/10 dark:text-white/35">
+                        <span className="mt-1 flex flex-wrap items-center gap-1 pt-1 text-[8.5px] font-medium text-slate-500 dark:text-white/35">
                           {dayExams.length > 0 && (
                             <span className="rounded-full bg-[#FF3B30]/10 px-1.5 py-0.5 text-[#d92b22] dark:bg-[#FF3B30]/15 dark:text-[#ff8a80]">
                               {dayExams.length === 1 ? "1 examen" : `${dayExams.length} exámenes`}
@@ -1297,7 +1295,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
               </div>
             ) : selectedClasses.length === 0 ? (
               selectedExams.length > 0 ? (
-                <div className="flex items-center gap-2.5 rounded-2xl border border-dashed border-[#FF3B30]/30 bg-[#FF3B30]/[0.04] px-3 py-4 text-[11.5px] text-slate-500 dark:border-[#FF3B30]/20 dark:bg-[#FF3B30]/[0.06] dark:text-white/40">
+                <div className="flex items-center gap-2.5 rounded-xl bg-[#FF3B30]/[0.05] px-3 py-4 text-[11.5px] text-slate-500 dark:bg-[#FF3B30]/[0.06] dark:text-white/40">
                   <CalendarClock className="h-4 w-4 shrink-0 text-[#d92b22] dark:text-[#ff8a80]" />
                   Sin clases lectivas, pero tienes{" "}
                   {selectedExams.length === 1
@@ -1348,11 +1346,11 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                             setConfirmDeleteClassId(null);
                           }}
                           className={cn(
-                            "min-w-0 cursor-pointer rounded-2xl border p-3 transition-colors",
+                            "min-w-0 cursor-pointer rounded-xl p-3 transition-colors",
                             current
-                              ? "border-[#0066FF]/30 bg-[#0066FF]/[0.07] dark:border-[#0066FF]/25 dark:bg-[#0066FF]/10"
-                              : "border-white/55 bg-white/30 hover:bg-white/40 dark:border-white/[0.06] dark:bg-white/[0.03] dark:hover:bg-white/[0.05]",
-                            selected && "ring-2 ring-[#0066FF]/35",
+                              ? "bg-[#0066FF]/[0.08] dark:bg-[#0066FF]/10"
+                              : "bg-slate-900/[0.025] hover:bg-slate-900/[0.045] dark:bg-white/[0.03] dark:hover:bg-white/[0.05]",
+                            selected && "ring-2 ring-[#0066FF]/30",
                           )}
                           style={{
                             borderLeftColor: color,
@@ -1429,7 +1427,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                           </div>
                           {selected && (
                             <div
-                              className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-white/50 pt-2 dark:border-white/5"
+                              className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-slate-900/[0.05] pt-2 dark:border-white/[0.06]"
                               onClick={(event) => event.stopPropagation()}
                             >
                               <Button
@@ -1491,7 +1489,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
               </div>
             )}
 
-            <div className="mt-5 border-t border-white/50 pt-4 dark:border-white/5">
+            <div className="mt-5 border-t border-slate-900/[0.05] pt-4 dark:border-white/[0.06]">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#d92b22] dark:text-[#ff8a80]">
@@ -1511,7 +1509,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                 </div>
               </div>
               {selectedExams.length === 0 ? (
-                <div className="mt-3 flex items-center gap-2.5 rounded-2xl border border-dashed border-white/70 px-3 py-4 text-[11.5px] text-slate-500 dark:border-white/10 dark:text-white/35">
+                <div className="mt-3 flex items-center gap-2.5 rounded-xl bg-slate-900/[0.025] px-3 py-4 text-[11.5px] text-slate-500 dark:bg-white/[0.025] dark:text-white/35">
                   <CalendarClock className="h-4 w-4 shrink-0 text-[#FF3B30]" />
                   Sin exámenes este día. Pulsa «Añadir examen» para vincularlo a una asignatura.
                 </div>
@@ -1533,7 +1531,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
             </div>
 
             {selectedEvents.length > 0 && (
-              <div className="mt-5 border-t border-white/50 pt-4 dark:border-white/5">
+              <div className="mt-5 border-t border-slate-900/[0.05] pt-4 dark:border-white/[0.06]">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
                     Eventos de clase
@@ -1546,7 +1544,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
                   {selectedEvents.map((event) => (
                     <div
                       key={event.id}
-                      className="flex items-start gap-2.5 rounded-2xl border border-white/50 bg-white/25 p-2.5 dark:border-white/[0.06] dark:bg-white/[0.025]"
+                      className="flex items-start gap-2.5 rounded-xl bg-slate-900/[0.025] p-2.5 dark:bg-white/[0.025]"
                     >
                       <span
                         className={cn(
@@ -1578,7 +1576,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
             )}
 
             {/* Tareas del día seleccionado */}
-            <div className="mt-5 border-t border-white/50 pt-4 dark:border-white/5">
+            <div className="mt-5 border-t border-slate-900/[0.05] pt-4 dark:border-white/[0.06]">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
@@ -1607,7 +1605,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
               {showTaskForm && (
                 <form
                   onSubmit={addTask}
-                  className="mt-3 space-y-2.5 rounded-2xl border border-white/60 bg-white/30 p-3 dark:border-white/[0.07] dark:bg-white/[0.03]"
+                  className="mt-3 space-y-2.5 rounded-2xl bg-slate-900/[0.025] p-3 dark:bg-white/[0.03]"
                 >
                   <Input
                     value={taskTitle}
@@ -1663,7 +1661,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
               )}
 
               {selectedTasks.length === 0 ? (
-                <div className="mt-3 flex items-center gap-2.5 rounded-2xl border border-dashed border-white/70 px-3 py-4 text-[11.5px] text-slate-500 dark:border-white/10 dark:text-white/35">
+                <div className="mt-3 flex items-center gap-2.5 rounded-xl bg-slate-900/[0.025] px-3 py-4 text-[11.5px] text-slate-500 dark:bg-white/[0.025] dark:text-white/35">
                   <CheckCircle2 className="h-4 w-4 shrink-0 text-[#34C759]" />
                   Sin entregas para este día. Buen momento para adelantar trabajo.
                 </div>
@@ -1789,7 +1787,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
       </div>
 
       {/* Gestión del horario: añadir, editar, importar y quitar clases */}
-      <section className="app-glass mt-4 rounded-3xl p-4 sm:p-5">
+      <section className="mt-5 rounded-3xl bg-white/35 p-4 backdrop-blur-xl dark:bg-white/[0.025] sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <button
             type="button"
@@ -1834,7 +1832,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
             <form
               ref={classFormRef}
               onSubmit={saveClass}
-              className="rounded-2xl border border-slate-300/40 bg-slate-100/60 p-3.5 dark:border-white/[0.07] dark:bg-white/[0.03]"
+              className="rounded-2xl bg-slate-900/[0.025] p-3.5 dark:bg-white/[0.03]"
             >
               <div className="flex items-center gap-2">
                 {editingClassId ? (
@@ -1946,7 +1944,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
               </div>
             </form>
 
-            <div className="rounded-2xl border border-dashed border-slate-400/35 bg-slate-100/30 p-3.5 dark:border-white/10 dark:bg-white/[0.02]">
+            <div className="rounded-2xl bg-slate-900/[0.02] p-3.5 dark:bg-white/[0.02]">
               <div className="flex items-center gap-2">
                 <FileUp className="h-4 w-4 text-[#0066FF]" />
                 <p className="text-[13px] font-semibold text-slate-800 dark:text-white/90">
@@ -1993,7 +1991,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-300/40 bg-slate-100/55 p-3.5 lg:col-span-2 dark:border-white/[0.07] dark:bg-white/[0.02]">
+            <div className="rounded-2xl bg-slate-900/[0.02] p-3.5 lg:col-span-2 dark:bg-white/[0.02]">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
@@ -2010,7 +2008,7 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
               </div>
               <div className="mt-3">
                 {entries.length === 0 ? (
-                  <p className="rounded-xl border border-dashed border-slate-400/35 px-3 py-4 text-center text-[11.5px] text-slate-500 dark:border-white/10 dark:text-white/35">
+                  <p className="rounded-xl bg-slate-900/[0.025] px-3 py-4 text-center text-[11.5px] text-slate-500 dark:bg-white/[0.025] dark:text-white/35">
                     No hay asignaturas en el horario. Añade la primera con el formulario de arriba.
                   </p>
                 ) : (

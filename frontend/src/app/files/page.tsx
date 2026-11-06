@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   BookOpen,
@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useRealtime } from "@/components/realtime-provider";
 import { api, ApiError } from "@/lib/api";
+import { normalizeFilename } from "@/lib/filename";
 import { uploadFileInChunks, type UploadProgress } from "@/lib/upload";
 import type { Course, DocumentFile } from "@/lib/types";
 
@@ -75,18 +76,24 @@ export default function FilesPage() {
     }
   });
 
-  const countFor = useCallback(
-    (courseId: string | null) =>
-      files.filter((f) => (f.course_id ?? null) === courseId).length,
-    [files],
-  );
+  const countsByCourse = useMemo(() => {
+    const counts = new Map<string | null, number>();
+    for (const file of files) {
+      const key = file.course_id ?? null;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return counts;
+  }, [files]);
 
   const visibleFiles = useMemo(
     () => files.filter((f) => (f.course_id ?? null) === selected),
     [files, selected],
   );
 
-  const selectedCourse = courses.find((c) => c.id === selected) ?? null;
+  const selectedCourse = useMemo(
+    () => courses.find((c) => c.id === selected) ?? null,
+    [courses, selected],
+  );
 
   async function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -110,43 +117,50 @@ export default function FilesPage() {
     }
   }
 
-  async function remove(file: DocumentFile) {
-    try {
-      await api.deleteFile(file.id);
-      await load();
-    } catch (e) {
-      setError(errorMessage(e));
-    }
-  }
+  const remove = useCallback(
+    async (file: DocumentFile) => {
+      try {
+        await api.deleteFile(file.id);
+        await load();
+      } catch (e) {
+        setError(errorMessage(e));
+      }
+    },
+    [load],
+  );
 
-  async function download(file: DocumentFile) {
+  const download = useCallback(async (file: DocumentFile) => {
     try {
       await api.downloadFile(file.id, file.filename);
     } catch (e) {
       setError(errorMessage(e));
     }
-  }
+  }, []);
 
-  async function convertToBook(file: DocumentFile) {
-    if (!BOOK_EXTENSIONS.has(extensionOf(file.filename))) {
-      setError("Para convertirlo en libro usa PDF, EPUB, DOCX, TXT o Markdown.");
-      return;
-    }
-    setConvertingId(file.id);
-    setError(null);
-    try {
-      await api.importBook({
-        document_id: file.id,
-        title: file.filename.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " "),
-        course_id: file.course_id,
-      });
-      router.push("/library");
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setConvertingId(null);
-    }
-  }
+  const convertToBook = useCallback(
+    async (file: DocumentFile) => {
+      const filename = normalizeFilename(file.filename);
+      if (!BOOK_EXTENSIONS.has(extensionOf(filename))) {
+        setError("Para convertirlo en libro usa PDF, EPUB, DOCX, TXT o Markdown.");
+        return;
+      }
+      setConvertingId(file.id);
+      setError(null);
+      try {
+        await api.importBook({
+          document_id: file.id,
+          title: filename.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " "),
+          course_id: file.course_id,
+        });
+        router.push("/library");
+      } catch (e) {
+        setError(errorMessage(e));
+      } finally {
+        setConvertingId(null);
+      }
+    },
+    [router],
+  );
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-6">
@@ -176,7 +190,7 @@ export default function FilesPage() {
               active={selected === null}
               icon={<FolderOpen className="h-4 w-4" />}
               label="General"
-              count={countFor(null)}
+              count={countsByCourse.get(null) ?? 0}
               onClick={() => setSelected(null)}
             />
             {courses.map((course) => (
@@ -187,7 +201,7 @@ export default function FilesPage() {
                   <Folder className="h-4 w-4" style={{ color: course.color ?? undefined }} />
                 }
                 label={course.name}
-                count={countFor(course.id)}
+                count={countsByCourse.get(course.id) ?? 0}
                 onClick={() => setSelected(course.id)}
               />
             ))}
@@ -244,43 +258,14 @@ export default function FilesPage() {
 
             {!loading &&
               visibleFiles.map((file) => (
-                <div
+                <FileRow
                   key={file.id}
-                  className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2 text-sm"
-                >
-                  <span className="flex min-w-0 items-center gap-2">
-                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span className="truncate font-medium">{file.filename}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {formatBytes(file.size_bytes)}
-                    </span>
-                  </span>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <AddToNotebookButton documentId={file.id} label="" size="icon" />
-                    {BOOK_EXTENSIONS.has(extensionOf(file.filename)) && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => void convertToBook(file)}
-                        disabled={convertingId === file.id}
-                        title="Convertir en libro y abrir en la Biblioteca"
-                        aria-label="Convertir en libro"
-                      >
-                        {convertingId === file.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <BookOpen className="h-4 w-4" />
-                        )}
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="icon" onClick={() => download(file)}>
-                      <Download className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => remove(file)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+                  file={file}
+                  converting={convertingId === file.id}
+                  onConvert={convertToBook}
+                  onDownload={download}
+                  onRemove={remove}
+                />
               ))}
 
             {!loading && visibleFiles.length === 0 && (
@@ -295,7 +280,61 @@ export default function FilesPage() {
   );
 }
 
-function FolderButton({
+const FileRow = memo(function FileRow({
+  file,
+  converting,
+  onConvert,
+  onDownload,
+  onRemove,
+}: {
+  file: DocumentFile;
+  converting: boolean;
+  onConvert: (file: DocumentFile) => void;
+  onDownload: (file: DocumentFile) => void;
+  onRemove: (file: DocumentFile) => void;
+}) {
+  const filename = normalizeFilename(file.filename);
+  return (
+    <div className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2 text-sm">
+      <span className="flex min-w-0 items-center gap-2">
+        <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className="truncate font-medium" title={filename}>
+          {filename}
+        </span>
+        <span className="shrink-0 text-xs text-muted-foreground">
+          {formatBytes(file.size_bytes)}
+        </span>
+      </span>
+      <div className="flex shrink-0 items-center gap-1">
+        <AddToNotebookButton documentId={file.id} label="" size="icon" />
+        {BOOK_EXTENSIONS.has(extensionOf(filename)) && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onConvert(file)}
+            disabled={converting}
+            title="Convertir en libro y abrir en la Biblioteca"
+            aria-label="Convertir en libro"
+          >
+            {converting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <BookOpen className="h-4 w-4" />
+            )}
+          </Button>
+        )}
+        <Button variant="ghost" size="icon" onClick={() => onDownload(file)}>
+          <Download className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" onClick={() => onRemove(file)}>
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+});
+
+const FolderButton = memo(function FolderButton({
   active,
   icon,
   label,
@@ -323,4 +362,4 @@ function FolderButton({
       <span className="text-xs">{count}</span>
     </button>
   );
-}
+});

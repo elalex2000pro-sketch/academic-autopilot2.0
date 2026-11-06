@@ -197,12 +197,16 @@ export function PasswordRecovery({ initialEmail = "", onBack }: PasswordRecovery
               <Input
                 ref={emailRef}
                 id="recovery-email"
+                name="email"
                 type="email"
                 required
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="tu@universidad.edu"
-                autoComplete="email"
+                autoComplete="username"
+                inputMode="email"
+                autoCapitalize="none"
+                spellCheck={false}
                 className="pl-9"
               />
             </div>
@@ -245,6 +249,7 @@ export function PasswordRecovery({ initialEmail = "", onBack }: PasswordRecovery
             <Label htmlFor="recovery-answer">Tu respuesta</Label>
             <Input
               id="recovery-answer"
+              name="recovery-answer"
               required
               minLength={2}
               maxLength={72}
@@ -260,6 +265,7 @@ export function PasswordRecovery({ initialEmail = "", onBack }: PasswordRecovery
             <Label htmlFor="recovery-password">Contraseña nueva</Label>
             <Input
               id="recovery-password"
+              name="new-password"
               type="password"
               required
               minLength={8}
@@ -274,6 +280,7 @@ export function PasswordRecovery({ initialEmail = "", onBack }: PasswordRecovery
             <Label htmlFor="recovery-confirm">Repite la contraseña</Label>
             <Input
               id="recovery-confirm"
+              name="confirm-password"
               type="password"
               required
               minLength={8}

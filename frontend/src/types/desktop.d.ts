@@ -19,6 +19,13 @@ declare global {
       ) => Promise<{ ok: boolean; useCustomTitlebar: boolean }>;
       /** Preferencia que el proceso principal aplicó al crear la ventana. */
       getWindowPreferences?: () => Promise<{ useCustomTitlebar: boolean }>;
+      /** Avisos nativos del sistema operativo (los usa lib/notifications.ts). */
+      notify?: (payload: {
+        title: string;
+        body: string;
+        tag?: string;
+        url?: string;
+      }) => Promise<{ ok: boolean }>;
       /** Actualizaciones silenciosas gestionadas por electron-updater. */
       updater?: DesktopUpdaterBridge;
     };

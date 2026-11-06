@@ -1,14 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import {
+  CalendarDays,
   Check,
   CheckCircle2,
   ChevronDown,
+  Clock,
   FileSpreadsheet,
   History,
   Loader2,
   Pencil,
+  Tag,
   Trash2,
 } from "lucide-react";
 
@@ -21,6 +24,7 @@ import { cn, formatMinutes } from "@/lib/utils";
 
 const SOURCE_LABEL: Record<string, string> = {
   moodle: "Moodle",
+  classroom: "Classroom",
   google_classroom: "Classroom",
   manual: "Manual",
 };
@@ -40,6 +44,19 @@ const PRIORITY_COLOR: Record<string, string> = {
 function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return "No se pudo actualizar la tarea.";
+}
+
+function formatFullDue(iso: string | null): string {
+  if (!iso) return "Sin fecha límite";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "Sin fecha límite";
+  return date.toLocaleString("es-ES", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 type TaskAction = "complete" | "delete";
@@ -62,7 +79,7 @@ interface TaskListProps {
   className?: string;
 }
 
-export function TaskList({
+function TaskListComponent({
   tasks,
   historyTasks = [],
   loading = false,
@@ -75,11 +92,14 @@ export function TaskList({
   className,
 }: TaskListProps) {
   const [showHistory, setShowHistory] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [busy, setBusy] = useState<{ id: string; action: TaskAction } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+
+  const courseById = new Map(courses.map((course) => [course.id, course]));
 
   async function runAction(action: TaskAction, id: string) {
     if (busy) return;
@@ -91,6 +111,7 @@ export function TaskList({
       } else {
         await onDelete(id);
         setConfirmDeleteId(null);
+        setExpandedId((value) => (value === id ? null : value));
       }
     } catch (cause) {
       setActionError(errorMessage(cause));
@@ -115,31 +136,31 @@ export function TaskList({
   function renderTask(task: Task, variant: "active" | "history") {
     const busyHere = busy?.id === task.id;
     const confirming = confirmDeleteId === task.id;
+    const expanded = expandedId === task.id;
     const isHistory = variant === "history";
     const color = PRIORITY_COLOR[task.priority] ?? "#8e8e93";
+    const course = task.course_id ? courseById.get(task.course_id) : undefined;
 
     return (
-      <div key={task.id}>
-        <div
-          className={cn(
-            "group flex items-start gap-2.5 rounded-xl px-1.5 py-2 transition-colors",
-            isHistory
-              ? "hover:bg-slate-900/[0.025] dark:hover:bg-white/[0.03]"
-              : "hover:bg-slate-900/[0.035] dark:hover:bg-white/[0.045]",
-          )}
-        >
-          <span
-            className={cn("mt-1 h-6 w-[2px] shrink-0 rounded-full", isHistory && "opacity-50")}
-            style={{ backgroundColor: color }}
-          />
-
+      <div
+        key={task.id}
+        className={cn(
+          "rounded-2xl transition-colors",
+          expanded
+            ? "bg-slate-900/[0.035] dark:bg-white/[0.045]"
+            : "hover:bg-slate-900/[0.025] dark:hover:bg-white/[0.03]",
+        )}
+      >
+        <div className="flex items-start gap-2 px-1.5 py-2.5">
           <button
             type="button"
-            aria-label={isHistory ? `Completar ${task.title} desde el historial` : `Completar ${task.title}`}
+            aria-label={
+              isHistory ? `Completar ${task.title} desde el historial` : `Completar ${task.title}`
+            }
             title="Marcar como completada"
             onClick={() => void runAction("complete", task.id)}
             disabled={busyHere}
-            className="mt-0.5 flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-full border border-slate-300 text-transparent transition-colors hover:border-[#30d158]/70 hover:bg-[#30d158]/10 hover:text-[#1a9e3a] disabled:opacity-40 dark:border-white/20 dark:hover:text-[#30d158]"
+            className="mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border border-slate-300 text-transparent transition-colors hover:border-[#30d158]/70 hover:bg-[#30d158]/10 hover:text-[#1a9e3a] disabled:opacity-40 dark:border-white/20 dark:hover:text-[#30d158]"
           >
             {busyHere && busy?.action === "complete" ? (
               <Loader2 className="h-2.5 w-2.5 animate-spin text-slate-500 dark:text-white/60" />
@@ -148,42 +169,77 @@ export function TaskList({
             )}
           </button>
 
-          <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 items-center gap-1.5">
-              <p
-                className={cn(
-                  "truncate text-[12.5px]",
-                  isHistory
-                    ? cn(
-                        "text-slate-500 dark:text-white/45",
-                        strikeHistory && "line-through opacity-60",
-                      )
-                    : "text-slate-700 group-hover:text-slate-900 dark:text-white/80 dark:group-hover:text-white/95",
-                )}
-              >
-                {task.title}
-              </p>
-              {isHistory && (
-                <span className="shrink-0 rounded-full bg-rose-500/10 px-1.5 py-0.5 text-[8.5px] font-semibold uppercase tracking-[0.05em] text-rose-600 dark:text-rose-300">
-                  Vencida
-                </span>
-              )}
-            </div>
-            <p className="mt-0.5 truncate text-[10px] text-slate-400 dark:text-white/30">
-              {formatDueLabel(task.due_at)} · {formatMinutes(task.estimated_minutes)} ·{" "}
-              {SOURCE_LABEL[task.source] ?? task.source}
-            </p>
-          </div>
-
-          <span
-            className={cn(
-              "mt-1 shrink-0 text-[9px] font-medium uppercase tracking-[0.05em]",
-              isHistory ? "opacity-50" : "opacity-80",
-            )}
-            style={{ color }}
+          <button
+            type="button"
+            onClick={() => {
+              setExpandedId(expanded ? null : task.id);
+              if (expanded) setConfirmDeleteId(null);
+            }}
+            aria-expanded={expanded}
+            className="flex min-w-0 flex-1 items-start gap-2.5 text-left"
           >
-            {PRIORITY_LABEL[task.priority] ?? task.priority}
-          </span>
+            <span
+              className={cn(
+                "mt-1 h-5 w-[2px] shrink-0 rounded-full",
+                isHistory && "opacity-50",
+              )}
+              style={{ backgroundColor: color }}
+            />
+            <span className="min-w-0 flex-1">
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span
+                  className={cn(
+                    "truncate text-[12.5px]",
+                    isHistory
+                      ? cn(
+                          "text-slate-500 dark:text-white/45",
+                          strikeHistory && "line-through opacity-60",
+                        )
+                      : "text-slate-700 dark:text-white/80",
+                  )}
+                >
+                  {task.title}
+                </span>
+                {isHistory && (
+                  <span className="shrink-0 rounded-full bg-rose-500/10 px-1.5 py-0.5 text-[8.5px] font-semibold uppercase tracking-[0.05em] text-rose-600 dark:text-rose-300">
+                    Vencida
+                  </span>
+                )}
+              </span>
+              <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[10px] text-slate-400 dark:text-white/30">
+                <span className="truncate">{formatDueLabel(task.due_at)}</span>
+                <span aria-hidden>·</span>
+                <span className="shrink-0">{formatMinutes(task.estimated_minutes)}</span>
+                {course && (
+                  <>
+                    <span aria-hidden>·</span>
+                    <span className="flex min-w-0 items-center gap-1">
+                      <span
+                        className="h-1.5 w-1.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: course.color ?? "#8e8e93" }}
+                      />
+                      <span className="truncate">{course.name}</span>
+                    </span>
+                  </>
+                )}
+              </span>
+            </span>
+            <span
+              className={cn(
+                "mt-0.5 hidden shrink-0 text-[9px] font-medium uppercase tracking-[0.05em] sm:block",
+                isHistory ? "opacity-50" : "opacity-80",
+              )}
+              style={{ color }}
+            >
+              {PRIORITY_LABEL[task.priority] ?? task.priority}
+            </span>
+            <ChevronDown
+              className={cn(
+                "mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform duration-200 dark:text-white/25",
+                expanded && "rotate-180",
+              )}
+            />
+          </button>
 
           <button
             type="button"
@@ -191,7 +247,7 @@ export function TaskList({
             title="Editar tarea"
             onClick={() => setEditingTask(task)}
             disabled={busyHere}
-            className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-[#0066FF]/10 hover:text-[#0066FF] disabled:opacity-40 dark:text-white/25 dark:hover:text-[#8ab9ff]"
+            className="mt-0.5 hidden h-6 w-6 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-[#0066FF]/10 hover:text-[#0066FF] disabled:opacity-40 sm:flex dark:text-white/25 dark:hover:text-[#8ab9ff]"
           >
             <Pencil className="h-3.5 w-3.5" />
           </button>
@@ -200,9 +256,12 @@ export function TaskList({
             type="button"
             aria-label={`Eliminar ${task.title}`}
             title="Eliminar tarea"
-            onClick={() => setConfirmDeleteId(confirming ? null : task.id)}
+            onClick={() => {
+              setExpandedId(task.id);
+              setConfirmDeleteId(confirming ? null : task.id);
+            }}
             disabled={busyHere}
-            className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-500/10 hover:text-rose-500 disabled:opacity-40 dark:text-white/25 dark:hover:text-rose-300"
+            className="mt-0.5 hidden h-6 w-6 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-500/10 hover:text-rose-500 disabled:opacity-40 sm:flex dark:text-white/25 dark:hover:text-rose-300"
           >
             {busyHere && busy?.action === "delete" ? (
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -212,30 +271,117 @@ export function TaskList({
           </button>
         </div>
 
-        {confirming && (
-          <div className="ml-8 mb-1 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-200/70 bg-rose-50/70 px-2.5 py-2 dark:border-rose-400/20 dark:bg-rose-500/10">
-            <p className="text-[11px] font-medium text-rose-700 dark:text-rose-200">
-              ¿Eliminar esta tarea de la lista?
-            </p>
-            <div className="flex items-center gap-1">
-              <Button
-                size="sm"
-                variant="destructive"
-                className="h-7 px-2 text-[11px]"
-                onClick={() => void runAction("delete", task.id)}
-                disabled={busyHere}
-              >
-                Eliminar
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 px-2 text-[11px]"
-                onClick={() => setConfirmDeleteId(null)}
-              >
-                Cancelar
-              </Button>
+        {expanded && (
+          <div className="ml-[26px] space-y-3 pb-3 pr-1.5">
+            <div className="rounded-xl border border-slate-900/[0.06] bg-white/35 p-3 dark:border-white/[0.07] dark:bg-white/[0.03]">
+              <p className="whitespace-pre-wrap text-[11.5px] leading-5 text-slate-600 dark:text-white/55">
+                {task.description?.trim() || "Sin notas añadidas. Abre «Editar» para escribir detalles."}
+              </p>
+              <dl className="mt-3 grid gap-x-4 gap-y-2 text-[10.5px] sm:grid-cols-2">
+                <div className="flex items-start gap-1.5">
+                  <CalendarDays className="mt-px h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-white/30" />
+                  <div className="min-w-0">
+                    <dt className="text-slate-400 dark:text-white/30">Entrega</dt>
+                    <dd className="mt-0.5 capitalize text-slate-600 dark:text-white/60">
+                      {formatFullDue(task.due_at)}
+                    </dd>
+                  </div>
+                </div>
+                <div className="flex items-start gap-1.5">
+                  <Clock className="mt-px h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-white/30" />
+                  <div>
+                    <dt className="text-slate-400 dark:text-white/30">Dedicación estimada</dt>
+                    <dd className="mt-0.5 text-slate-600 dark:text-white/60">
+                      {formatMinutes(task.estimated_minutes)}
+                    </dd>
+                  </div>
+                </div>
+                <div className="flex items-start gap-1.5">
+                  <Tag className="mt-px h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-white/30" />
+                  <div>
+                    <dt className="text-slate-400 dark:text-white/30">Prioridad y origen</dt>
+                    <dd className="mt-0.5 text-slate-600 dark:text-white/60">
+                      {PRIORITY_LABEL[task.priority] ?? task.priority} ·{" "}
+                      {SOURCE_LABEL[task.source] ?? task.source}
+                    </dd>
+                  </div>
+                </div>
+                <div className="flex items-start gap-1.5">
+                  <span
+                    className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: course?.color ?? color }}
+                  />
+                  <div>
+                    <dt className="text-slate-400 dark:text-white/30">Asignatura</dt>
+                    <dd className="mt-0.5 text-slate-600 dark:text-white/60">
+                      {course?.name ?? "Sin asignatura"}
+                    </dd>
+                  </div>
+                </div>
+              </dl>
             </div>
+
+            {confirming ? (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-200/70 bg-rose-50/70 px-3 py-2 dark:border-rose-400/20 dark:bg-rose-500/10">
+                <p className="text-[11px] font-medium text-rose-700 dark:text-rose-200">
+                  ¿Eliminar esta tarea de la lista?
+                </p>
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="h-7 px-2 text-[11px]"
+                    onClick={() => void runAction("delete", task.id)}
+                    disabled={busyHere}
+                  >
+                    Eliminar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-[11px]"
+                    onClick={() => setConfirmDeleteId(null)}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-7 px-2.5 text-[11px]"
+                  onClick={() => void runAction("complete", task.id)}
+                  disabled={busyHere}
+                >
+                  {busyHere && busy?.action === "complete" ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Check className="h-3 w-3" />
+                  )}
+                  {isHistory ? "Completar también" : "Completar"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2.5 text-[11px]"
+                  onClick={() => setEditingTask(task)}
+                  disabled={busyHere}
+                >
+                  <Pencil className="h-3 w-3" /> Editar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2.5 text-[11px] text-rose-600 hover:bg-rose-500/10 hover:text-rose-600 dark:text-rose-300 dark:hover:text-rose-200"
+                  onClick={() => setConfirmDeleteId(task.id)}
+                  disabled={busyHere}
+                >
+                  <Trash2 className="h-3 w-3" /> Eliminar
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -255,9 +401,8 @@ export function TaskList({
           </h2>
           <p className="mt-0.5 text-[10.5px] text-slate-500 dark:text-white/35">
             {tasks.length} activa{tasks.length === 1 ? "" : "s"}
-            {hasHistory
-              ? ` · ${historyTasks.length} en el historial`
-              : ""}
+            {hasHistory ? ` · ${historyTasks.length} en el historial` : ""}
+            {hasTasks ? " · toca una tarea para ver sus detalles" : ""}
           </p>
         </div>
         <button
@@ -365,3 +510,10 @@ export function TaskList({
     </section>
   );
 }
+
+/**
+ * La lista se memoiza: el dashboard cambia de pestaña y de estado con
+ * frecuencia, pero las tareas solo deben repintarse cuando cambian sus props.
+ */
+export const TaskList = memo(TaskListComponent);
+TaskList.displayName = "TaskList";

@@ -25,6 +25,48 @@ const nextConfig = {
       { source: "/api/:path*", destination: `${API_URL}/api/:path*` },
     ];
   },
+  // Code splitting manual para las dependencias que no deben entrar en el
+  // bundle inicial. Next ya divide por ruta; estos grupos separan ademas los
+  // vendors pesados en chunks con nombre propio para que se cacheen mejor.
+  webpack(config, { isServer, dev }) {
+    if (dev || isServer) return config;
+
+    const splitChunks = config.optimization.splitChunks ?? {};
+    const cacheGroups = splitChunks.cacheGroups ?? {};
+
+    config.optimization.splitChunks = {
+      ...splitChunks,
+      cacheGroups: {
+        ...cacheGroups,
+        // pdfjs-dist solo se carga al abrir el visor de la Biblioteca.
+        pdfVendor: {
+          test: /[\\/]node_modules[\\/]pdfjs-dist[\\/]/,
+          name: "pdf-vendor",
+          chunks: "all",
+          priority: 40,
+          enforce: true,
+        },
+        // Si en el futuro se incorpora Framer Motion, queda aislado.
+        motionVendor: {
+          test: /[\\/]node_modules[\\/](framer-motion|motion|@motionone)[\\/]/,
+          name: "motion-vendor",
+          chunks: "all",
+          priority: 35,
+          enforce: true,
+        },
+        // SDKs de IA en cliente (hoy la IA se resuelve en el backend).
+        aiVendor: {
+          test: /[\\/]node_modules[\\/](@google[\\/](generative-ai|genai)|@google-ai[\\/]generativelanguage|google-auth-library)[\\/]/,
+          name: "ai-vendor",
+          chunks: "all",
+          priority: 30,
+          enforce: true,
+        },
+      },
+    };
+
+    return config;
+  },
 };
 
 export default nextConfig;

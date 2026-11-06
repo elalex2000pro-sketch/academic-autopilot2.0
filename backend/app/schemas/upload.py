@@ -4,7 +4,9 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.core.text import normalize_filename
 
 
 class UploadCreate(BaseModel):
@@ -13,6 +15,11 @@ class UploadCreate(BaseModel):
     content_type: str = Field(default="application/octet-stream", max_length=200)
     course_id: uuid.UUID | None = None
     class_id: uuid.UUID | None = None
+
+    @field_validator("filename", mode="before")
+    @classmethod
+    def _normalize_filename(cls, value: str) -> str:
+        return normalize_filename(value)
 
 
 class UploadRead(BaseModel):
@@ -25,6 +32,11 @@ class UploadRead(BaseModel):
     chunk_size: int
     status: str
     created_at: datetime
+
+    @field_validator("filename", mode="before")
+    @classmethod
+    def _normalize_filename(cls, value: str) -> str:
+        return normalize_filename(value)
 
 
 class ChunkRead(BaseModel):

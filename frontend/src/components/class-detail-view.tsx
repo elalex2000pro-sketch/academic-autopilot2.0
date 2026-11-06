@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   CalendarDays,
@@ -20,6 +20,7 @@ import {
   Megaphone,
   MessageSquare,
   NotebookPen,
+  Pencil,
   Pin,
   PinOff,
   Plus,
@@ -37,6 +38,8 @@ import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/components/auth-provider";
 import { useRealtime } from "@/components/realtime-provider";
 import { api, ApiError } from "@/lib/api";
+import { getDeletedClassIds } from "@/lib/class-cache";
+import { normalizeFilename } from "@/lib/filename";
 import { uploadFileInChunks, type UploadProgress } from "@/lib/upload";
 import type {
   ClassAssignment,
@@ -113,6 +116,26 @@ function isOverdue(iso: string | null): boolean {
   return !Number.isNaN(date.getTime()) && date.getTime() < Date.now();
 }
 
+function toDateTimeLocal(iso: string | null): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+    date.getHours(),
+  )}:${pad(date.getMinutes())}`;
+}
+
+function toDateInput(iso: string | null): string {
+  const value = toDateTimeLocal(iso);
+  return value ? value.slice(0, 10) : "";
+}
+
+function toTimeInput(iso: string | null): string {
+  const value = toDateTimeLocal(iso);
+  return value ? value.slice(11, 16) : "";
+}
+
 function formatEventRange(event: ClassEvent): string {
   const start = new Date(event.start_at);
   const startText = start.toLocaleString("es-ES", {
@@ -156,6 +179,10 @@ export default function ClassDetailView() {
 
   const loadAll = useCallback(async () => {
     if (!classId) return;
+    if (getDeletedClassIds().has(classId)) {
+      router.replace("/classes");
+      return;
+    }
     const [info, msgs, evs, fls, nbs] = await Promise.all([
       api.classDetail(classId),
       api.classMessages(classId),
@@ -169,7 +196,7 @@ export default function ClassDetailView() {
     setFiles(fls);
     setNotebooks(nbs);
     setAssignments(await api.classAssignments(classId));
-  }, [classId]);
+  }, [classId, router]);
 
   useEffect(() => {
     loadAll()
@@ -251,7 +278,9 @@ export default function ClassDetailView() {
       return;
     try {
       await api.deleteClass(classId);
+      setDetail(null);
       router.push("/classes");
+      router.refresh();
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -261,7 +290,9 @@ export default function ClassDetailView() {
     if (!window.confirm("¿Salir de la clase? Podras volver con el codigo.")) return;
     try {
       await api.leaveClass(classId);
+      setDetail(null);
       router.push("/classes");
+      router.refresh();
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -330,6 +361,11 @@ export default function ClassDetailView() {
   const [assignmentDue, setAssignmentDue] = useState("");
   const [savingAssignment, setSavingAssignment] = useState(false);
   const [updatingAssignmentId, setUpdatingAssignmentId] = useState<string | null>(null);
+  const [editingAssignment, setEditingAssignment] = useState<ClassAssignment | null>(null);
+  const [editAssignmentTitle, setEditAssignmentTitle] = useState("");
+  const [editAssignmentDescription, setEditAssignmentDescription] = useState("");
+  const [editAssignmentDue, setEditAssignmentDue] = useState("");
+  const [savingAssignmentEdit, setSavingAssignmentEdit] = useState(false);
 
   const pendingAssignments = useMemo(
     () => assignments.filter((assignment) => !assignment.my_completed),
@@ -391,9 +427,95 @@ export default function ClassDetailView() {
     try {
       await api.deleteClassAssignment(classId, assignment.id);
       setAssignments((prev) => prev.filter((item) => item.id !== assignment.id));
+      if (editingAssignment?.id === assignment.id) setEditingAssignment(null);
     } catch (err) {
       setError(errorMessage(err));
     }
+  }
+
+  function startEditAssignment(assignment: ClassAssignment) {
+    setEditingAssignment(assignment);
+    setEditAssignmentTitle(assignment.title);
+    setEditAssignmentDescription(assignment.description ?? "");
+    setEditAssignmentDue(toDateTimeLocal(assignment.due_at));
+    setShowAssignmentForm(false);
+  }
+
+  function cancelEditAssignment() {
+    setEditingAssignment(null);
+    setEditAssignmentTitle("");
+    setEditAssignmentDescription("");
+    setEditAssignmentDue("");
+  }
+
+  async function saveAssignmentEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingAssignment || !editAssignmentTitle.trim() || savingAssignmentEdit) return;
+    setSavingAssignmentEdit(true);
+    setError(null);
+    try {
+      const updated = await api.updateClassAssignment(classId, editingAssignment.id, {
+        title: editAssignmentTitle.trim(),
+        description: editAssignmentDescription.trim() || null,
+        due_at: editAssignmentDue ? new Date(editAssignmentDue).toISOString() : null,
+      });
+      setAssignments((prev) =>
+        prev.map((item) => (item.id === editingAssignment.id ? updated : item)),
+      );
+      cancelEditAssignment();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSavingAssignmentEdit(false);
+    }
+  }
+
+  function renderAssignmentEditor(assignment: ClassAssignment) {
+    return (
+      <form
+        onSubmit={saveAssignmentEdit}
+        className="space-y-2.5 rounded-xl border border-[#0066FF]/25 bg-[#0066FF]/[0.04] p-3"
+      >
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#0066FF] dark:text-[#8ab9ff]">
+          Editar tarea
+        </p>
+        <Input
+          value={editAssignmentTitle}
+          onChange={(event) => setEditAssignmentTitle(event.target.value)}
+          placeholder="Título de la tarea"
+          maxLength={300}
+          required
+          aria-label={`Título de ${assignment.title}`}
+        />
+        <Input
+          value={editAssignmentDescription}
+          onChange={(event) => setEditAssignmentDescription(event.target.value)}
+          placeholder="Detalles (opcional)"
+          maxLength={4000}
+          aria-label="Detalles de la tarea"
+        />
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="min-w-[190px] flex-1 space-y-1">
+            <Label htmlFor={`assignment-edit-due-${assignment.id}`} className="text-[11px]">
+              Fecha límite
+            </Label>
+            <Input
+              id={`assignment-edit-due-${assignment.id}`}
+              type="datetime-local"
+              value={editAssignmentDue}
+              onChange={(event) => setEditAssignmentDue(event.target.value)}
+            />
+          </div>
+          <Button type="submit" size="sm" disabled={savingAssignmentEdit || !editAssignmentTitle.trim()}>
+            {savingAssignmentEdit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+            Guardar
+          </Button>
+          <Button type="button" size="sm" variant="ghost" onClick={cancelEditAssignment}>
+            Cancelar
+          </Button>
+        </div>
+      </form>
+    );
   }
 
   // ------------------------------------------------------------ calendario
@@ -409,6 +531,8 @@ export default function ClassDetailView() {
   const [eventDescription, setEventDescription] = useState("");
   const [eventIsExam, setEventIsExam] = useState(false);
   const [savingEvent, setSavingEvent] = useState(false);
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const eventFormRef = useRef<HTMLFormElement>(null);
 
   const monthLabel = useMemo(() => {
     const label = month.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
@@ -466,27 +590,56 @@ export default function ClassDetailView() {
     setSavingEvent(true);
     setError(null);
     try {
-      const created = await api.createClassEvent(classId, {
+      const payload = {
         title: eventTitle.trim(),
         start_at: start.toISOString(),
         end_at: endIso,
         location: eventLocation.trim() || null,
         description: eventDescription.trim() || null,
         is_exam: eventIsExam,
-      });
-      setEvents((prev) =>
-        [...prev, created].sort((a, b) => a.start_at.localeCompare(b.start_at)),
-      );
-      setEventTitle("");
-      setEventEnd("");
-      setEventLocation("");
-      setEventDescription("");
-      setEventIsExam(false);
+      };
+      if (editingEventId) {
+        const updated = await api.updateClassEvent(classId, editingEventId, payload);
+        setEvents((prev) =>
+          prev
+            .map((event) => (event.id === editingEventId ? updated : event))
+            .sort((a, b) => a.start_at.localeCompare(b.start_at)),
+        );
+      } else {
+        const created = await api.createClassEvent(classId, payload);
+        setEvents((prev) =>
+          [...prev, created].sort((a, b) => a.start_at.localeCompare(b.start_at)),
+        );
+      }
+      resetEventForm();
     } catch (err) {
       setError(errorMessage(err));
     } finally {
       setSavingEvent(false);
     }
+  }
+
+  function resetEventForm() {
+    setEditingEventId(null);
+    setEventTitle("");
+    setEventEnd("");
+    setEventLocation("");
+    setEventDescription("");
+    setEventIsExam(false);
+  }
+
+  function startEditEvent(event: ClassEvent) {
+    setEditingEventId(event.id);
+    setEventTitle(event.title);
+    setEventDate(toDateInput(event.start_at) || localDayKey(new Date()));
+    setEventStart(toTimeInput(event.start_at) || "18:00");
+    setEventEnd(event.end_at ? toTimeInput(event.end_at) : "");
+    setEventLocation(event.location ?? "");
+    setEventDescription(event.description ?? "");
+    setEventIsExam(event.is_exam);
+    requestAnimationFrame(() => {
+      eventFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
   }
 
   async function removeEvent(event: ClassEvent) {
@@ -525,25 +678,28 @@ export default function ClassDetailView() {
     }
   }
 
-  async function downloadFile(file: DocumentFile) {
+  const downloadFile = useCallback(async (file: DocumentFile) => {
     try {
       await api.downloadFile(file.id, file.filename);
     } catch (err) {
       setError(errorMessage(err));
     }
-  }
+  }, []);
 
-  async function removeFile(file: DocumentFile) {
-    if (!window.confirm(`¿Borrar "${file.filename}"?`)) return;
+  const removeFile = useCallback(async (file: DocumentFile) => {
+    if (!window.confirm(`¿Borrar "${normalizeFilename(file.filename)}"?`)) return;
     try {
       await api.deleteFile(file.id);
       setFiles((prev) => prev.filter((f) => f.id !== file.id));
     } catch (err) {
       setError(errorMessage(err));
     }
-  }
+  }, []);
 
-  const canDeleteFile = (file: DocumentFile) => file.user_id === user?.id || isOwner;
+  const canDeleteFile = useCallback(
+    (file: DocumentFile) => file.user_id === user?.id || isOwner,
+    [user?.id, isOwner],
+  );
 
   // -------------------------------------------------------------- cuadernos
   const [openNotebook, setOpenNotebook] = useState<Notebook | null>(null);
@@ -912,10 +1068,12 @@ export default function ClassDetailView() {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Anadir evento</CardTitle>
+                <CardTitle className="text-base">
+                  {editingEventId ? "Editar evento" : "Anadir evento"}
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <form onSubmit={createEvent} className="space-y-3">
+                <form ref={eventFormRef} onSubmit={createEvent} className="space-y-3">
                   <div className="space-y-1">
                     <Label htmlFor="event-title">Titulo</Label>
                     <Input
@@ -982,14 +1140,21 @@ export default function ClassDetailView() {
                     />
                     Es un examen (se resalta en rojo para toda la clase)
                   </label>
-                  <Button
-                    type="submit"
-                    size="sm"
-                    disabled={!eventTitle.trim() || savingEvent}
-                  >
-                    {savingEvent ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                    Crear evento
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={!eventTitle.trim() || savingEvent}
+                    >
+                      {savingEvent ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                      {editingEventId ? "Guardar cambios" : "Crear evento"}
+                    </Button>
+                    {editingEventId && (
+                      <Button type="button" size="sm" variant="ghost" onClick={resetEventForm}>
+                        Cancelar
+                      </Button>
+                    )}
+                  </div>
                 </form>
               </CardContent>
             </Card>
@@ -1032,14 +1197,26 @@ export default function ClassDetailView() {
                       </p>
                     </div>
                     {(event.created_by === user?.id || isOwner) && (
-                      <button
-                        type="button"
-                        onClick={() => removeEvent(event)}
-                        title="Eliminar evento"
-                        className="shrink-0 rounded p-1 text-muted-foreground hover:bg-accent"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => startEditEvent(event)}
+                          title="Editar evento"
+                          aria-label={`Editar ${event.title}`}
+                          className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-[#0066FF] dark:hover:text-[#8ab9ff]"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeEvent(event)}
+                          title="Eliminar evento"
+                          aria-label={`Eliminar ${event.title}`}
+                          className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-rose-500"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -1165,70 +1342,83 @@ export default function ClassDetailView() {
                       </p>
                     )}
                     {pendingAssignments.map((assignment) => (
-                      <div
-                        key={assignment.id}
-                        className={`flex items-start gap-3 rounded-xl border px-3 py-3 ${
-                          isOverdue(assignment.due_at)
-                            ? "border-rose-200 bg-rose-50/40"
-                            : "border-border/70 bg-card"
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => void toggleAssignment(assignment)}
-                          disabled={updatingAssignmentId === assignment.id}
-                          className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-slate-300 text-transparent transition-colors hover:border-emerald-500 hover:text-emerald-500 disabled:opacity-50"
-                          aria-label={`Marcar ${assignment.title} como hecha`}
+                      <div key={assignment.id} className="space-y-2">
+                        <div
+                          className={`flex items-start gap-3 rounded-xl border px-3 py-3 ${
+                            isOverdue(assignment.due_at)
+                              ? "border-rose-200 bg-rose-50/40 dark:border-rose-400/20 dark:bg-rose-500/10"
+                              : "border-border/70 bg-card"
+                          }`}
                         >
-                          {updatingAssignmentId === assignment.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
-                          ) : (
-                            <Check className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold leading-5">{assignment.title}</p>
-                          {assignment.description && (
-                            <p className="mt-0.5 whitespace-pre-wrap text-xs text-muted-foreground">
-                              {assignment.description}
-                            </p>
-                          )}
-                          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-                            <span
-                              className={
-                                isOverdue(assignment.due_at) ? "font-semibold text-rose-600" : ""
-                              }
-                            >
-                              <CalendarDays className="mr-1 inline h-3 w-3" />
-                              {formatDueDate(assignment.due_at)}
-                              {isOverdue(assignment.due_at) ? " · vencida" : ""}
-                            </span>
-                            <span>
-                              {assignment.creator_name ?? "Profesor/a"} ·{" "}
-                              {assignment.completed_count}/{assignment.total_members} entregas
-                            </span>
-                          </div>
-                          {assignment.total_members > 1 && (
-                            <Progress
-                              value={
-                                (assignment.completed_count / Math.max(1, assignment.total_members)) *
-                                100
-                              }
-                              className="mt-2 h-1"
-                            />
-                          )}
-                        </div>
-                        {isOwner && (
                           <button
                             type="button"
-                            onClick={() => void removeAssignment(assignment)}
-                            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-rose-500"
-                            title="Eliminar tarea"
-                            aria-label="Eliminar tarea"
+                            onClick={() => void toggleAssignment(assignment)}
+                            disabled={updatingAssignmentId === assignment.id}
+                            className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-slate-300 text-transparent transition-colors hover:border-emerald-500 hover:text-emerald-500 disabled:opacity-50 dark:border-white/20"
+                            aria-label={`Marcar ${assignment.title} como hecha`}
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            {updatingAssignmentId === assignment.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
+                            ) : (
+                              <Check className="h-3.5 w-3.5" />
+                            )}
                           </button>
-                        )}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold leading-5">{assignment.title}</p>
+                            {assignment.description && (
+                              <p className="mt-0.5 whitespace-pre-wrap text-xs text-muted-foreground">
+                                {assignment.description}
+                              </p>
+                            )}
+                            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                              <span
+                                className={
+                                  isOverdue(assignment.due_at) ? "font-semibold text-rose-600" : ""
+                                }
+                              >
+                                <CalendarDays className="mr-1 inline h-3 w-3" />
+                                {formatDueDate(assignment.due_at)}
+                                {isOverdue(assignment.due_at) ? " · vencida" : ""}
+                              </span>
+                              <span>
+                                {assignment.creator_name ?? "Profesor/a"} ·{" "}
+                                {assignment.completed_count}/{assignment.total_members} entregas
+                              </span>
+                            </div>
+                            {assignment.total_members > 1 && (
+                              <Progress
+                                value={
+                                  (assignment.completed_count / Math.max(1, assignment.total_members)) *
+                                  100
+                                }
+                                className="mt-2 h-1"
+                              />
+                            )}
+                          </div>
+                          {isOwner && (
+                            <div className="flex shrink-0 items-center gap-0.5">
+                              <button
+                                type="button"
+                                onClick={() => startEditAssignment(assignment)}
+                                className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-[#0066FF] dark:hover:text-[#8ab9ff]"
+                                title="Editar tarea"
+                                aria-label={`Editar ${assignment.title}`}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void removeAssignment(assignment)}
+                                className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-rose-500"
+                                title="Eliminar tarea"
+                                aria-label={`Eliminar ${assignment.title}`}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        {editingAssignment?.id === assignment.id && renderAssignmentEditor(assignment)}
                       </div>
                     ))}
                   </div>
@@ -1241,42 +1431,54 @@ export default function ClassDetailView() {
                     </p>
                     <div className="space-y-1.5">
                       {finishedAssignments.map((assignment) => (
-                        <div
-                          key={assignment.id}
-                          className="flex items-center gap-3 rounded-xl border border-emerald-200/70 bg-emerald-50/40 px-3 py-2.5"
-                        >
-                          <button
-                            type="button"
-                            onClick={() => void toggleAssignment(assignment)}
-                            disabled={updatingAssignmentId === assignment.id}
-                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white"
-                            aria-label={`Desmarcar ${assignment.title}`}
-                          >
-                            {updatingAssignmentId === assignment.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Check className="h-3.5 w-3.5" />
-                            )}
-                          </button>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium text-slate-600 line-through decoration-emerald-400/70">
-                              {assignment.title}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {assignment.completed_count}/{assignment.total_members} entregas ·{" "}
-                              {formatDueDate(assignment.due_at)}
-                            </p>
-                          </div>
-                          {isOwner && (
+                        <div key={assignment.id} className="space-y-2">
+                          <div className="flex items-center gap-3 rounded-xl border border-emerald-200/70 bg-emerald-50/40 px-3 py-2.5 dark:border-emerald-400/20 dark:bg-emerald-500/10">
                             <button
                               type="button"
-                              onClick={() => void removeAssignment(assignment)}
-                              className="rounded p-1 text-muted-foreground hover:bg-white hover:text-rose-500"
-                              aria-label="Eliminar tarea"
+                              onClick={() => void toggleAssignment(assignment)}
+                              disabled={updatingAssignmentId === assignment.id}
+                              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white"
+                              aria-label={`Desmarcar ${assignment.title}`}
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              {updatingAssignmentId === assignment.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Check className="h-3.5 w-3.5" />
+                              )}
                             </button>
-                          )}
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium text-slate-600 line-through decoration-emerald-400/70 dark:text-white/55">
+                                {assignment.title}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {assignment.completed_count}/{assignment.total_members} entregas ·{" "}
+                                {formatDueDate(assignment.due_at)}
+                              </p>
+                            </div>
+                            {isOwner && (
+                              <div className="flex shrink-0 items-center gap-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => startEditAssignment(assignment)}
+                                  className="rounded p-1 text-muted-foreground transition-colors hover:bg-white hover:text-[#0066FF] dark:hover:bg-white/10 dark:hover:text-[#8ab9ff]"
+                                  title="Editar tarea"
+                                  aria-label={`Editar ${assignment.title}`}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void removeAssignment(assignment)}
+                                  className="rounded p-1 text-muted-foreground transition-colors hover:bg-white hover:text-rose-500 dark:hover:bg-white/10"
+                                  title="Eliminar tarea"
+                                  aria-label={`Eliminar ${assignment.title}`}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          {editingAssignment?.id === assignment.id && renderAssignmentEditor(assignment)}
                         </div>
                       ))}
                     </div>
@@ -1386,28 +1588,13 @@ export default function ClassDetailView() {
             )}
 
             {files.map((file) => (
-              <div
+              <SharedFileRow
                 key={file.id}
-                className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2 text-sm"
-              >
-                <span className="flex min-w-0 items-center gap-2">
-                  <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="truncate font-medium">{file.filename}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {formatBytes(file.size_bytes)}
-                  </span>
-                </span>
-                <span className="flex shrink-0 items-center gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => downloadFile(file)}>
-                    <Download className="h-4 w-4" />
-                  </Button>
-                  {canDeleteFile(file) && (
-                    <Button variant="ghost" size="icon" onClick={() => removeFile(file)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </span>
-              </div>
+                file={file}
+                canDelete={canDeleteFile(file)}
+                onDownload={downloadFile}
+                onRemove={removeFile}
+              />
             ))}
           </CardContent>
         </Card>
@@ -1504,3 +1691,40 @@ export default function ClassDetailView() {
     </div>
   );
 }
+
+const SharedFileRow = memo(function SharedFileRow({
+  file,
+  canDelete,
+  onDownload,
+  onRemove,
+}: {
+  file: DocumentFile;
+  canDelete: boolean;
+  onDownload: (file: DocumentFile) => void;
+  onRemove: (file: DocumentFile) => void;
+}) {
+  const filename = normalizeFilename(file.filename);
+  return (
+    <div className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2 text-sm">
+      <span className="flex min-w-0 items-center gap-2">
+        <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className="truncate font-medium" title={filename}>
+          {filename}
+        </span>
+        <span className="shrink-0 text-xs text-muted-foreground">
+          {formatBytes(file.size_bytes)}
+        </span>
+      </span>
+      <span className="flex shrink-0 items-center gap-1">
+        <Button variant="ghost" size="icon" onClick={() => onDownload(file)}>
+          <Download className="h-4 w-4" />
+        </Button>
+        {canDelete && (
+          <Button variant="ghost" size="icon" onClick={() => onRemove(file)}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
+      </span>
+    </div>
+  );
+});

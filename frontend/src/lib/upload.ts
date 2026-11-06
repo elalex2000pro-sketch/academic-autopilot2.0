@@ -5,6 +5,7 @@
 // peticion falla, se reintenta y, si hace falta, se resincroniza el estado
 // consultando al servidor para continuar desde el ultimo byte confirmado.
 import { ApiError, api, apiBase, tokenStore } from "@/lib/api";
+import { normalizeFilename } from "@/lib/filename";
 import type { DocumentFile } from "@/lib/types";
 
 export interface UploadProgress {
@@ -27,7 +28,7 @@ export async function uploadFileInChunks(
   options: UploadOptions = {},
 ): Promise<DocumentFile> {
   const session = await api.createUpload({
-    filename: file.name,
+    filename: normalizeFilename(file.name),
     size_bytes: file.size,
     content_type: file.type || "application/octet-stream",
     course_id: options.courseId ?? null,

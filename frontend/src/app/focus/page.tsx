@@ -18,6 +18,10 @@ import {
 import { DailyFocus } from "@/components/daily-focus";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api";
+import {
+  ensureSystemNotificationPermission,
+  showSystemNotification,
+} from "@/lib/system-notifications";
 import { markTaskCompleted, restoreTaskExclusion } from "@/lib/task-store";
 import type { DailyAgenda, FocusStats } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -86,17 +90,14 @@ export default function FocusPage() {
         setSessionsDone((value) => value + 1);
         await loadStats();
       }
-      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-        new Notification(
-          mode === "focus" ? "Sesión completada" : "Descanso terminado",
-          {
-            body:
-              mode === "focus"
-                ? "Buen trabajo. Tómate 5 minutos antes de seguir."
-                : "Vuelve al enfoque cuando estés listo.",
-          },
-        );
-      }
+      void showSystemNotification({
+        title: mode === "focus" ? "Sesión completada" : "Descanso terminado",
+        body:
+          mode === "focus"
+            ? "Buen trabajo. Tómate 5 minutos antes de seguir."
+            : "Vuelve al enfoque cuando estés listo.",
+        tag: "focus-timer",
+      });
     } catch (error) {
       setNotice(errorMessage(error));
     } finally {
@@ -122,15 +123,11 @@ export default function FocusPage() {
   }
 
   async function askNotifications() {
-    if (typeof Notification === "undefined") {
-      setNotice("Este navegador no permite notificaciones.");
-      return;
-    }
-    const permission = await Notification.requestPermission();
+    const granted = await ensureSystemNotificationPermission();
     setNotice(
-      permission === "granted"
+      granted
         ? "Notificaciones activadas: te avisaré al terminar cada sesión."
-        : "Has rechazado las notificaciones. Puedes activarlas en el navegador.",
+        : "Has rechazado las notificaciones. Puedes activarlas en el navegador o en Ajustes.",
     );
   }
 
@@ -140,7 +137,7 @@ export default function FocusPage() {
   const ring = 2 * Math.PI * 86;
 
   const maxDay = useMemo(
-    () => Math.max(1, ...(stats?.days.map((day) => day.minutes) ?? [1])),
+    () => Math.max(1, ...(stats?.days?.map((day) => day.minutes) ?? [1])),
     [stats],
   );
 
@@ -322,7 +319,7 @@ export default function FocusPage() {
             return (
               <div key={day.date} className="flex flex-1 flex-col items-center gap-1">
                 <span className="text-[10px] font-medium text-slate-500">{day.minutes}</span>
-                <div className="flex h-24 w-full items-end rounded-lg bg-slate-50">
+                <div className="flex h-24 w-full items-end rounded-lg bg-slate-50 dark:bg-white/[0.06]">
                   <div
                     className="w-full rounded-lg bg-gradient-to-t from-indigo-500 to-violet-400 transition-all duration-500"
                     style={{ height: `${height}%` }}

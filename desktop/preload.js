@@ -14,6 +14,10 @@ contextBridge.exposeInMainWorld("autopilotDesktop", {
   setFrameless: (enabled) => ipcRenderer.invoke("window:set-frameless", Boolean(enabled)),
   getWindowPreferences: () => ipcRenderer.invoke("window:get-preferences"),
 
+  // Avisos nativos: el renderer envia titulo y cuerpo, el proceso principal
+  // crea la notificacion del sistema operativo.
+  notify: (payload) => ipcRenderer.invoke("notifications:show", payload),
+
   // Actualizaciones silenciosas: el proceso principal descarga el instalador
   // y el renderer solo muestra el estado y pide el reinicio.
   updater: {

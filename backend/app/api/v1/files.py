@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import os
 import uuid
-from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
@@ -16,6 +15,7 @@ from sqlalchemy import select
 from app.api.deps import CurrentUser, DbSession
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.core.text import normalize_filename
 from app.models.course import Course
 from app.models.document import Document
 from app.models.shared_class import ClassMembership, SharedClass
@@ -64,7 +64,7 @@ async def upload_file(
     if course_id is not None:
         await _ensure_owned_course(db, current_user.id, course_id)
 
-    original = Path(file.filename or "archivo").name
+    original = normalize_filename(file.filename or "archivo")
     extension = original.rsplit(".", 1)[-1].lower() if "." in original else ""
     if extension not in settings.allowed_extensions:
         allowed = ", ".join(sorted(settings.allowed_extensions))
@@ -138,7 +138,7 @@ async def download_file(
         )
     return FileResponse(
         abs_path,
-        filename=document.filename,
+        filename=normalize_filename(document.filename),
         media_type=document.content_type or "application/octet-stream",
     )
 

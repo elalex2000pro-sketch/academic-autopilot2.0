@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DbSession
+from app.core.text import normalize_filename
 from app.models.book import Book
 from app.models.document import Document
 from app.models.notebook import Notebook, NotebookSource
@@ -103,12 +104,13 @@ def _source_read(
             created_at=source.created_at,
         )
     assert document is not None
-    extension = document.filename.rsplit(".", 1)[-1].upper() if "." in document.filename else None
+    filename = normalize_filename(document.filename)
+    extension = filename.rsplit(".", 1)[-1].upper() if "." in filename else None
     return NotebookSourceRead(
         id=source.id,
         notebook_id=source.notebook_id,
         kind="file",
-        title=document.filename,
+        title=filename,
         subtitle=document.content_type or "Archivo",
         document_id=document.id,
         format=extension,

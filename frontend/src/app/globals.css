@@ -1098,45 +1098,55 @@ html:not(.dark) .text-slate-500 {
 /* --------------------------------------------------------------------------
    Modo oscuro para las páginas antiguas que usan colores fijos de Tailwind.
    -------------------------------------------------------------------------- */
-html.dark .bg-white {
+html.dark :where(.bg-white:not(.keep-white)) {
   background-color: hsl(var(--card));
 }
-html.dark .bg-white\/95,
-html.dark .bg-white\/90,
-html.dark .bg-white\/85 {
+html.dark :where(.bg-white\/95:not(.keep-white)),
+html.dark :where(.bg-white\/90:not(.keep-white)),
+html.dark :where(.bg-white\/85:not(.keep-white)) {
   background-color: hsl(var(--card) / 0.94);
 }
-html.dark .bg-white\/80,
-html.dark .bg-white\/75,
-html.dark .bg-white\/72 {
+html.dark :where(.bg-white\/80:not(.keep-white)),
+html.dark :where(.bg-white\/75:not(.keep-white)),
+html.dark :where(.bg-white\/72:not(.keep-white)) {
   background-color: hsl(var(--card) / 0.88);
 }
-html.dark .bg-white\/70,
-html.dark .bg-white\/60,
-html.dark .bg-white\/50 {
+html.dark :where(.bg-white\/70:not(.keep-white)),
+html.dark :where(.bg-white\/60:not(.keep-white)),
+html.dark :where(.bg-white\/50:not(.keep-white)) {
   background-color: hsl(var(--card) / 0.68);
 }
-html.dark .bg-white\/15,
-html.dark .bg-white\/10 {
+html.dark :where(.bg-white\/15:not(.keep-white)),
+html.dark :where(.bg-white\/10:not(.keep-white)) {
   background-color: hsl(0 0% 100% / 0.08);
 }
-html.dark .hover\:bg-white:hover,
-html.dark .focus\:bg-white:focus {
+html.dark :where(.hover\:bg-white:hover:not(.keep-white)),
+html.dark :where(.focus\:bg-white:focus:not(.keep-white)) {
   background-color: hsl(var(--card));
 }
 
-html.dark .bg-slate-50,
-html.dark .bg-slate-50\/95,
-html.dark .bg-slate-50\/90,
-html.dark .bg-slate-50\/80,
-html.dark .bg-slate-50\/70,
-html.dark .bg-slate-50\/60,
-html.dark .bg-slate-50\/40 {
+html.dark :where(.bg-slate-50:not(.keep-white)),
+html.dark :where(.bg-slate-50\/95:not(.keep-white)),
+html.dark :where(.bg-slate-50\/90:not(.keep-white)),
+html.dark :where(.bg-slate-50\/80:not(.keep-white)),
+html.dark :where(.bg-slate-50\/70:not(.keep-white)),
+html.dark :where(.bg-slate-50\/60:not(.keep-white)),
+html.dark :where(.bg-slate-50\/40:not(.keep-white)) {
   background-color: hsl(var(--muted));
 }
-html.dark .bg-slate-100,
-html.dark .bg-slate-100\/90,
-html.dark .bg-slate-100\/70 {
+html.dark :where(.bg-slate-100:not(.keep-white)),
+html.dark :where(.bg-slate-100\/95:not(.keep-white)),
+html.dark :where(.bg-slate-100\/90:not(.keep-white)),
+html.dark :where(.bg-slate-100\/85:not(.keep-white)),
+html.dark :where(.bg-slate-100\/80:not(.keep-white)),
+html.dark :where(.bg-slate-100\/75:not(.keep-white)),
+html.dark :where(.bg-slate-100\/70:not(.keep-white)),
+html.dark :where(.bg-slate-100\/65:not(.keep-white)),
+html.dark :where(.bg-slate-100\/60:not(.keep-white)),
+html.dark :where(.bg-slate-100\/55:not(.keep-white)),
+html.dark :where(.bg-slate-100\/50:not(.keep-white)),
+html.dark :where(.bg-slate-100\/45:not(.keep-white)),
+html.dark :where(.bg-slate-100\/30:not(.keep-white)) {
   background-color: hsl(var(--secondary));
 }
 html.dark .bg-slate-200 {

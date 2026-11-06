@@ -280,6 +280,27 @@ function registerWindowControls() {
   ipcMain.handle("window:set-frameless", (event, enabled) =>
     applyCustomTitlebar(event, enabled),
   );
+
+  // Avisos nativos lanzados desde el renderer (tareas, examenes, chat).
+  ipcMain.handle("notifications:show", (event, payload) => {
+    if (!Notification.isSupported()) return { ok: false };
+    const title = typeof payload?.title === "string" ? payload.title : "Academic Autopilot";
+    const body = typeof payload?.body === "string" ? payload.body : "";
+    const notification = new Notification({
+      title: title.slice(0, 120),
+      body: body.slice(0, 400),
+      icon: ICON_PATH,
+    });
+    notification.on("click", () => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win || win.isDestroyed()) return;
+      if (win.isMinimized()) win.restore();
+      win.show();
+      win.focus();
+    });
+    notification.show();
+    return { ok: true };
+  });
 }
 
 function normalizeReleaseNotes(value) {

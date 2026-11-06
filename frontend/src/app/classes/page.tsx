@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { KeyRound, Loader2, Plus, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRealtime } from "@/components/realtime-provider";
 import { api, ApiError } from "@/lib/api";
+import { CLASS_DELETED_EVENT, filterDeletedClasses } from "@/lib/class-cache";
 import type { SharedClass } from "@/lib/types";
 
 function errorMessage(error: unknown): string {
@@ -32,7 +33,7 @@ export default function ClassesPage() {
   const [joining, setJoining] = useState(false);
 
   const load = useCallback(async () => {
-    setClasses(await api.classes());
+    setClasses(filterDeletedClasses(await api.classes()));
   }, []);
 
   useEffect(() => {
@@ -40,6 +41,16 @@ export default function ClassesPage() {
       .catch((e) => setError(errorMessage(e)))
       .finally(() => setLoading(false));
   }, [load]);
+
+  useEffect(() => {
+    function onClassDeleted(event: Event) {
+      const id = (event as CustomEvent<{ id?: string }>).detail?.id;
+      if (!id) return;
+      setClasses((previous) => previous.filter((item) => item.id !== id));
+    }
+    window.addEventListener(CLASS_DELETED_EVENT, onClassDeleted);
+    return () => window.removeEventListener(CLASS_DELETED_EVENT, onClassDeleted);
+  }, []);
 
   useRealtime((event) => {
     if (event.event === "classes") {
@@ -175,32 +186,7 @@ export default function ClassesPage() {
         {!loading && classes.length > 0 && (
           <div className="grid gap-3 md:grid-cols-2">
             {classes.map((item) => (
-              <Link
-                key={item.id}
-                href={`/classes/${item.id}`}
-                className="rounded-lg border border-border/60 bg-card p-4 transition-colors hover:border-primary/50 hover:bg-accent/40"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-medium">{item.name}</p>
-                  {item.my_role === "owner" && (
-                    <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
-                      Propietario
-                    </span>
-                  )}
-                </div>
-                {item.description && (
-                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                    {item.description}
-                  </p>
-                )}
-                <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Users className="h-3.5 w-3.5" />
-                    {item.member_count} {item.member_count === 1 ? "miembro" : "miembros"}
-                  </span>
-                  <span className="font-mono">{item.code}</span>
-                </div>
-              </Link>
+              <ClassCard key={item.id} item={item} />
             ))}
           </div>
         )}
@@ -208,3 +194,31 @@ export default function ClassesPage() {
     </div>
   );
 }
+
+const ClassCard = memo(function ClassCard({ item }: { item: SharedClass }) {
+  return (
+    <Link
+      href={`/classes/${item.id}`}
+      className="rounded-lg border border-border/60 bg-card p-4 transition-colors hover:border-primary/50 hover:bg-accent/40"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <p className="font-medium">{item.name}</p>
+        {item.my_role === "owner" && (
+          <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+            Propietario
+          </span>
+        )}
+      </div>
+      {item.description && (
+        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.description}</p>
+      )}
+      <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <Users className="h-3.5 w-3.5" />
+          {item.member_count} {item.member_count === 1 ? "miembro" : "miembros"}
+        </span>
+        <span className="font-mono">{item.code}</span>
+      </div>
+    </Link>
+  );
+});

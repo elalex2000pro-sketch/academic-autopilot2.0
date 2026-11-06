@@ -16,6 +16,7 @@ from sqlalchemy import and_, delete, or_, select
 from app.api.deps import CurrentUser, DbSession
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.core.text import normalize_filename
 from app.db.base import utcnow
 from app.models.book import Book, BookMessage, BookSection
 from app.models.course import Course
@@ -188,7 +189,7 @@ async def import_book(
         format=extension,
         cover_color=_cover_color(title),
         status="processing",
-        source_filename=document.filename,
+        source_filename=normalize_filename(document.filename),
         size_bytes=document.size_bytes,
     )
     db.add(book)

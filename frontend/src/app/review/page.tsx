@@ -11,6 +11,7 @@ import {
   Loader2,
   Plus,
   RotateCcw,
+  Shuffle,
   Sparkles,
   Trash2,
   XCircle,
@@ -239,6 +240,9 @@ function DecksView({
   const [back, setBack] = useState("");
   const [generateNotebook, setGenerateNotebook] = useState(notebooks[0]?.id ?? "");
   const [adding, setAdding] = useState(false);
+  const [deckToDelete, setDeckToDelete] = useState<string | null>(null);
+  const [deletingDeck, setDeletingDeck] = useState(false);
+  const [sessionStats, setSessionStats] = useState({ again: 0, hard: 0, good: 0, easy: 0 });
 
   useEffect(() => {
     if (!generateNotebook && notebooks[0]) setGenerateNotebook(notebooks[0].id);
@@ -271,6 +275,22 @@ function DecksView({
     return list;
   }, [cards, notebooks]);
 
+  // El recuento de cada mazo recorre todas sus tarjetas dos veces. Se calcula
+  // una sola vez por cambio de mazos y no en cada render (al girar la tarjeta,
+  // escribir en el formulario o abrir un dialogo), que es lo que hacia lenta
+  // la navegacion entre pestanas cuando hay muchos mazos.
+  const deckStats = useMemo(() => {
+    const map = new Map<string, { due: number; learned: number; percent: number }>();
+    for (const deck of decks) {
+      const learnedCountForDeck = learnedCount(deck.cards);
+      const due = deck.cards.filter((card) => isDue(card)).length;
+      const percent =
+        deck.cards.length > 0 ? (learnedCountForDeck / deck.cards.length) * 100 : 0;
+      map.set(deck.id, { due, learned: learnedCountForDeck, percent });
+    }
+    return map;
+  }, [decks]);
+
   const activeDeckData = decks.find((deck) => deck.id === activeDeck) ?? null;
 
   const learned = Math.max(0, stats.total - stats.due);
@@ -285,6 +305,41 @@ function DecksView({
     setQueue(source);
     setIndex(0);
     setFlipped(false);
+    setSessionStats({ again: 0, hard: 0, good: 0, easy: 0 });
+  }
+
+  function shuffleQueue() {
+    setQueue((previous) => {
+      const next = [...previous];
+      for (let index = next.length - 1; index > 0; index -= 1) {
+        const random = Math.floor(Math.random() * (index + 1));
+        [next[index], next[random]] = [next[random], next[index]];
+      }
+      return next;
+    });
+    setIndex(0);
+    setFlipped(false);
+  }
+
+  async function deleteDeck(deckId: string) {
+    const deck = decks.find((item) => item.id === deckId);
+    if (!deck || deck.id === "all" || deletingDeck) return;
+    setDeletingDeck(true);
+    try {
+      await Promise.all(deck.cards.map((card) => api.deleteFlashcard(card.id)));
+      setDeckToDelete(null);
+      if (activeDeck === deckId) setActiveDeck(null);
+      notify(
+        `${deck.cards.length} tarjeta${deck.cards.length === 1 ? "" : "s"} eliminada${
+          deck.cards.length === 1 ? "" : "s"
+        } de «${deck.name}».`,
+      );
+      await reload(true);
+    } catch (error) {
+      notify(errorMessage(error));
+    } finally {
+      setDeletingDeck(false);
+    }
   }
 
   function changeDueOnly(value: boolean) {
@@ -296,6 +351,12 @@ function DecksView({
     const current = queue[index];
     if (!current || sessionBusy) return;
     setSessionBusy(true);
+    setSessionStats((previous) => ({
+      again: previous.again + (quality === 1 ? 1 : 0),
+      hard: previous.hard + (quality === 3 ? 1 : 0),
+      good: previous.good + (quality === 4 ? 1 : 0),
+      easy: previous.easy + (quality === 5 ? 1 : 0),
+    }));
     try {
       const result = await api.reviewFlashcard(current.id, quality);
       setQueue((previous) => {
@@ -314,6 +375,30 @@ function DecksView({
       setSessionBusy(false);
     }
   }
+
+  useEffect(() => {
+    if (!activeDeckData) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.tagName === "SELECT") {
+        return;
+      }
+      if (event.code === "Space" || event.key === "Enter") {
+        event.preventDefault();
+        setFlipped((value) => !value);
+        return;
+      }
+      if (!flipped || sessionBusy) return;
+      const quality = event.key === "1" ? 1 : event.key === "2" ? 3 : event.key === "3" ? 4 : event.key === "4" ? 5 : null;
+      if (quality !== null) {
+        event.preventDefault();
+        void review(quality);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeDeckData, flipped, sessionBusy, queue, index]);
 
   async function removeCard(id: string) {
     if (!window.confirm("¿Eliminar esta tarjeta?")) return;
@@ -423,7 +508,10 @@ function DecksView({
                   Todas
                 </button>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => openDeck(activeDeckData.id)} aria-label="Reiniciar sesión">
+              <Button variant="ghost" size="icon" onClick={shuffleQueue} aria-label="Barajar tarjetas" title="Barajar">
+                <Shuffle className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => openDeck(activeDeckData.id)} aria-label="Reiniciar sesión" title="Reiniciar">
                 <RotateCcw className="h-4 w-4" />
               </Button>
             </div>
@@ -438,6 +526,21 @@ function DecksView({
             </div>
             <span className="text-[10px] tabular-nums text-slate-400 dark:text-white/30">
               {Math.min(index, queue.length)} / {queue.length}
+            </span>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[9.5px] font-medium">
+            <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-rose-600 dark:text-rose-300">
+              Otra vez {sessionStats.again}
+            </span>
+            <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-700 dark:text-amber-300">
+              Difícil {sessionStats.hard}
+            </span>
+            <span className="rounded-full bg-[#0066FF]/10 px-2 py-0.5 text-[#0066FF] dark:text-[#8ab9ff]">
+              Bien {sessionStats.good}
+            </span>
+            <span className="rounded-full bg-[#34C759]/10 px-2 py-0.5 text-[#1a9e3a] dark:text-[#7ee69a]">
+              Fácil {sessionStats.easy}
             </span>
           </div>
         </section>
@@ -527,22 +630,26 @@ function DecksView({
 
             {flipped && (
               <div className="mx-auto mt-5 grid max-w-2xl grid-cols-2 gap-2 md:grid-cols-4">
-                <Button variant="secondary" onClick={() => void review(1)} disabled={sessionBusy}>
+                <Button variant="secondary" onClick={() => void review(1)} disabled={sessionBusy} className="gap-2">
+                  <span className="rounded bg-slate-900/[0.06] px-1 text-[9px] dark:bg-white/10">1</span>
                   Otra vez
                 </Button>
-                <Button variant="secondary" onClick={() => void review(3)} disabled={sessionBusy}>
+                <Button variant="secondary" onClick={() => void review(3)} disabled={sessionBusy} className="gap-2">
+                  <span className="rounded bg-slate-900/[0.06] px-1 text-[9px] dark:bg-white/10">2</span>
                   Difícil
                 </Button>
-                <Button onClick={() => void review(4)} disabled={sessionBusy}>
+                <Button onClick={() => void review(4)} disabled={sessionBusy} className="gap-2">
+                  <span className="rounded bg-white/20 px-1 text-[9px]">3</span>
                   Bien
                 </Button>
-                <Button variant="secondary" onClick={() => void review(5)} disabled={sessionBusy}>
+                <Button variant="secondary" onClick={() => void review(5)} disabled={sessionBusy} className="gap-2">
+                  <span className="rounded bg-slate-900/[0.06] px-1 text-[9px] dark:bg-white/10">4</span>
                   Fácil
                 </Button>
               </div>
             )}
             <p className="mt-4 text-center text-[10.5px] text-slate-400 dark:text-white/30">
-              SM-2 calcula la próxima fecha según tu respuesta. No hay que memorizar el calendario.
+              Espacio para girar · 1–4 para valorar · SM-2 calcula la próxima fecha según tu respuesta.
             </p>
           </section>
         ) : null}
@@ -599,53 +706,105 @@ function DecksView({
         ) : (
           <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {decks.map((deck) => {
-              const deckDue = deck.cards.filter((card) => isDue(card)).length;
-              const deckLearned = learnedCount(deck.cards);
-              const percent = deck.cards.length > 0 ? (deckLearned / deck.cards.length) * 100 : 0;
+              const {
+                due: deckDue,
+                learned: deckLearned,
+                percent,
+              } = deckStats.get(deck.id) ?? { due: 0, learned: 0, percent: 0 };
               return (
-                <button
+                <div
                   key={deck.id}
-                  type="button"
-                  onClick={() => openDeck(deck.id)}
-                  className="group relative overflow-hidden rounded-3xl border border-slate-300/40 bg-slate-100/60 p-4 text-left shadow-[0_18px_45px_-32px_rgba(32,39,48,0.3)] backdrop-blur-3xl transition-all duration-200 ease-mac hover:-translate-y-0.5 hover:border-white/80 hover:bg-white/45 dark:border-white/10 dark:bg-black/25 dark:hover:border-white/20 dark:hover:bg-white/[0.06]"
+                  className="group relative overflow-hidden rounded-3xl border border-slate-300/40 bg-slate-100/60 shadow-[0_18px_45px_-32px_rgba(32,39,48,0.3)] backdrop-blur-3xl transition-all duration-200 ease-mac hover:-translate-y-0.5 hover:border-white/80 hover:bg-white/45 dark:border-white/10 dark:bg-black/25 dark:hover:border-white/20 dark:hover:bg-white/[0.06]"
                 >
                   <span
                     className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full opacity-20 blur-2xl"
                     style={{ backgroundColor: deck.color }}
                   />
-                  <div className="relative flex items-start justify-between gap-3">
-                    <span
-                      className="flex h-10 w-10 items-center justify-center rounded-2xl text-white shadow-lg"
-                      style={{ background: `linear-gradient(145deg, ${deck.color}, ${deck.color}aa)` }}
+                  <button
+                    type="button"
+                    onClick={() => openDeck(deck.id)}
+                    className="relative block w-full p-4 pr-12 text-left"
+                  >
+                    <span className="flex items-start justify-between gap-3">
+                      <span
+                        className="flex h-10 w-10 items-center justify-center rounded-2xl text-white shadow-lg"
+                        style={{ background: `linear-gradient(145deg, ${deck.color}, ${deck.color}aa)` }}
+                      >
+                        <Layers className="h-4 w-4" />
+                      </span>
+                      <span className="rounded-full border border-slate-300/40 bg-slate-100/60 px-2 py-1 text-[9.5px] font-medium text-slate-500 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06] dark:text-white/45">
+                        {deck.cards.length} tarjeta{deck.cards.length === 1 ? "" : "s"}
+                      </span>
+                    </span>
+                    <span className="mt-4 line-clamp-2 block text-[15px] font-semibold leading-tight tracking-[-0.02em] text-slate-900 dark:text-white/90">
+                      {deck.name}
+                    </span>
+                    <span className="mt-3 flex items-center justify-between gap-2 text-[10.5px]">
+                      <span className="text-[#1a9e3a] dark:text-[#7ee69a]">
+                        {deckLearned} aprendida{deckLearned === 1 ? "" : "s"}
+                      </span>
+                      <span className="text-[#c27400] dark:text-[#ffc266]">
+                        {deckDue} pendiente{deckDue === 1 ? "" : "s"}
+                      </span>
+                    </span>
+                    <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-slate-900/[0.07] dark:bg-white/10">
+                      <span
+                        className="block h-full rounded-full transition-[width] duration-500"
+                        style={{ width: `${percent}%`, backgroundColor: deck.color }}
+                      />
+                    </span>
+                    <span className="mt-3 flex items-center justify-end text-[10px] font-semibold text-[#0066FF] dark:text-[#8ab9ff]">
+                      Abrir mazo
+                      <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                    </span>
+                  </button>
+
+                  {deck.id !== "all" && deck.cards.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setDeckToDelete(deck.id)}
+                      className="absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-lg bg-white/60 text-slate-400 opacity-100 backdrop-blur-xl transition-colors hover:bg-rose-500/10 hover:text-rose-500 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 dark:bg-black/20 dark:text-white/30 dark:hover:text-rose-300"
+                      title={`Eliminar las tarjetas de ${deck.name}`}
+                      aria-label={`Eliminar el mazo ${deck.name}`}
                     >
-                      <Layers className="h-4 w-4" />
-                    </span>
-                    <span className="rounded-full border border-slate-300/40 bg-slate-100/60 px-2 py-1 text-[9.5px] font-medium text-slate-500 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06] dark:text-white/45">
-                      {deck.cards.length} tarjeta{deck.cards.length === 1 ? "" : "s"}
-                    </span>
-                  </div>
-                  <p className="relative mt-4 line-clamp-2 text-[15px] font-semibold leading-tight tracking-[-0.02em] text-slate-900 dark:text-white/90">
-                    {deck.name}
-                  </p>
-                  <div className="relative mt-3 flex items-center justify-between gap-2 text-[10.5px]">
-                    <span className="text-[#1a9e3a] dark:text-[#7ee69a]">
-                      {deckLearned} aprendida{deckLearned === 1 ? "" : "s"}
-                    </span>
-                    <span className="text-[#c27400] dark:text-[#ffc266]">
-                      {deckDue} pendiente{deckDue === 1 ? "" : "s"}
-                    </span>
-                  </div>
-                  <div className="relative mt-2 h-1.5 overflow-hidden rounded-full bg-slate-900/[0.07] dark:bg-white/10">
-                    <div
-                      className="h-full rounded-full transition-[width] duration-500"
-                      style={{ width: `${percent}%`, backgroundColor: deck.color }}
-                    />
-                  </div>
-                  <span className="relative mt-3 flex items-center justify-end text-[10px] font-semibold text-[#0066FF] dark:text-[#8ab9ff]">
-                    Abrir mazo
-                    <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                  </span>
-                </button>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+
+                  {deckToDelete === deck.id && (
+                    <div className="absolute inset-0 z-20 flex flex-col justify-center gap-3 bg-white/90 p-4 backdrop-blur-2xl dark:bg-[#0b0f18]/95">
+                      <p className="text-[12px] font-semibold text-slate-800 dark:text-white/85">
+                        ¿Eliminar el mazo «{deck.name}»?
+                      </p>
+                      <p className="text-[10.5px] leading-4 text-slate-500 dark:text-white/40">
+                        Se borrarán sus {deck.cards.length} tarjeta
+                        {deck.cards.length === 1 ? "" : "s"} y su progreso de repaso. El cuaderno de
+                        apuntes no se elimina.
+                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="h-7 px-2.5 text-[11px]"
+                          onClick={() => void deleteDeck(deck.id)}
+                          disabled={deletingDeck}
+                        >
+                          {deletingDeck ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                          Eliminar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2.5 text-[11px]"
+                          onClick={() => setDeckToDelete(null)}
+                          disabled={deletingDeck}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>

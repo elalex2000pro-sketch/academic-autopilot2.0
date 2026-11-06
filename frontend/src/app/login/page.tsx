@@ -4,7 +4,6 @@ import { lazy, Suspense, useState } from "react";
 import {
   CalendarCheck,
   Check,
-  ChevronDown,
   KeyRound,
   Loader2,
 } from "lucide-react";
@@ -44,8 +43,8 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Recuperación opcional durante el registro.
-  const [showRecoverySetup, setShowRecoverySetup] = useState(false);
+  // La pregunta de seguridad es obligatoria: es la única forma de recuperar la
+  // cuenta si se pierde la contraseña (no hay servidor de correo).
   const [recoveryQuestion, setRecoveryQuestion] = useState("");
   const [recoveryAnswer, setRecoveryAnswer] = useState("");
 
@@ -56,16 +55,12 @@ export default function LoginPage() {
     if (mode === "register") {
       const cleanQuestion = recoveryQuestion.trim();
       const cleanAnswer = recoveryAnswer.trim();
-      if (Boolean(cleanQuestion) !== Boolean(cleanAnswer)) {
-        setError("Completa la pregunta y la respuesta de seguridad, o deja ambas vacías.");
+      if (cleanQuestion.length < 4) {
+        setError("Escribe una pregunta de seguridad de al menos 4 caracteres.");
         return;
       }
-      if (cleanQuestion && cleanQuestion.length < 4) {
-        setError("La pregunta de seguridad debe tener al menos 4 caracteres.");
-        return;
-      }
-      if (cleanAnswer && cleanAnswer.length < 2) {
-        setError("La respuesta de seguridad debe tener al menos 2 caracteres.");
+      if (cleanAnswer.length < 2) {
+        setError("Escribe la respuesta de seguridad.");
         return;
       }
     }
@@ -77,15 +72,13 @@ export default function LoginPage() {
       } else {
         const cleanQuestion = recoveryQuestion.trim();
         const cleanAnswer = recoveryAnswer.trim();
-        await register(
-          email,
-          password,
-          fullName || undefined,
-          cleanQuestion ? { question: cleanQuestion, answer: cleanAnswer } : undefined,
-        );
+        await register(email, password, fullName || undefined, {
+          question: cleanQuestion,
+          answer: cleanAnswer,
+        });
         // La pregunta queda también en este dispositivo para poder mostrarla
         // como pista si el servidor no está disponible.
-        if (cleanQuestion) saveRecoveryHint(email, cleanQuestion);
+        saveRecoveryHint(email, cleanQuestion);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error inesperado");
@@ -208,7 +201,7 @@ export default function LoginPage() {
                 <p className="mt-1 text-[13px] text-muted-foreground">
                   {mode === "login"
                     ? "Entra para ver el plan de hoy."
-                    : "Solo necesitas un email y una contraseña."}
+                    : "Email, contraseña y una pregunta de seguridad."}
                 </p>
 
                 <form onSubmit={handleSubmit} className="mt-6 space-y-3.5">
@@ -217,6 +210,7 @@ export default function LoginPage() {
                       <Label htmlFor="fullName">Nombre</Label>
                       <Input
                         id="fullName"
+                        name="name"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
                         placeholder="Tu nombre"
@@ -228,18 +222,24 @@ export default function LoginPage() {
                     <Label htmlFor="email">Email</Label>
                     <Input
                       id="email"
+                      name="email"
                       type="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="tu@universidad.edu"
-                      autoComplete="email"
+                      autoComplete="username"
+                      inputMode="email"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
                     />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="password">Contraseña</Label>
                     <Input
                       id="password"
+                      name="password"
                       type="password"
                       required
                       minLength={8}
@@ -266,59 +266,44 @@ export default function LoginPage() {
                   )}
 
                   {mode === "register" && (
-                    <div className="overflow-hidden rounded-xl border border-slate-300/45 bg-slate-100/45 dark:border-white/[0.06] dark:bg-white/[0.025]">
-                      <button
-                        type="button"
-                        onClick={() => setShowRecoverySetup((current) => !current)}
-                        aria-expanded={showRecoverySetup}
-                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[11.5px] font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-white/50 dark:hover:text-white/85"
-                      >
+                    <fieldset className="space-y-3 rounded-xl border border-slate-300/45 bg-slate-100/45 p-3 dark:border-white/[0.06] dark:bg-white/[0.025]">
+                      <legend className="flex items-center gap-1.5 px-1 text-[11.5px] font-semibold text-slate-700 dark:text-white/70">
                         <KeyRound className="h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
-                        <span className="min-w-0 flex-1">
-                          Añadir pregunta de seguridad
-                          <span className="ml-1 font-normal text-muted-foreground/70">
-                            (opcional)
-                          </span>
-                        </span>
-                        <ChevronDown
-                          className={cn(
-                            "h-3.5 w-3.5 shrink-0 transition-transform duration-150",
-                            showRecoverySetup && "rotate-180",
-                          )}
+                        Pregunta de seguridad (obligatoria)
+                      </legend>
+                      <p className="text-[10.5px] leading-4 text-muted-foreground">
+                        Es la única forma de recuperar tu cuenta si olvidas la contraseña. La
+                        respuesta se guarda cifrada y nunca se muestra.
+                      </p>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="recoveryQuestion">Pregunta</Label>
+                        <Input
+                          id="recoveryQuestion"
+                          name="recovery-question"
+                          value={recoveryQuestion}
+                          onChange={(event) => setRecoveryQuestion(event.target.value)}
+                          placeholder="¿Cómo se llamaba tu primera mascota?"
+                          minLength={4}
+                          maxLength={200}
+                          required
+                          autoComplete="off"
                         />
-                      </button>
-
-                      {showRecoverySetup && (
-                        <div className="space-y-3 border-t border-slate-300/40 px-3 py-3 dark:border-white/[0.06]">
-                          <p className="text-[10.5px] leading-4 text-muted-foreground">
-                            Te permite recuperar la cuenta sin depender del correo. La respuesta se
-                            guarda cifrada y nunca se muestra.
-                          </p>
-                          <div className="space-y-1.5">
-                            <Label htmlFor="recoveryQuestion">Pregunta</Label>
-                            <Input
-                              id="recoveryQuestion"
-                              value={recoveryQuestion}
-                              onChange={(event) => setRecoveryQuestion(event.target.value)}
-                              placeholder="¿Cómo se llamaba tu primera mascota?"
-                              maxLength={200}
-                              autoComplete="off"
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label htmlFor="recoveryAnswer">Respuesta</Label>
-                            <Input
-                              id="recoveryAnswer"
-                              value={recoveryAnswer}
-                              onChange={(event) => setRecoveryAnswer(event.target.value)}
-                              placeholder="Tu respuesta secreta"
-                              maxLength={72}
-                              autoComplete="off"
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="recoveryAnswer">Respuesta</Label>
+                        <Input
+                          id="recoveryAnswer"
+                          name="recovery-answer"
+                          value={recoveryAnswer}
+                          onChange={(event) => setRecoveryAnswer(event.target.value)}
+                          placeholder="Tu respuesta secreta"
+                          minLength={2}
+                          maxLength={72}
+                          required
+                          autoComplete="off"
+                        />
+                      </div>
+                    </fieldset>
                   )}
 
                   {error && (
