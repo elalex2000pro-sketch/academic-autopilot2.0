@@ -2,6 +2,7 @@ import {
   BookOpen,
   Brain,
   CalendarRange,
+  FileSpreadsheet,
   FolderOpen,
   GraduationCap,
   Home,
@@ -47,7 +48,10 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Crea",
-    items: [{ href: "/studio", label: "IA Studio", icon: Wand2 }],
+    items: [
+      { href: "/studio", label: "IA Studio", icon: Wand2 },
+      { href: "/office", label: "Academic-Office", icon: FileSpreadsheet },
+    ],
   },
   {
     label: "Comparte",
