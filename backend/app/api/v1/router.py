@@ -5,6 +5,7 @@ from app.api.v1 import (
     assistant,
     auth,
     books,
+    chat,
     classes,
     courses,
     exports,
@@ -33,6 +34,7 @@ api_router.include_router(courses.router)
 api_router.include_router(grades.router)
 api_router.include_router(timetable.router)
 api_router.include_router(tasks.router)
+api_router.include_router(chat.router)
 api_router.include_router(classes.router)
 api_router.include_router(uploads.router)
 api_router.include_router(files.router)

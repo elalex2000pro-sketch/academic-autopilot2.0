@@ -3,6 +3,7 @@ from app.db.base import Base
 from app.models.ai_output import AiOutput
 from app.models.assistant_message import AssistantMessage
 from app.models.book import Book, BookMessage, BookSection
+from app.models.chat import ChatConversation, ChatMember, ChatMessage
 from app.models.classwork import ClassAssignment, ClassAssignmentCompletion
 from app.models.course import Course
 from app.models.document import Document
@@ -41,6 +42,9 @@ __all__ = [
     "Book",
     "BookMessage",
     "BookSection",
+    "ChatConversation",
+    "ChatMember",
+    "ChatMessage",
     "ClassAssignment",
     "ClassAssignmentCompletion",
     "ClassEvent",

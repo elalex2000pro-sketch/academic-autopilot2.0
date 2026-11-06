@@ -11,6 +11,8 @@ export interface User {
   id: string;
   email: string;
   full_name: string | null;
+  /** @usuario publico del chat (null hasta que se elige). */
+  username?: string | null;
   timezone: string;
   created_at: string;
   /** Pregunta configurada para recuperar la cuenta sin correo. */
@@ -499,4 +501,52 @@ export interface ClassAssignment {
   my_completed: boolean;
   completed_count: number;
   total_members: number;
+}
+
+
+// --- Chat en directo -------------------------------------------------------
+
+export interface UsernameAvailability {
+  username: string;
+  valid: boolean;
+  available: boolean;
+  reason: string | null;
+}
+
+export interface ChatUser {
+  id: string;
+  username: string | null;
+  display_name: string;
+}
+
+export interface ChatMember {
+  user: ChatUser;
+  role: "owner" | "member" | string;
+}
+
+export interface ChatFileAttachment {
+  name: string;
+  content_type: string;
+  size_bytes: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  sender_name: string;
+  sender_username: string | null;
+  content: string;
+  attachment: ChatFileAttachment | null;
+  created_at: string;
+}
+
+export interface ChatConversation {
+  id: string;
+  kind: "direct" | "group" | string;
+  title: string | null;
+  members: ChatMember[];
+  last_message: ChatMessage | null;
+  unread_count: number;
+  updated_at: string;
 }

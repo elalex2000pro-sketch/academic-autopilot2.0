@@ -27,6 +27,10 @@ class User(UUIDPkMixin, TimestampMixin, Base):
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str | None] = mapped_column(String(200))
+    # Nombre unico para el chat (@usuario). Opcional hasta que se elige.
+    username: Mapped[str | None] = mapped_column(
+        String(24), unique=True, index=True
+    )
     timezone: Mapped[str] = mapped_column(String(64), default="UTC", nullable=False)
 
     # Recuperacion de contrasena sin depender de correo: pregunta de seguridad

@@ -6,6 +6,7 @@ import {
   GraduationCap,
   Home,
   LayoutDashboard,
+  MessagesSquare,
   NotebookPen,
   Settings,
   Target,
@@ -52,6 +53,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Comparte",
     items: [
       { href: "/classes", label: "Clases", icon: Users },
+      { href: "/chat", label: "Chat", icon: MessagesSquare },
       { href: "/files", label: "Archivos", icon: FolderOpen },
     ],
   },

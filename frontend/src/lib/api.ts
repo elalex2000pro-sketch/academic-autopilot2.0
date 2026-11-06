@@ -47,8 +47,17 @@ import type {
   User,
 } from "@/lib/types";
 import {
+  clearClassLocalCache,
+  filterDeletedClasses,
+  markClassDeleted,
+  notifyClassDeleted,
+  unmarkClassDeleted,
+} from "@/lib/class-cache";
+import { normalizeDocumentFilename, normalizeFilename } from "@/lib/filename";
+import {
   LOCAL_CACHE_EVENT,
   cacheApiResponse,
+  deleteCachedApiResponse,
   readCachedApiResponse,
 } from "@/lib/local-cache";
 
@@ -430,18 +439,25 @@ export const api = {
     }),
 
   // --- Archivos (documentos por asignatura) ---
-  files: (courseId?: string, classId?: string) => {
+  files: async (courseId?: string, classId?: string) => {
     const params = new URLSearchParams();
     if (courseId) params.set("course_id", courseId);
     if (classId) params.set("class_id", classId);
     const query = params.toString();
-    return request<DocumentFile[]>(`/api/v1/files${query ? `?${query}` : ""}`);
+    const documents = await request<DocumentFile[]>(
+      `/api/v1/files${query ? `?${query}` : ""}`,
+    );
+    return documents.map(normalizeDocumentFilename);
   },
-  uploadFile: (file: File, courseId?: string | null) => {
+  uploadFile: async (file: File, courseId?: string | null) => {
     const form = new FormData();
     form.append("file", file);
     if (courseId) form.append("course_id", courseId);
-    return request<DocumentFile>("/api/v1/files", { method: "POST", body: form });
+    const document = await request<DocumentFile>("/api/v1/files", {
+      method: "POST",
+      body: form,
+    });
+    return normalizeDocumentFilename(document);
   },
   deleteFile: (id: string) =>
     request<void>(`/api/v1/files/${id}`, { method: "DELETE" }),
@@ -469,7 +485,7 @@ export const api = {
     const url = URL.createObjectURL(blob);
     const anchor = window.document.createElement("a");
     anchor.href = url;
-    anchor.download = filename;
+    anchor.download = normalizeFilename(filename);
     window.document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
@@ -626,20 +642,35 @@ export const api = {
       body: JSON.stringify(body),
     }),
   uploadStatus: (id: string) => request<UploadSession>(`/api/v1/files/uploads/${id}`),
-  completeUpload: (id: string) =>
-    request<DocumentFile>(`/api/v1/files/uploads/${id}/complete`, { method: "POST" }),
+  completeUpload: async (id: string) => {
+    const document = await request<DocumentFile>(
+      `/api/v1/files/uploads/${id}/complete`,
+      { method: "POST" },
+    );
+    return normalizeDocumentFilename(document);
+  },
   abortUpload: (id: string) =>
     request<void>(`/api/v1/files/uploads/${id}`, { method: "DELETE" }),
 
   // --- Clases compartidas (codigo, chat, calendario y archivos) ---
-  classes: () => request<SharedClass[]>("/api/v1/classes"),
-  createClass: (body: { name: string; description?: string }) =>
-    request<SharedClass>("/api/v1/classes", { method: "POST", body: JSON.stringify(body) }),
-  joinClass: (code: string) =>
-    request<SharedClass>("/api/v1/classes/join", {
+  classes: async () => filterDeletedClasses(await request<SharedClass[]>("/api/v1/classes")),
+  createClass: async (body: { name: string; description?: string }) => {
+    const created = await request<SharedClass>("/api/v1/classes", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    unmarkClassDeleted(created.id);
+    return created;
+  },
+  joinClass: async (code: string) => {
+    const joined = await request<SharedClass>("/api/v1/classes/join", {
       method: "POST",
       body: JSON.stringify({ code }),
-    }),
+    });
+    unmarkClassDeleted(joined.id);
+    await deleteCachedApiResponse("/api/v1/classes");
+    return joined;
+  },
   classDetail: (id: string) => request<ClassDetail>(`/api/v1/classes/${id}`),
   updateClass: (id: string, body: { name?: string; description?: string | null }) =>
     request<SharedClass>(`/api/v1/classes/${id}`, {
@@ -648,10 +679,20 @@ export const api = {
     }),
   regenerateClassCode: (id: string) =>
     request<SharedClass>(`/api/v1/classes/${id}/regenerate-code`, { method: "POST" }),
-  deleteClass: (id: string) =>
-    request<void>(`/api/v1/classes/${id}`, { method: "DELETE" }),
-  leaveClass: (id: string) =>
-    request<void>(`/api/v1/classes/${id}/leave`, { method: "POST" }),
+  deleteClass: async (id: string) => {
+    await request<void>(`/api/v1/classes/${id}`, { method: "DELETE" });
+    // Persistimos el borrado y limpiamos la copia local antes de navegar:
+    // así el listado no puede resucitar la clase desde IndexedDB.
+    markClassDeleted(id);
+    await clearClassLocalCache(id);
+    notifyClassDeleted(id);
+  },
+  leaveClass: async (id: string) => {
+    await request<void>(`/api/v1/classes/${id}/leave`, { method: "POST" });
+    markClassDeleted(id);
+    await clearClassLocalCache(id);
+    notifyClassDeleted(id);
+  },
   classMessages: (id: string, limit = 100) =>
     request<ClassMessage[]>(`/api/v1/classes/${id}/messages?limit=${limit}`),
   sendClassMessage: (id: string, body: { content: string; kind?: "message" | "announcement" }) =>
@@ -788,4 +829,84 @@ export const api = {
     }),
   deleteStudioOutput: (id: string) =>
     request<void>(`/api/v1/studio/outputs/${id}`, { method: "DELETE" }),
+};
+
+
+// --- Chat en directo -------------------------------------------------------
+import type {
+  ChatConversation as ChatConversationModel,
+  ChatMessage as ChatMessageModel,
+  ChatUser as ChatUserModel,
+  UsernameAvailability,
+} from "@/lib/types";
+
+export const chatApi = {
+  conversations: () =>
+    request<ChatConversationModel[]>("/api/v1/chat/conversations"),
+  users: (q: string) =>
+    request<ChatUserModel[]>(`/api/v1/chat/users?q=${encodeURIComponent(q)}`),
+  createConversation: (body: {
+    kind: "direct" | "group";
+    title?: string | null;
+    member_ids?: string[];
+    usernames?: string[];
+  }) =>
+    request<ChatConversationModel>("/api/v1/chat/conversations", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  invite: (conversationId: string, username: string) =>
+    request<ChatConversationModel>(
+      `/api/v1/chat/conversations/${conversationId}/members`,
+      { method: "POST", body: JSON.stringify({ username }) },
+    ),
+  messages: (conversationId: string, before?: string) =>
+    request<ChatMessageModel[]>(
+      `/api/v1/chat/conversations/${conversationId}/messages${
+        before ? `?before=${encodeURIComponent(before)}` : ""
+      }`,
+    ),
+  markRead: (conversationId: string) =>
+    request<void>(`/api/v1/chat/conversations/${conversationId}/read`, {
+      method: "POST",
+    }),
+  leave: (conversationId: string) =>
+    request<void>(
+      `/api/v1/chat/conversations/${conversationId}/members/me`,
+      { method: "DELETE" },
+    ),
+  sendMessage: (conversationId: string, content: string, file?: File | null) => {
+    const body = new FormData();
+    body.append("content", content);
+    if (file) body.append("file", file);
+    return request<ChatMessageModel>(
+      `/api/v1/chat/conversations/${conversationId}/messages`,
+      { method: "POST", body },
+    );
+  },
+  downloadAttachment: async (messageId: string): Promise<Blob> => {
+    const token = tokenStore.get();
+    const response = await fetch(
+      `${resolveApiBase()}/api/v1/chat/messages/${messageId}/attachment`,
+      {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      },
+    );
+    if (!response.ok) {
+      throw new ApiError(
+        response.status,
+        "No se pudo descargar el adjunto",
+      );
+    }
+    return response.blob();
+  },
+  usernameAvailable: (value: string) =>
+    request<UsernameAvailability>(
+      `/api/v1/auth/username/available?value=${encodeURIComponent(value)}`,
+    ),
+  setUsername: (username: string) =>
+    request<User>("/api/v1/auth/username", {
+      method: "PUT",
+      body: JSON.stringify({ username }),
+    }),
 };

@@ -1,5 +1,7 @@
 """Endpoints de autenticacion (registro, login, perfil y recuperacion)."""
-from fastapi import APIRouter, HTTPException, Request, status
+import re
+
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DbSession
@@ -11,6 +13,7 @@ from app.core.security import (
     verify_password,
 )
 from app.models.user import User
+from app.schemas.chat import UsernameAvailability, UsernameUpdate
 from app.schemas.auth import (
     PasswordResetRequest,
     RecoveryQuestionRead,
@@ -25,6 +28,13 @@ from app.schemas.auth import (
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 _MAX_RECOVERY_ANSWER_BYTES = 72  # limite de bcrypt
+
+# Nombre publico del chat: minusculas, numeros y guion bajo.
+_USERNAME_RE = re.compile(r"^[a-z0-9_]{3,24}$")
+
+
+def _clean_username(value: str) -> str:
+    return (value or "").strip().lstrip("@").lower()
 
 
 def _normalize_recovery_pair(
@@ -182,6 +192,59 @@ async def set_recovery(
 
     current_user.recovery_question = question
     current_user.recovery_answer_hash = hash_password(answer)
+    await db.commit()
+    await db.refresh(current_user)
+    return current_user
+
+
+@router.get("/username/available", response_model=UsernameAvailability)
+async def username_available(
+    db: DbSession, value: str = Query(..., min_length=1, max_length=40)
+) -> UsernameAvailability:
+    """Comprueba si un @usuario del chat esta libre."""
+    username = _clean_username(value)
+    if not _USERNAME_RE.fullmatch(username):
+        return UsernameAvailability(
+            username=username,
+            valid=False,
+            available=False,
+            reason="Entre 3 y 24 caracteres: minusculas, numeros o guion bajo",
+        )
+    taken = (
+        await db.execute(select(User.id).where(User.username == username))
+    ).first()
+    return UsernameAvailability(
+        username=username,
+        valid=True,
+        available=taken is None,
+        reason=None if taken is None else "Ese @usuario ya esta en uso",
+    )
+
+
+@router.put("/username", response_model=UserRead)
+async def update_username(
+    payload: UsernameUpdate, current_user: CurrentUser, db: DbSession
+) -> User:
+    """Elige el @usuario publico con el que te encuentran en el chat."""
+    username = _clean_username(payload.username)
+    if not _USERNAME_RE.fullmatch(username):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Entre 3 y 24 caracteres: minusculas, numeros o guion bajo",
+        )
+    existing = (
+        await db.execute(
+            select(User).where(
+                User.username == username, User.id != current_user.id
+            )
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Ese @usuario ya esta en uso",
+        )
+    current_user.username = username
     await db.commit()
     await db.refresh(current_user)
     return current_user

@@ -33,6 +33,8 @@ class UserRead(BaseModel):
     id: uuid.UUID
     email: EmailStr
     full_name: str | None
+    # Nombre publico del chat (@usuario); opcional hasta que se elige.
+    username: str | None = None
     timezone: str
     created_at: datetime
     recovery_question: str | None = None
