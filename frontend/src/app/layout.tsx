@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { AppChrome } from "@/components/app-chrome";
 import { AppShell } from "@/components/app-shell";
 import { AuthProvider } from "@/components/auth-provider";
+import { BootSplash } from "@/components/boot-splash";
 import { PreferencesProvider } from "@/components/preferences-provider";
 import { PwaRegister } from "@/components/pwa-register";
 import { RealtimeProvider } from "@/components/realtime-provider";
@@ -66,6 +67,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: INSTALL_SCRIPT }} />
       </head>
       <body className="min-h-dvh bg-transparent">
+        <BootSplash />
         <WallpaperBackdrop />
         <PwaRegister />
         <ThemeProvider>

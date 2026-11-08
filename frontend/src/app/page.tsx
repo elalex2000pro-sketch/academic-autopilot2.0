@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -26,7 +27,6 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
-import { ExamDialog } from "@/components/exam-dialog";
 import { usePreferences } from "@/components/preferences-provider";
 import { Input } from "@/components/ui/input";
 import { SyncStatus } from "@/components/sync-status";
@@ -63,6 +63,16 @@ type QuickLink = {
   icon: LucideIcon;
   tone: string;
 };
+
+// El diálogo de examen solo se necesita cuando el usuario edita una nota; se
+// descarga bajo demanda para no engordar el chunk del dashboard.
+const ExamDialog = dynamic(
+  () =>
+    import("@/components/exam-dialog").then((module) => ({
+      default: module.ExamDialog,
+    })),
+  { ssr: false, loading: () => null },
+);
 
 const QUICK_LINKS: QuickLink[] = [
   { href: "/library", label: "Biblioteca", icon: BookOpen, tone: "from-[#5aa7ff] to-[#0066d6]" },
@@ -211,6 +221,7 @@ export default function DashboardPage() {
   const [editingExam, setEditingExam] = useState<Grade | null>(null);
   const [loading, setLoading] = useState(true);
   const [, setTick] = useState(0);
+  const initialLoading = loading && !plan && !agenda;
 
   const {
     activeTasks,
@@ -251,13 +262,26 @@ export default function DashboardPage() {
       setLoading(false);
     }
 
-    // Biblioteca, tareas y notas no bloquean el primer pintado. Si alguna
-    // falla, el dashboard sigue mostrando el plan y se reintenta al navegar.
-    void Promise.allSettled([
-      api.books().then(setBooks).catch(() => setBooks([])),
-      refreshTasks({ silent: true }).catch(() => undefined),
-      refreshGradeData().catch(() => undefined),
-    ]);
+    // Biblioteca, tareas y notas no bloquean el primer pintado. Se piden en
+    // tiempo ocioso para que el plan de hoy y la agenda ganen la carrera.
+    const runDeferred = () => {
+      void Promise.allSettled([
+        api.books().then(setBooks).catch(() => setBooks([])),
+        refreshTasks({ silent: true }).catch(() => undefined),
+        refreshGradeData().catch(() => undefined),
+      ]);
+    };
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (
+        callback: () => void,
+        options?: { timeout: number },
+      ) => number;
+    };
+    if (idleWindow.requestIdleCallback) {
+      idleWindow.requestIdleCallback(runDeferred, { timeout: 1500 });
+    } else {
+      window.setTimeout(runDeferred, 250);
+    }
   }, [refreshGradeData, refreshTasks]);
 
   useEffect(() => {
@@ -510,7 +534,23 @@ export default function DashboardPage() {
       </header>
 
       {/* ---- Widgets superiores ---- */}
-      <section className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <section
+        aria-busy={initialLoading}
+        className="relative mt-6 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4"
+      >
+        {initialLoading ? (
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 z-10 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4"
+          >
+            {[0, 1, 2, 3].map((item) => (
+              <div
+                key={item}
+                className="h-[132px] animate-pulse rounded-3xl border border-white/40 bg-slate-100/60 motion-reduce:animate-none dark:border-white/[0.06] dark:bg-white/[0.035]"
+              />
+            ))}
+          </div>
+        ) : null}
         <div className="app-glass rounded-3xl p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -1144,22 +1184,24 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <ExamDialog
-        open={Boolean(editingExam)}
-        mode="edit"
-        exam={editingExam}
-        courses={courses}
-        defaultDate={todayKey}
-        onClose={() => setEditingExam(null)}
-        onSaved={(_exam, message) => {
-          setEditingExam(null);
-          setGradeNotice(message);
-        }}
-        onDeleted={() => {
-          setEditingExam(null);
-          setGradeNotice("Examen eliminado del calendario y de la media.");
-        }}
-      />
+      {editingExam ? (
+        <ExamDialog
+          open
+          mode="edit"
+          exam={editingExam}
+          courses={courses}
+          defaultDate={todayKey}
+          onClose={() => setEditingExam(null)}
+          onSaved={(_exam, message) => {
+            setEditingExam(null);
+            setGradeNotice(message);
+          }}
+          onDeleted={() => {
+            setEditingExam(null);
+            setGradeNotice("Examen eliminado del calendario y de la media.");
+          }}
+        />
+      ) : null}
     </div>
   );
 }
