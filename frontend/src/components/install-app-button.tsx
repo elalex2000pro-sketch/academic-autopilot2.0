@@ -17,6 +17,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { WEB_APP_VERSION } from "@/lib/app-update";
 import {
   clearLocalAppData,
   getLocalCacheStats,
@@ -310,7 +311,7 @@ export function InstallAppButton({
         <span aria-hidden="true">·</span>
         <span>{INSTALLER_SIZE}</span>
         <span aria-hidden="true">·</span>
-        <span>Versión 1.0.1</span>
+        <span>Versión {WEB_APP_VERSION}</span>
         <span aria-hidden="true">·</span>
         <a
           href={DESKTOP_RELEASE_URL}
