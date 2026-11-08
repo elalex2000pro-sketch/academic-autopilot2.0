@@ -53,7 +53,19 @@ export default function ClassesPage() {
   }, []);
 
   useRealtime((event) => {
-    if (event.event === "classes") {
+    if (event.event !== "classes") return;
+    const data = event.data as { class_id?: string; action?: string } | undefined;
+    if (!data?.class_id) return;
+    if (data.action === "deleted") {
+      setClasses((previous) => previous.filter((item) => item.id !== data.class_id));
+      return;
+    }
+    // Mensajes, tareas y eventos no cambian esta lista: no hace falta recargarla.
+    if (
+      ["created", "updated", "code", "member_joined", "member_left", "left"].includes(
+        data.action ?? "",
+      )
+    ) {
       load().catch(() => undefined);
     }
   });

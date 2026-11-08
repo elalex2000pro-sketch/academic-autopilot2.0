@@ -183,6 +183,8 @@ export interface ClassMessage {
   kind: "message" | "announcement" | string;
   pinned: boolean;
   created_at: string;
+  /** Solo en el cliente: burbuja local mientras viaja la peticion. */
+  pending?: boolean;
 }
 
 export interface ClassEvent {
@@ -539,6 +541,8 @@ export interface ChatMessage {
   content: string;
   attachment: ChatFileAttachment | null;
   created_at: string;
+  /** Solo en el cliente: burbuja local mientras viaja la peticion. */
+  pending?: boolean;
 }
 
 export interface ChatConversation {

@@ -198,6 +198,19 @@ def _event_read(event: ClassEvent, creator_name: str | None) -> EventRead:
     )
 
 
+def _message_read(message: ClassMessage, author_name: str | None) -> MessageRead:
+    return MessageRead(
+        id=message.id,
+        class_id=message.class_id,
+        user_id=message.user_id,
+        author_name=author_name,
+        content=message.content,
+        kind=message.kind,
+        pinned=message.pinned,
+        created_at=message.created_at,
+    )
+
+
 async def _get_assignment(
     db: DbSession, class_id: uuid.UUID, assignment_id: uuid.UUID
 ) -> ClassAssignment:
@@ -507,17 +520,15 @@ async def send_message(
     db.add(message)
     await db.commit()
     await db.refresh(message)
-    await class_service.notify_class(db, class_id, "message", id=str(message.id))
-    return MessageRead(
-        id=message.id,
-        class_id=message.class_id,
-        user_id=message.user_id,
-        author_name=current_user.full_name or current_user.email,
-        content=message.content,
-        kind=message.kind,
-        pinned=message.pinned,
-        created_at=message.created_at,
+    read = _message_read(message, current_user.full_name or current_user.email)
+    await class_service.notify_class(
+        db,
+        class_id,
+        "message_created",
+        message=read.model_dump(mode="json"),
+        message_id=str(message.id),
     )
+    return read
 
 
 @router.patch("/{class_id}/messages/{message_id}", response_model=MessageRead)
@@ -534,18 +545,14 @@ async def update_message(
     message.pinned = payload.pinned
     await db.commit()
     await db.refresh(message)
-    await class_service.notify_class(db, class_id, "message", id=str(message.id))
     author = await db.get(User, message.user_id)
-    return MessageRead(
-        id=message.id,
-        class_id=message.class_id,
-        user_id=message.user_id,
-        author_name=(author.full_name or author.email) if author else None,
-        content=message.content,
-        kind=message.kind,
-        pinned=message.pinned,
-        created_at=message.created_at,
+    read = _message_read(
+        message, (author.full_name or author.email) if author else None
     )
+    await class_service.notify_class(
+        db, class_id, "message_updated", message=read.model_dump(mode="json")
+    )
+    return read
 
 
 @router.delete(
@@ -569,7 +576,9 @@ async def delete_message(
         )
     await db.delete(message)
     await db.commit()
-    await class_service.notify_class(db, class_id, "message", id=str(message_id))
+    await class_service.notify_class(
+        db, class_id, "message_deleted", message_id=str(message_id)
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -633,8 +642,15 @@ async def create_event(
     db.add(event)
     await db.commit()
     await db.refresh(event)
-    await class_service.notify_class(db, class_id, "event", id=str(event.id))
-    return _event_read(event, current_user.full_name or current_user.email)
+    read = _event_read(event, current_user.full_name or current_user.email)
+    await class_service.notify_class(
+        db,
+        class_id,
+        "event_created",
+        event=read.model_dump(mode="json"),
+        event_id=str(event.id),
+    )
+    return read
 
 
 @router.patch("/{class_id}/events/{event_id}", response_model=EventRead)
@@ -669,9 +685,12 @@ async def update_event(
         )
     await db.commit()
     await db.refresh(event)
-    await class_service.notify_class(db, class_id, "event", id=str(event.id))
     creator = await db.get(User, event.created_by)
-    return _event_read(event, (creator.full_name or creator.email) if creator else None)
+    read = _event_read(event, (creator.full_name or creator.email) if creator else None)
+    await class_service.notify_class(
+        db, class_id, "event_updated", event=read.model_dump(mode="json")
+    )
+    return read
 
 
 @router.delete(
@@ -695,7 +714,9 @@ async def delete_event(
         )
     await db.delete(event)
     await db.commit()
-    await class_service.notify_class(db, class_id, "event", id=str(event_id))
+    await class_service.notify_class(
+        db, class_id, "event_deleted", event_id=str(event_id)
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -773,14 +794,21 @@ async def create_assignment(
     db.add(assignment)
     await db.commit()
     await db.refresh(assignment)
-    await class_service.notify_class(db, class_id, "assignment", id=str(assignment.id))
-    return await _assignment_read(
+    read = await _assignment_read(
         db,
         assignment,
         current_user.id,
         await _member_count(db, class_id),
         current_user.full_name or current_user.email,
     )
+    await class_service.notify_class(
+        db,
+        class_id,
+        "assignment_created",
+        assignment=read.model_dump(mode="json"),
+        assignment_id=str(assignment.id),
+    )
+    return read
 
 
 @router.patch("/{class_id}/assignments/{assignment_id}", response_model=AssignmentRead)
@@ -803,10 +831,13 @@ async def update_assignment(
         assignment.due_at = data["due_at"]
     await db.commit()
     await db.refresh(assignment)
-    await class_service.notify_class(db, class_id, "assignment", id=str(assignment.id))
-    return await _assignment_read(
+    read = await _assignment_read(
         db, assignment, current_user.id, await _member_count(db, class_id)
     )
+    await class_service.notify_class(
+        db, class_id, "assignment_updated", assignment=read.model_dump(mode="json")
+    )
+    return read
 
 
 @router.delete(
@@ -825,7 +856,9 @@ async def delete_assignment(
     assignment = await _get_assignment(db, class_id, assignment_id)
     await db.delete(assignment)
     await db.commit()
-    await class_service.notify_class(db, class_id, "assignment", id=str(assignment_id))
+    await class_service.notify_class(
+        db, class_id, "assignment_deleted", assignment_id=str(assignment_id)
+    )
 
 
 @router.put(
@@ -858,10 +891,20 @@ async def set_assignment_completion(
     elif not payload.completed and completion is not None:
         await db.delete(completion)
     await db.commit()
-    await class_service.notify_class(db, class_id, "assignment", id=str(assignment.id))
-    return await _assignment_read(
+    read = await _assignment_read(
         db, assignment, current_user.id, await _member_count(db, class_id)
     )
+    await class_service.notify_class(
+        db,
+        class_id,
+        "assignment_completion",
+        assignment_id=str(assignment.id),
+        user_id=str(current_user.id),
+        completed=payload.completed,
+        completed_count=read.completed_count,
+        total_members=read.total_members,
+    )
+    return read
 
 
 # --------------------------------------------------------------------------- #

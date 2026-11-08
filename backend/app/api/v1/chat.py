@@ -561,6 +561,7 @@ async def send_message(
     await db.commit()
     await db.refresh(message)
 
+    read = _message_read(message, current_user)
     for user_id in (
         await db.execute(
             select(ChatMember.user_id).where(
@@ -575,10 +576,11 @@ async def send_message(
                 "conversation_id": str(conversation.id),
                 "action": "message",
                 "message_id": str(message.id),
+                "message": read.model_dump(mode="json"),
             },
         )
 
-    return _message_read(message, current_user)
+    return read
 
 
 @router.get("/messages/{message_id}/attachment")

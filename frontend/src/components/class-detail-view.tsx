@@ -136,6 +136,59 @@ function toTimeInput(iso: string | null): string {
   return value ? value.slice(11, 16) : "";
 }
 
+type ClassRealtimePayload = {
+  class_id?: string;
+  action?: string;
+  message?: ClassMessage;
+  message_id?: string;
+  assignment?: ClassAssignment;
+  assignment_id?: string;
+  event?: ClassEvent;
+  event_id?: string;
+  user_id?: string;
+  completed?: boolean;
+  completed_count?: number;
+  total_members?: number;
+};
+
+function messageTime(message: ClassMessage): number {
+  const value = new Date(message.created_at).getTime();
+  return Number.isNaN(value) ? 0 : value;
+}
+
+function mergeClassMessage(
+  current: ClassMessage[],
+  incoming: ClassMessage,
+  meId: string,
+): ClassMessage[] {
+  const withoutIncoming = current.filter((message) => message.id !== incoming.id);
+  const withoutOptimistic =
+    incoming.user_id === meId
+      ? withoutIncoming.filter(
+          (message) =>
+            !(
+              message.pending &&
+              message.content === incoming.content &&
+              message.kind === incoming.kind
+            ),
+        )
+      : withoutIncoming;
+  return [...withoutOptimistic, incoming].sort(
+    (a, b) => messageTime(a) - messageTime(b),
+  );
+}
+
+function reconcileClassMessage(
+  current: ClassMessage[],
+  tempId: string,
+  created: ClassMessage,
+): ClassMessage[] {
+  const withoutStale = current.filter(
+    (message) => message.id !== tempId && message.id !== created.id,
+  );
+  return [...withoutStale, created].sort((a, b) => messageTime(a) - messageTime(b));
+}
+
 function formatEventRange(event: ClassEvent): string {
   const start = new Date(event.start_at);
   const startText = start.toLocaleString("es-ES", {
@@ -206,13 +259,117 @@ export default function ClassDetailView() {
 
   useRealtime((event) => {
     if (event.event !== "classes") return;
-    const data = event.data as { class_id?: string; action?: string } | undefined;
+    const data = event.data as ClassRealtimePayload | undefined;
     if (data?.class_id !== classId) return;
-    if (data.action === "deleted" || data.action === "left") {
-      router.push("/classes");
-      return;
+
+    switch (data.action) {
+      case "deleted":
+      case "left":
+        router.push("/classes");
+        return;
+      case "message_created": {
+        if (data.message) {
+          setMessages((prev) =>
+            mergeClassMessage(prev, data.message as ClassMessage, user?.id ?? ""),
+          );
+        }
+        return;
+      }
+      case "message_updated": {
+        if (data.message) {
+          const incoming = data.message;
+          setMessages((prev) =>
+            prev.map((message) =>
+              message.id === incoming.id ? { ...message, ...incoming } : message,
+            ),
+          );
+        }
+        return;
+      }
+      case "message_deleted": {
+        if (data.message_id) {
+          setMessages((prev) =>
+            prev.filter((message) => message.id !== data.message_id),
+          );
+        }
+        return;
+      }
+      case "assignment_created": {
+        if (data.assignment) {
+          const incoming = data.assignment;
+          setAssignments((prev) =>
+            prev.some((item) => item.id === incoming.id)
+              ? prev.map((item) =>
+                  item.id === incoming.id ? { ...item, ...incoming } : item,
+                )
+              : [incoming, ...prev],
+          );
+        }
+        return;
+      }
+      case "assignment_updated": {
+        if (data.assignment) {
+          const incoming = data.assignment;
+          setAssignments((prev) =>
+            prev.map((item) =>
+              item.id === incoming.id
+                ? { ...item, ...incoming, my_completed: item.my_completed }
+                : item,
+            ),
+          );
+        }
+        return;
+      }
+      case "assignment_completion": {
+        if (data.assignment_id) {
+          const completedByMe = data.user_id === user?.id;
+          setAssignments((prev) =>
+            prev.map((item) =>
+              item.id === data.assignment_id
+                ? {
+                    ...item,
+                    completed_count: data.completed_count ?? item.completed_count,
+                    total_members: data.total_members ?? item.total_members,
+                    my_completed: completedByMe
+                      ? Boolean(data.completed)
+                      : item.my_completed,
+                  }
+                : item,
+            ),
+          );
+        }
+        return;
+      }
+      case "assignment_deleted": {
+        if (data.assignment_id) {
+          setAssignments((prev) =>
+            prev.filter((item) => item.id !== data.assignment_id),
+          );
+        }
+        return;
+      }
+      case "event_created":
+      case "event_updated": {
+        if (data.event) {
+          const incoming = data.event;
+          setEvents((prev) =>
+            [...prev.filter((item) => item.id !== incoming.id), incoming].sort(
+              (a, b) => a.start_at.localeCompare(b.start_at),
+            ),
+          );
+        }
+        return;
+      }
+      case "event_deleted": {
+        if (data.event_id) {
+          setEvents((prev) => prev.filter((item) => item.id !== data.event_id));
+        }
+        return;
+      }
+      default:
+        // Cambios de metadatos o miembros: ahi si conviene releer el detalle.
+        loadAll().catch(() => undefined);
     }
-    loadAll().catch(() => undefined);
   });
 
   // ------------------------------------------------------------- cabecera
@@ -316,17 +473,36 @@ export default function ClassDetailView() {
     e.preventDefault();
     const content = draft.trim();
     if (!content || sending) return;
+    const kind = isOwner && asAnnouncement ? "announcement" : "message";
+    const tempId = `pending-${
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : Date.now().toString(36)
+    }`;
+    const optimistic: ClassMessage = {
+      id: tempId,
+      class_id: classId,
+      user_id: user?.id ?? "",
+      author_name: user?.full_name?.trim() || user?.email || "Tu",
+      content,
+      kind,
+      pinned: kind === "announcement",
+      created_at: new Date().toISOString(),
+      pending: true,
+    };
+
     setSending(true);
     setError(null);
+    setDraft("");
+    setMessages((prev) => mergeClassMessage(prev, optimistic, user?.id ?? ""));
+
     try {
-      const message = await api.sendClassMessage(classId, {
-        content,
-        kind: isOwner && asAnnouncement ? "announcement" : "message",
-      });
-      setDraft("");
+      const message = await api.sendClassMessage(classId, { content, kind });
+      setMessages((prev) => reconcileClassMessage(prev, tempId, message));
       setAsAnnouncement(false);
-      setMessages((prev) => [...prev, message]);
     } catch (err) {
+      setMessages((prev) => prev.filter((item) => item.id !== tempId));
+      setDraft((current) => (current.trim() ? current : content));
       setError(errorMessage(err));
     } finally {
       setSending(false);
@@ -391,7 +567,11 @@ export default function ClassDetailView() {
         description: assignmentDescription.trim() || null,
         due_at: assignmentDue ? new Date(assignmentDue).toISOString() : null,
       });
-      setAssignments((prev) => [created, ...prev]);
+      setAssignments((prev) =>
+        prev.some((item) => item.id === created.id)
+          ? prev.map((item) => (item.id === created.id ? created : item))
+          : [created, ...prev],
+      );
       setAssignmentTitle("");
       setAssignmentDescription("");
       setAssignmentDue("");
@@ -608,7 +788,9 @@ export default function ClassDetailView() {
       } else {
         const created = await api.createClassEvent(classId, payload);
         setEvents((prev) =>
-          [...prev, created].sort((a, b) => a.start_at.localeCompare(b.start_at)),
+          [...prev.filter((event) => event.id !== created.id), created].sort((a, b) =>
+            a.start_at.localeCompare(b.start_at),
+          ),
         );
       }
       resetEventForm();
@@ -917,8 +1099,15 @@ export default function ClassDetailView() {
                       {message.pinned && <Pin className="h-3 w-3 shrink-0" />}
                     </span>
                     <span className="flex shrink-0 items-center gap-1">
-                      {formatDateTime(message.created_at)}
-                      {isOwner && (
+                      {message.pending ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Enviando
+                        </span>
+                      ) : (
+                        formatDateTime(message.created_at)
+                      )}
+                      {!message.pending && isOwner && (
                         <button
                           type="button"
                           onClick={() => togglePin(message)}
@@ -932,7 +1121,7 @@ export default function ClassDetailView() {
                           )}
                         </button>
                       )}
-                      {(message.user_id === user?.id || isOwner) && (
+                      {!message.pending && (message.user_id === user?.id || isOwner) && (
                         <button
                           type="button"
                           onClick={() => removeMessage(message)}

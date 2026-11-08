@@ -28,10 +28,13 @@ const RealtimeContext = createContext<(listener: Listener) => () => void>(
 
 export function RealtimeProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const userId = user?.id;
   const listeners = useRef<Set<Listener>>(new Set());
 
+  // Depender del id (y no del objeto User) evita reconectar el WebSocket cada
+  // vez que `/auth/me` refresca el perfil con un objeto nuevo.
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     let ws: WebSocket | null = null;
     let stopped = false;
     let retry = 0;
@@ -48,7 +51,14 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         try {
           const parsed = JSON.parse(message.data) as RealtimeEvent;
           if (parsed.event === "ping") return;
-          listeners.current.forEach((listener) => listener(parsed));
+          listeners.current.forEach((listener) => {
+            try {
+              listener(parsed);
+            } catch (error) {
+              // Un listener defectuoso no debe dejar sin eventos a los demas.
+              console.error("Error en listener realtime", error);
+            }
+          });
         } catch {
           /* ignora mensajes no JSON */
         }
@@ -67,7 +77,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       if (timer) clearTimeout(timer);
       ws?.close();
     };
-  }, [user]);
+  }, [userId]);
 
   const subscribe = useCallback((listener: Listener) => {
     listeners.current.add(listener);

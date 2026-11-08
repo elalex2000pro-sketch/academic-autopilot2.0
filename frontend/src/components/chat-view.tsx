@@ -79,6 +79,48 @@ function formatDay(iso: string): string {
   return date.toLocaleDateString("es-ES", { day: "2-digit", month: "long" });
 }
 
+function timeValue(item: { created_at: string }): number {
+  const value = new Date(item.created_at).getTime();
+  return Number.isNaN(value) ? 0 : value;
+}
+
+function sortByCreatedAt<T extends { created_at: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => timeValue(a) - timeValue(b));
+}
+
+/** Upsert por id, sin mutar el array. La burbuja optimista del emisor se
+ * reemplaza cuando llega el mensaje real (por evento o por respuesta HTTP). */
+function mergeIncomingMessage(
+  current: ChatMessage[],
+  incoming: ChatMessage,
+  meId: string,
+): ChatMessage[] {
+  const withoutIncoming = current.filter((message) => message.id !== incoming.id);
+  const withoutOptimistic =
+    incoming.sender_id === meId
+      ? withoutIncoming.filter(
+          (message) =>
+            !(
+              message.pending &&
+              message.content === incoming.content &&
+              message.attachment?.name === incoming.attachment?.name
+            ),
+        )
+      : withoutIncoming;
+  return sortByCreatedAt([...withoutOptimistic, incoming]);
+}
+
+function reconcileSentMessage(
+  current: ChatMessage[],
+  tempId: string,
+  created: ChatMessage,
+): ChatMessage[] {
+  const withoutStale = current.filter(
+    (message) => message.id !== tempId && message.id !== created.id,
+  );
+  return sortByCreatedAt([...withoutStale, created]);
+}
+
 function isImage(contentType: string, name: string): boolean {
   return (
     contentType.startsWith("image/") ||
@@ -144,7 +186,7 @@ function AttachmentCard({ message }: { message: ChatMessage }) {
     : false;
 
   useEffect(() => {
-    if (!attachment || !image) return;
+    if (!attachment || !image || message.pending) return;
     let cancelled = false;
     let objectUrl: string | null = null;
     chatApi
@@ -161,12 +203,31 @@ function AttachmentCard({ message }: { message: ChatMessage }) {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [attachment, image, message.id]);
+  }, [attachment, image, message.id, message.pending]);
 
   if (!attachment) return null;
 
+  if (message.pending) {
+    return (
+      <div className="mt-2 flex w-full max-w-xs items-center gap-3 rounded-lg border border-black/10 bg-background/60 px-3 py-2">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <Paperclip className="h-4 w-4" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium">
+            {attachment.name}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {formatSize(attachment.size_bytes)} · enviando
+          </span>
+        </span>
+        <Loader2 className="h-4 w-4 animate-spin" />
+      </div>
+    );
+  }
+
   async function download() {
-    if (downloading) return;
+    if (downloading || message.pending) return;
     setDownloading(true);
     try {
       const blob = await chatApi.downloadAttachment(message.id);
@@ -323,17 +384,59 @@ export function ChatView() {
   useRealtime((event) => {
     if (event.event !== "chat") return;
     const data = event.data as
-      | { conversation_id?: string; action?: string }
+      | {
+          conversation_id?: string;
+          action?: string;
+          message?: ChatMessage;
+        }
       | undefined;
     const conversationId = data?.conversation_id;
     if (!conversationId) return;
+    const incoming = data?.message;
 
+    if (data?.action === "message" && incoming) {
+      if (conversationId === activeIdRef.current) {
+        setMessages((current) => mergeIncomingMessage(current, incoming, meId));
+        setConversations((current) =>
+          current.map((conversation) =>
+            conversation.id === conversationId
+              ? {
+                  ...conversation,
+                  last_message: incoming,
+                  unread_count: 0,
+                  updated_at: incoming.created_at,
+                }
+              : conversation,
+          ),
+        );
+        void chatApi.markRead(conversationId);
+      } else {
+        setConversations((current) =>
+          current.map((conversation) =>
+            conversation.id === conversationId
+              ? {
+                  ...conversation,
+                  last_message: incoming,
+                  unread_count:
+                    incoming.sender_id === meId
+                      ? conversation.unread_count
+                      : conversation.unread_count + 1,
+                  updated_at: incoming.created_at,
+                }
+              : conversation,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Compatibilidad con eventos antiguos (sin payload): una sola recarga.
     void refreshList();
     if (conversationId === activeIdRef.current) {
       void chatApi
         .messages(conversationId)
         .then((items) => {
-          setMessages(items);
+          setMessages(sortByCreatedAt(items));
           void chatApi.markRead(conversationId);
         })
         .catch(() => undefined);
@@ -363,22 +466,50 @@ export function ChatView() {
 
   async function handleSend() {
     if (!activeId || sending) return;
+    const targetId = activeId;
     const text = draft.trim();
-    if (!text && !file) return;
+    const pendingFile = file;
+    if (!text && !pendingFile) return;
+    const tempId = `pending-${
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : Date.now().toString(36)
+    }`;
+    const optimistic: ChatMessage = {
+      id: tempId,
+      conversation_id: targetId,
+      sender_id: meId,
+      sender_name: user?.full_name?.trim() || user?.email || "Tu",
+      sender_username: user?.username ?? null,
+      content: text,
+      attachment: pendingFile
+        ? {
+            name: pendingFile.name,
+            content_type: pendingFile.type || "application/octet-stream",
+            size_bytes: pendingFile.size,
+          }
+        : null,
+      created_at: new Date().toISOString(),
+      pending: true,
+    };
+
     setSending(true);
     setError(null);
+    setDraft("");
+    setFile(null);
+    if (fileRef.current) fileRef.current.value = "";
+    setMessages((current) => sortByCreatedAt([...current, optimistic]));
+
     try {
-      const created = await chatApi.sendMessage(activeId, text, file);
-      setMessages((current) =>
-        current.some((message) => message.id === created.id)
-          ? current
-          : [...current, created],
-      );
-      setDraft("");
-      setFile(null);
-      if (fileRef.current) fileRef.current.value = "";
+      const created = await chatApi.sendMessage(targetId, text, pendingFile);
+      setMessages((current) => reconcileSentMessage(current, tempId, created));
       void refreshList();
     } catch (sendError) {
+      setMessages((current) =>
+        current.filter((message) => message.id !== tempId),
+      );
+      setDraft((current) => (current.trim() ? current : text));
+      setFile(pendingFile);
       setError(readError(sendError));
     } finally {
       setSending(false);
@@ -611,7 +742,21 @@ export function ChatView() {
                                 : "text-muted-foreground",
                             )}
                           >
-                            {formatClock(message.created_at)}
+                            <span className="inline-flex items-center gap-1">
+                              {message.pending ? (
+                                <>
+                                  <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                                  Enviando
+                                </>
+                              ) : (
+                                <>
+                                  {mine ? (
+                                    <Check className="h-2.5 w-2.5" />
+                                  ) : null}
+                                  {formatClock(message.created_at)}
+                                </>
+                              )}
+                            </span>
                           </p>
                         </div>
                       </div>
