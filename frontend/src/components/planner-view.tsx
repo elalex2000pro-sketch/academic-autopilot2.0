@@ -12,7 +12,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  Coffee,
   FileUp,
   Loader2,
   MapPin,
@@ -33,7 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { WeeklyTimetable } from "@/components/weekly-timetable";
 import { useTaskManager } from "@/hooks/use-task-manager";
-import { api, ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
 import {
   createLocalTimetableEntry,
   CUSTOM_TIMETABLE_EVENT,
@@ -50,176 +49,33 @@ import {
   notifyGradeChange,
 } from "@/lib/grade-events";
 import { formatDueLabel } from "@/lib/task-utils";
-import type { ClassEvent, Course, Grade, Task, TimetableEntry } from "@/lib/types";
+import type { Course, Grade, Task, TimetableEntry } from "@/lib/types";
 import { cn, formatMinutes } from "@/lib/utils";
-
-const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-const DAYS_LONG = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
-const MONTHS = [
-  "Enero",
-  "Febrero",
-  "Marzo",
-  "Abril",
-  "Mayo",
-  "Junio",
-  "Julio",
-  "Agosto",
-  "Septiembre",
-  "Octubre",
-  "Noviembre",
-  "Diciembre",
-];
-
-const PRIORITY_COLOR: Record<string, string> = {
-  urgent: "#FF3B30",
-  long_project: "#AF52DE",
-  short_task: "#0066FF",
-};
-
-const PRIORITY_LABEL: Record<string, string> = {
-  urgent: "Urgente",
-  long_project: "Proyecto",
-  short_task: "Tarea corta",
-};
-
-const SUBJECT_TONES = [
-  "#0066FF",
-  "#AF52DE",
-  "#FF9500",
-  "#34C759",
-  "#FF2D55",
-  "#30B0C7",
-  "#5856D6",
-  "#8E8E93",
-];
-
-const selectClass =
-  "flex h-9 w-full rounded-xl bg-slate-900/[0.035] px-3 text-[13px] text-slate-800 backdrop-blur-3xl transition-[background-color,box-shadow] duration-150 focus-visible:bg-slate-900/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF]/25 dark:bg-white/[0.055] dark:text-white/90 dark:focus-visible:bg-white/[0.08]";
-
-type Notice = { tone: "success" | "error" | "info"; text: string };
-type EnrichedClassEvent = ClassEvent & { class_name?: string };
-
-function errorMessage(error: unknown): string {
-  if (error instanceof ApiError) return error.message;
-  if (error instanceof Error) return error.message;
-  return "Error inesperado";
-}
-
-function pad(value: number): string {
-  return value < 10 ? `0${value}` : String(value);
-}
-
-function keyOf(year: number, month: number, day: number): string {
-  return `${year}-${pad(month + 1)}-${pad(day)}`;
-}
-
-function parseKey(key: string): Date | null {
-  const [year, month, day] = key.split("-").map(Number);
-  if (!year || !month || !day) return null;
-  const date = new Date(year, month - 1, day);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function dayKey(iso: string | null): string | null {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (!Number.isFinite(date.getTime())) return iso.slice(0, 10);
-  return keyOf(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-function longDate(key: string): string {
-  const date = parseKey(key);
-  if (!date) return key;
-  const formatted = new Intl.DateTimeFormat("es-ES", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  }).format(date);
-  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
-}
-
-function weekdayIndex(date: Date): number {
-  return (date.getDay() + 6) % 7;
-}
-
-function timeToMinutes(value: string): number {
-  const [hours, minutes] = value.split(":").map(Number);
-  return (hours || 0) * 60 + (minutes || 0);
-}
-
-function durationMinutes(start: string, end: string): number {
-  return Math.max(0, timeToMinutes(end) - timeToMinutes(start));
-}
-
-function timeLabel(value: string): string {
-  return value.slice(0, 5);
-}
-
-function formatEventRange(event: ClassEvent): string {
-  if (event.all_day) return "Todo el día";
-  const start = new Date(event.start_at);
-  if (!Number.isFinite(start.getTime())) return "";
-  const startLabel = start.toLocaleTimeString("es-ES", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  if (!event.end_at) return startLabel;
-  const end = new Date(event.end_at);
-  if (!Number.isFinite(end.getTime())) return startLabel;
-  return `${startLabel}–${end.toLocaleTimeString("es-ES", {
-    hour: "2-digit",
-    minute: "2-digit",
-  })}`;
-}
-
-function toneFor(key: string): string {
-  let hash = 0;
-  for (let index = 0; index < key.length; index += 1) {
-    hash = (hash * 31 + key.charCodeAt(index)) >>> 0;
-  }
-  return SUBJECT_TONES[hash % SUBJECT_TONES.length];
-}
-
-function courseColor(entry: TimetableEntry, course: Course | undefined): string {
-  return course?.color?.trim() || toneFor(entry.course_id || entry.title || entry.id);
-}
-
-function isGenericClassTitle(value: string | null | undefined): boolean {
-  const title = (value ?? "").trim();
-  return !title || /^clase( lectiva)?$/i.test(title) || title === "Asignatura";
-}
-
-function subjectName(entry: TimetableEntry, course: Course | undefined): string {
-  const courseName = course?.name?.trim();
-  if (courseName) return courseName;
-  if (!isGenericClassTitle(entry.title)) return entry.title!.trim();
-  return "Asignatura";
-}
-
-function subjectSubtitle(entry: TimetableEntry, course: Course | undefined): string | null {
-  const name = subjectName(entry, course);
-  const title = entry.title?.trim();
-  if (title && !isGenericClassTitle(title) && title !== name) return title;
-  return course?.code?.trim() || null;
-}
-
-function MonthEmpty({ weekend }: { weekend: boolean }) {
-  return (
-    <div className="flex flex-col items-center justify-center rounded-2xl bg-slate-900/[0.02] px-6 py-10 text-center dark:bg-white/[0.02]">
-      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0066FF]/10 text-[#0066FF] ring-1 ring-[#0066FF]/15 dark:bg-[#0066FF]/15 dark:text-[#7fb2ff] dark:ring-[#0066FF]/20">
-        {weekend ? <Coffee className="h-6 w-6" strokeWidth={1.7} /> : <CalendarDays className="h-6 w-6" strokeWidth={1.7} />}
-      </span>
-      <p className="mt-4 text-[15px] font-semibold tracking-[-0.01em] text-slate-800 dark:text-white/90">
-        {weekend ? "Día sin clases lectivas" : "No hay clases este día"}
-      </p>
-      <p className="mt-1 max-w-xs text-[11.5px] leading-5 text-slate-500 dark:text-white/40">
-        {weekend
-          ? "Descansa, adelanta apuntes o disfruta del fin de semana. Las entregas siguen visibles abajo."
-          : "Puedes añadir una clase al horario o usar este hueco para estudiar."}
-      </p>
-    </div>
-  );
-}
+import {
+  DAYS_LONG,
+  MONTHS,
+  PRIORITY_COLOR,
+  PRIORITY_LABEL,
+  WEEKDAYS,
+  courseColor,
+  dayKey,
+  durationMinutes,
+  errorMessage,
+  formatEventRange,
+  keyOf,
+  longDate,
+  pad,
+  parseKey,
+  selectClass,
+  subjectName,
+  subjectSubtitle,
+  timeLabel,
+  timeToMinutes,
+  weekdayIndex,
+  type EnrichedClassEvent,
+  type Notice,
+} from "@/lib/planner";
+import { MonthEmpty } from "@/components/planner/month-empty";
 
 export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: boolean }) {
   const today = useMemo(() => new Date(), []);

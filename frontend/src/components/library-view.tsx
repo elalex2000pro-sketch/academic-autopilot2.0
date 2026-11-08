@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion, type Variants } from "framer-motion";
 import {
   ArrowRight,
@@ -60,7 +60,7 @@ const LIBRARY_ITEM: Variants = {
   },
 };
 
-function BookCover({
+const BookCover = memo(function BookCover({
   book,
   className,
   sizes,
@@ -91,7 +91,7 @@ function BookCover({
       className={cn("object-cover", className)}
     />
   );
-}
+});
 
 export default function LibraryView() {
   const [books, setBooks] = useState<LocalBook[]>([]);
@@ -175,13 +175,19 @@ export default function LibraryView() {
     }
   }
 
-  const continueBook =
-    books.find((book) => book.lastPage > 1) ?? books[0] ?? null;
-  const visibleBooks = books.filter((book) => {
-    if (filter === "reading") return book.lastPage > 1;
-    if (filter === "not-started") return book.lastPage <= 1;
-    return true;
-  });
+  const continueBook = useMemo(
+    () => books.find((book) => book.lastPage > 1) ?? books[0] ?? null,
+    [books],
+  );
+  const visibleBooks = useMemo(
+    () =>
+      books.filter((book) => {
+        if (filter === "reading") return book.lastPage > 1;
+        if (filter === "not-started") return book.lastPage <= 1;
+        return true;
+      }),
+    [books, filter],
+  );
 
   return (
     <div className="mx-auto w-full max-w-[1240px] px-4 py-6 sm:px-6 lg:px-8">

@@ -3,31 +3,18 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { motion, type Variants } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   ArrowUpRight,
   BookOpen,
-  Brain,
   CalendarClock,
-  CalendarRange,
-  ChevronLeft,
-  ChevronRight,
   Check,
   CheckCircle2,
-  FolderOpen,
   Layers,
-  Library,
   ListTodo,
   Loader2,
-  NotebookPen,
   Pencil,
-  RefreshCw,
-  Sparkles,
-  Target,
   Timer,
-  Users,
-  Wand2,
-  type LucideIcon,
 } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
@@ -49,51 +36,26 @@ import type {
   Book,
   Course,
   DailyAgenda,
-  DailyAgendaItem,
   Grade,
   GradeSummary,
   OptimizedPlan,
 } from "@/lib/types";
-import { cn, formatMinutes } from "@/lib/utils";
+import { formatMinutes } from "@/lib/utils";
+import { AgendaTimeline } from "@/components/dashboard/agenda-timeline";
+import { DashboardHero } from "@/components/dashboard/dashboard-hero";
+import { QuickDock } from "@/components/dashboard/quick-dock";
+import { WeekCalendar } from "@/components/dashboard/week-calendar";
+import {
+  DASHBOARD_ITEM,
+  DASHBOARD_STAGGER,
+  STATS_STAGGER,
+  capitalize,
+  gradeOverTen,
+  groupByDay,
+  localDateKey,
+  parseGradeInput,
+} from "@/lib/dashboard";
 
-const STATS_STAGGER: Variants = {
-  hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.1, delayChildren: 0.1 },
-  },
-};
-
-const DASHBOARD_STAGGER: Variants = {
-  hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.1, delayChildren: 0.14 },
-  },
-};
-
-const DASHBOARD_ITEM: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { type: "spring", stiffness: 280, damping: 28 },
-  },
-};
-
-const PRIORITY_COLOR: Record<string, string> = {
-  urgent: "#ff453a",
-  long_project: "#bf5af2",
-  short_task: "#0a84ff",
-};
-
-type QuickLink = {
-  href: string;
-  label: string;
-  icon: LucideIcon;
-  tone: string;
-};
-
-// El diálogo de examen solo se necesita cuando el usuario edita una nota; se
-// descarga bajo demanda para no engordar el chunk del dashboard.
 const ExamDialog = dynamic(
   () =>
     import("@/components/exam-dialog").then((module) => ({
@@ -101,81 +63,6 @@ const ExamDialog = dynamic(
     })),
   { ssr: false, loading: () => null },
 );
-
-const QUICK_LINKS: QuickLink[] = [
-  { href: "/library", label: "Biblioteca", icon: BookOpen, tone: "from-[#5aa7ff] to-[#0066d6]" },
-  { href: "/studio", label: "IA Studio", icon: Wand2, tone: "from-[#c47dff] to-[#7b2fe0]" },
-  { href: "/notebooks", label: "Cuadernos", icon: NotebookPen, tone: "from-[#ffb340] to-[#e07800]" },
-  { href: "/planner", label: "Planificador", icon: CalendarRange, tone: "from-[#ff7b72] to-[#d62b23]" },
-  { href: "/academics", label: "Académico", icon: Library, tone: "from-[#5ddc82] to-[#1a9e3a]" },
-  { href: "/focus", label: "Enfoque", icon: Target, tone: "from-[#5fe0d5] to-[#0a8a83]" },
-  { href: "/review", label: "Repaso", icon: Brain, tone: "from-[#8f8dff] to-[#4a48d6]" },
-  { href: "/classes", label: "Clases", icon: Users, tone: "from-[#ff7ba6] to-[#d61a5b]" },
-  { href: "/files", label: "Archivos", icon: FolderOpen, tone: "from-[#a1a1aa] to-[#55555c]" },
-];
-
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
-}
-
-function minutesBetween(start: string, end: string): number {
-  return Math.max(0, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000));
-}
-
-function capitalize(value: string): string {
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
-function localDateKey(date = new Date()): string {
-  const pad = (value: number) => (value < 10 ? `0${value}` : String(value));
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
-
-function gradeOverTen(percent: number | null | undefined): string {
-  return percent === null || percent === undefined || !Number.isFinite(percent)
-    ? "—"
-    : (percent / 10).toFixed(1);
-}
-
-function parseGradeInput(value: string): number | null {
-  if (!value.trim()) return null;
-  const parsed = Number(value.replace(",", "."));
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function dayHeading(iso: string): string {
-  const target = new Date(iso);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const targetDay = new Date(target);
-  targetDay.setHours(0, 0, 0, 0);
-  const diff = Math.round((targetDay.getTime() - today.getTime()) / 86400000);
-  if (diff === 0) return "Hoy";
-  if (diff === 1) return "Mañana";
-  return capitalize(
-    target.toLocaleDateString("es-ES", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-    }),
-  );
-}
-
-function isNow(item: DailyAgendaItem): boolean {
-  const now = Date.now();
-  return now >= new Date(item.start_at).getTime() && now <= new Date(item.end_at).getTime();
-}
-
-function groupByDay<T extends { start_at: string }>(items: T[]) {
-  const groups = new Map<string, T[]>();
-  for (const item of items) {
-    const key = new Date(item.start_at).toDateString();
-    const bucket = groups.get(key) ?? [];
-    bucket.push(item);
-    groups.set(key, bucket);
-  }
-  return Array.from(groups.entries());
-}
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -486,162 +373,22 @@ export default function DashboardPage() {
         variants={DASHBOARD_STAGGER}
         className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.9fr)]"
       >
-        <motion.section
-          variants={DASHBOARD_ITEM}
-          className="relative overflow-hidden rounded-[30px] border border-white/55 bg-[linear-gradient(118deg,#e9e4f8_0%,#f2eefb_52%,#ddd7f3_100%)] p-6 text-[#28233a] shadow-[0_22px_58px_-42px_rgba(55,45,90,0.4),inset_0_1px_0_rgba(255,255,255,0.82)] sm:p-7"
-        >
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -right-12 -top-20 h-64 w-64 rounded-full bg-[#c8bdf2]/55 blur-3xl"
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -right-2 top-8 h-36 w-36 rotate-45 rounded-[38%] border border-white/55 bg-white/10"
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -bottom-20 left-1/3 h-48 w-48 rounded-full bg-white/30 blur-3xl"
-          />
+        <DashboardHero
+          dateLabel={dateLabel}
+          greeting={greeting}
+          name={name}
+          taskCount={tasks.length}
+          planProgress={planProgress}
+          impulse={impulse}
+          urgentCount={urgentCount}
+        />
 
-          <div className="relative z-10 flex h-full min-h-[238px] flex-col justify-between gap-6">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/45 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#5b536e] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-xl">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.55)]" />
-                {dateLabel}
-              </span>
-              <span className="hidden rounded-full bg-white/45 px-2.5 py-1 text-[10px] font-semibold text-[#5b536e] sm:block">
-                Tu espacio
-              </span>
-            </div>
-
-            <div>
-              <h1 className="max-w-2xl text-[30px] font-semibold leading-[1.02] tracking-[-0.055em] text-[#211d2e] sm:text-[40px]">
-                {greeting}, {name}.
-              </h1>
-              <p className="mt-2 max-w-xl text-[12.5px] leading-5 text-[#5b536e] sm:text-[13px]">
-                {tasks.length > 0
-                  ? `Tienes ${tasks.length} tarea${tasks.length === 1 ? "" : "s"} pendiente${
-                      tasks.length === 1 ? "" : "s"
-                    } · ${planProgress}% del plan de hoy completado.`
-                  : "No tienes tareas pendientes. Buen momento para adelantar apuntes o crear un cuaderno nuevo."}
-              </p>
-              <p className="mt-2 flex max-w-xl items-start gap-1.5 text-[11px] leading-5 text-[#5b536e]/80">
-                <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#6d5ca8]" strokeWidth={1.8} />
-                <span className="line-clamp-2">{impulse}</span>
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Link
-                href="/planner"
-                className="inline-flex h-11 touch-manipulation items-center gap-1.5 rounded-full bg-[#1b1b1f] px-4 text-[11.5px] font-semibold text-white shadow-[0_12px_26px_-14px_rgba(20,20,28,0.9)] transition-transform hover:-translate-y-0.5"
-              >
-                Abrir planificador
-                <ArrowUpRight className="h-3.5 w-3.5" />
-              </Link>
-              <Link
-                href="/studio"
-                className="inline-flex h-11 touch-manipulation items-center gap-1.5 rounded-full border border-white/60 bg-white/45 px-4 text-[11.5px] font-semibold text-[#3f3852] shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] backdrop-blur-xl transition-colors hover:bg-white/65"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                Crear con IA
-              </Link>
-              {urgentCount > 0 ? (
-                <span className="ml-auto hidden rounded-full bg-[#ff3b30]/10 px-2.5 py-1 text-[10px] font-semibold text-[#a52b24] md:block">
-                  {urgentCount} urgente{urgentCount === 1 ? "" : "s"}
-                </span>
-              ) : null}
-            </div>
-          </div>
-        </motion.section>
-
-        <motion.section
-          variants={DASHBOARD_ITEM}
-          className="glass-card flex flex-col rounded-[30px] p-5 sm:p-6"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[9.5px] font-semibold uppercase tracking-[0.18em] text-black/40 dark:text-white/35">
-                Calendario
-              </p>
-              <h2 className="mt-1 text-[19px] font-semibold tracking-[-0.035em] text-[#1d1d1f] dark:text-white">
-                {calendarMonth}
-              </h2>
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setWeekOffset((value) => value - 1)}
-                aria-label="Semana anterior"
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-black/[0.06] bg-white/45 text-black/45 transition-colors hover:bg-white/80 hover:text-black/75 dark:border-white/10 dark:bg-white/[0.05] dark:text-white/45 dark:hover:bg-white/10 dark:hover:text-white"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setWeekOffset((value) => value + 1)}
-                aria-label="Semana siguiente"
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-black/[0.06] bg-white/45 text-black/45 transition-colors hover:bg-white/80 hover:text-black/75 dark:border-white/10 dark:bg-white/[0.05] dark:text-white/45 dark:hover:bg-white/10 dark:hover:text-white"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-7 gap-1">
-            {weekDays.map((day) => (
-              <div key={day.key} className="flex min-w-0 flex-col items-center gap-1.5">
-                <span className="text-[9px] font-medium uppercase tracking-[0.08em] text-black/35 dark:text-white/30">
-                  {day.weekday}
-                </span>
-                <span
-                  className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums transition-colors",
-                    day.isToday
-                      ? "bg-[#1b1b1f] text-white shadow-[0_7px_16px_-10px_rgba(20,20,28,0.9)]"
-                      : "text-black/55 hover:bg-black/[0.04] dark:text-white/55 dark:hover:bg-white/[0.06]",
-                  )}
-                >
-                  {day.day}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-4 min-h-0 flex-1 space-y-1 border-t border-black/[0.06] pt-3 dark:border-white/[0.07]">
-            {calendarPreview.length > 0 ? (
-              calendarPreview.map((item, index) => (
-                <div
-                  key={`${item.start_at}-${item.title}-${index}`}
-                  className="flex items-center gap-2.5 rounded-xl px-1.5 py-1.5 transition-colors hover:bg-black/[0.025] dark:hover:bg-white/[0.035]"
-                >
-                  <span
-                    className="h-1.5 w-1.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: PRIORITY_COLOR[item.priority] ?? "#8e8e93" }}
-                  />
-                  <span className="w-9 shrink-0 text-[10px] font-medium tabular-nums text-black/35 dark:text-white/30">
-                    {formatTime(item.start_at)}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-[11.5px] font-medium text-black/65 dark:text-white/65">
-                    {item.title}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <p className="rounded-xl border border-dashed border-black/[0.08] px-3 py-2.5 text-[11px] leading-4 text-black/40 dark:border-white/10 dark:text-white/35">
-                Sin bloques en esta semana. Abre el planificador para repartir tu estudio.
-              </p>
-            )}
-          </div>
-
-          <Link
-            href="/planner"
-            className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-black/45 transition-colors hover:text-black/80 dark:text-white/40 dark:hover:text-white/80"
-          >
-            Ver calendario completo
-            <ArrowUpRight className="h-3 w-3" />
-          </Link>
-        </motion.section>
+        <WeekCalendar
+          month={calendarMonth}
+          days={weekDays}
+          items={calendarPreview}
+          onShiftWeek={(delta) => setWeekOffset((value) => value + delta)}
+        />
       </motion.div>
 
       {/* ---- Widgets superiores ---- */}
@@ -900,229 +647,20 @@ export default function DashboardPage() {
         variants={DASHBOARD_ITEM}
         className="mt-4 grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]"
       >
-        <section className="app-glass flex flex-col rounded-3xl p-5 sm:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="text-[17px] font-semibold tracking-[-0.02em] text-slate-800 dark:text-white/90">
-                Línea de tiempo de hoy
-              </h2>
-              <p className="mt-0.5 text-[11.5px] text-slate-500 dark:text-white/35">
-                {dateLabel} · {totalBlocks} bloque{totalBlocks === 1 ? "" : "s"} ·{" "}
-                {formatMinutes(totalMinutes)}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={load}
-              disabled={loading}
-              className="app-glass-soft flex h-8 items-center gap-1.5 rounded-xl px-2.5 text-[11.5px] font-medium text-slate-600 transition-colors hover:bg-slate-100/65 hover:text-slate-900 disabled:opacity-50 dark:text-white/55 dark:hover:bg-white/[0.08] dark:hover:text-white/85"
-            >
-              <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} />
-              Replanificar
-            </button>
-          </div>
-
-          <div className="mt-4 h-1 overflow-hidden rounded-full bg-slate-900/[0.06] dark:bg-white/[0.08]">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-[#30d158] to-[#64d2ff] transition-[width] duration-700 ease-out"
-              style={{ width: `${Math.max(0, Math.min(100, planProgress))}%` }}
-            />
-          </div>
-
-          <div className="mt-3 min-h-0 flex-1">
-            {loading && (
-              <div className="space-y-2 pt-1">
-                {[0, 1, 2].map((item) => (
-                  <div key={item} className="flex animate-pulse items-center gap-4 px-2 py-3">
-                    <span className="h-3 w-10 rounded-full bg-slate-900/[0.06] dark:bg-white/[0.07]" />
-                    <span className="h-2.5 w-2.5 rounded-full bg-slate-900/[0.08] dark:bg-white/[0.09]" />
-                    <span className="h-3 flex-1 rounded-full bg-slate-900/[0.05] dark:bg-white/[0.06]" />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {!loading && !hasAnything && (
-              <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
-                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900/[0.04] text-slate-400 ring-1 ring-slate-900/[0.05] dark:bg-white/[0.05] dark:text-white/35 dark:ring-white/[0.06]">
-                  <CalendarClock className="h-5 w-5" strokeWidth={1.6} />
-                </span>
-                <p className="mt-3 text-[13px] font-medium text-slate-700 dark:text-white/70">
-                  Nada en el horizonte
-                </p>
-                <p className="mt-1 max-w-xs text-[11.5px] leading-5 text-slate-500 dark:text-white/35">
-                  No hay bloques para hoy. Añade una tarea o disfruta del tiempo libre.
-                </p>
-                <Link
-                  href="/planner"
-                  className="app-glass-soft mt-4 flex h-11 items-center gap-1.5 rounded-xl px-3 md:h-8 text-[11.5px] font-medium text-slate-600 transition-colors hover:bg-slate-100/65 hover:text-slate-900 dark:text-white/65 dark:hover:bg-white/[0.08] dark:hover:text-white"
-                >
-                  Abrir planificador
-                  <ArrowUpRight className="h-3.5 w-3.5" />
-                </Link>
-              </div>
-            )}
-
-            {!loading && hasAnything && (
-              <div>
-                {hasToday ? (
-                  <div className="space-y-0.5">
-                    {todayItems.map((item) => {
-                      const current = isNow(item);
-                      const color = PRIORITY_COLOR[item.priority] ?? "#8e8e93";
-                      return (
-                        <div
-                          key={`today-${item.task_id}`}
-                          className={cn(
-                            "group relative flex items-start gap-3 rounded-2xl px-2 py-2.5 transition-colors",
-                            current
-                              ? "bg-slate-900/[0.04] dark:bg-white/[0.05]"
-                              : "hover:bg-slate-900/[0.03] dark:hover:bg-white/[0.035]",
-                          )}
-                        >
-                          <div className="w-[48px] shrink-0 pt-0.5 text-right">
-                            <p
-                              className={cn(
-                                "text-[11px] font-medium tabular-nums",
-                                current
-                                  ? "text-slate-700 dark:text-white/85"
-                                  : "text-slate-500 dark:text-white/50",
-                              )}
-                            >
-                              {formatTime(item.start_at)}
-                            </p>
-                            <p className="mt-0.5 text-[9.5px] tabular-nums text-slate-400 dark:text-white/25">
-                              {formatTime(item.end_at)}
-                            </p>
-                          </div>
-
-                          <div className="relative flex w-3 shrink-0 justify-center self-stretch">
-                            <span className="absolute inset-y-0 w-px bg-slate-900/[0.07] dark:bg-white/[0.07]" />
-                            <span
-                              className="relative mt-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-white/80 dark:ring-black/25"
-                              style={{ backgroundColor: color }}
-                            />
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex min-w-0 items-center gap-2">
-                              <p
-                                className={cn(
-                                  "truncate text-[13px] font-[450]",
-                                  item.completed
-                                    ? "text-slate-400 line-through opacity-60 dark:text-white/30"
-                                    : "text-slate-700 dark:text-white/85",
-                                )}
-                              >
-                                {item.title}
-                              </p>
-                              {current && (
-                                <span className="shrink-0 rounded-full bg-[#30d158]/15 px-2 py-0.5 text-[9.5px] font-medium text-[#1a9e3a] dark:text-[#30d158]">
-                                  Ahora
-                                </span>
-                              )}
-                            </div>
-                            <p className="mt-0.5 truncate text-[10.5px] text-slate-500 dark:text-white/30">
-                              {item.course_name || "Estudio"} ·{" "}
-                              {formatMinutes(minutesBetween(item.start_at, item.end_at))}
-                            </p>
-                          </div>
-
-                          <button
-                            type="button"
-                            aria-label={`Completar ${item.title}`}
-                            title="Completar bloque"
-                            onClick={() => void handleComplete(item.task_id)}
-                            className={cn(
-                              "mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border transition-colors",
-                              item.completed
-                                ? "border-[#30d158]/60 bg-[#30d158]/15 text-[#1a9e3a] dark:text-[#30d158]"
-                                : "border-slate-300 text-transparent hover:border-[#30d158]/70 hover:bg-[#30d158]/10 hover:text-[#1a9e3a] dark:border-white/20 dark:hover:text-[#30d158]",
-                            )}
-                          >
-                            <Check className="h-2.5 w-2.5" strokeWidth={3} />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2.5 px-2 py-5 text-[11.5px] text-slate-500 dark:text-white/35">
-                    <CalendarClock className="h-4 w-4 shrink-0 text-slate-400 dark:text-white/25" strokeWidth={1.7} />
-                    Hoy está libre. Los próximos bloques aparecen abajo.
-                  </div>
-                )}
-
-                {upcomingGroups.length > 0 && (
-                  <div className="mt-5">
-                    <div className="flex items-center gap-3 px-2 pb-2">
-                      <p className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-white/25">
-                        Próximos bloques
-                      </p>
-                      <span className="h-px flex-1 bg-slate-900/[0.06] dark:bg-white/[0.06]" />
-                    </div>
-
-                    <div className="space-y-4">
-                      {upcomingGroups.map(([dayKey, items]) => (
-                        <div key={dayKey}>
-                          <p className="px-2 pb-1 text-[10px] font-medium text-slate-500 dark:text-white/35">
-                            {dayHeading(items[0].start_at)}
-                          </p>
-                          <div className="space-y-0.5">
-                            {items.map((item) => (
-                              <div
-                                key={`${item.task_id}-${item.start_at}`}
-                                className="flex items-start gap-3 rounded-2xl px-2 py-2 transition-colors hover:bg-slate-900/[0.03] dark:hover:bg-white/[0.035]"
-                              >
-                                <div className="w-[48px] shrink-0 pt-0.5 text-right">
-                                  <p className="text-[11px] font-medium tabular-nums text-slate-500 dark:text-white/45">
-                                    {formatTime(item.start_at)}
-                                  </p>
-                                  <p className="mt-0.5 text-[9.5px] tabular-nums text-slate-400 dark:text-white/25">
-                                    {formatTime(item.end_at)}
-                                  </p>
-                                </div>
-                                <div className="relative flex w-3 shrink-0 justify-center self-stretch">
-                                  <span className="absolute inset-y-0 w-px bg-slate-900/[0.07] dark:bg-white/[0.07]" />
-                                  <span
-                                    className="relative mt-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-white/80 dark:ring-black/25"
-                                    style={{
-                                      backgroundColor:
-                                        PRIORITY_COLOR[item.priority] ?? "#8e8e93",
-                                    }}
-                                  />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate text-[12.5px] text-slate-600 dark:text-white/70">
-                                    {item.title}
-                                  </p>
-                                  <p className="mt-0.5 truncate text-[10.5px] text-slate-400 dark:text-white/25">
-                                    {item.course_name || "Estudio"} ·{" "}
-                                    {formatMinutes(item.estimated_minutes)}
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {hasMoreUpcoming && (
-                      <Link
-                        href="/planner"
-                        className="mt-3 flex items-center justify-center gap-1 text-[11px] font-medium text-slate-500 transition-colors hover:text-slate-800 dark:text-white/35 dark:hover:text-white/70"
-                      >
-                        Ver horario completo
-                        <ArrowUpRight className="h-3 w-3" />
-                      </Link>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </section>
+        <AgendaTimeline
+          loading={loading}
+          dateLabel={dateLabel}
+          planProgress={planProgress}
+          totalBlocks={totalBlocks}
+          totalMinutes={totalMinutes}
+          hasAnything={hasAnything}
+          hasToday={hasToday}
+          todayItems={todayItems}
+          upcomingGroups={upcomingGroups}
+          hasMoreUpcoming={hasMoreUpcoming}
+          onReplan={() => void load()}
+          onComplete={(taskId) => void handleComplete(taskId)}
+        />
 
         <motion.div variants={DASHBOARD_ITEM} className="min-w-0 space-y-4">
           {/* ---- Tareas pendientes: activas + historial de vencidas ---- */}
@@ -1208,33 +746,7 @@ export default function DashboardPage() {
       </motion.section>
 
       {/* ---- Quick Dock ---- */}
-      <motion.section variants={DASHBOARD_ITEM} aria-labelledby="quick-dock-title" className="mt-6">
-        <h2 id="quick-dock-title" className="sr-only">
-          Acceso rápido
-        </h2>
-        <div className="flex justify-center">
-          <div className="app-glass hide-scrollbar flex max-w-full items-start gap-0.5 overflow-x-auto rounded-3xl p-2">
-            {QUICK_LINKS.map(({ href, label, icon: Icon, tone }) => (
-              <Link
-                key={href}
-                href={href}
-                title={label}
-                aria-label={label}
-                className="group flex w-[60px] shrink-0 flex-col items-center gap-1.5 rounded-2xl px-1 py-1.5 transition-colors hover:bg-slate-900/[0.04] dark:hover:bg-white/[0.055]"
-              >
-                <span
-                  className={`flex h-9 w-9 items-center justify-center rounded-[11px] bg-gradient-to-b ${tone} text-white shadow-[0_3px_9px_-3px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.28)] transition-transform duration-200 ease-mac group-hover:-translate-y-1 group-active:translate-y-0`}
-                >
-                  <Icon className="h-[17px] w-[17px]" strokeWidth={1.9} />
-                </span>
-                <span className="max-w-full truncate text-[9px] font-medium tracking-[-0.01em] text-slate-500 transition-colors group-hover:text-slate-800 dark:text-white/35 dark:group-hover:text-white/70">
-                  {label}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </motion.section>
+      <QuickDock />
 
       {editingExam ? (
         <ExamDialog
