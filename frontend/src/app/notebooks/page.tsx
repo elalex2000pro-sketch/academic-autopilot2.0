@@ -1,5 +1,8 @@
 "use client";
 
+import { motion } from "framer-motion";
+import { pageItem, pageStagger } from "@/components/page-animated-wrapper";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -546,8 +549,8 @@ export default function NotebooksPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-5 sm:p-7 animate-fade-up">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-900/[0.06] pb-4 dark:border-white/[0.07]">
+    <motion.div variants={pageStagger} className="mx-auto max-w-6xl space-y-6 p-5 sm:p-7">
+      <motion.header variants={pageItem} className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-900/[0.06] pb-4 dark:border-white/[0.07]">
         <div className="flex min-w-0 items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#0066FF]/10 text-[#0066FF] dark:text-[#8ab9ff]">
             <NotebookPen className="h-5 w-5" />
@@ -575,7 +578,7 @@ export default function NotebooksPage() {
             Nuevo cuaderno
           </Button>
         </div>
-      </header>
+      </motion.header>
 
       {notice && (
         <p className="rounded-xl bg-rose-500/10 px-3 py-2 text-[12px] text-rose-700 dark:text-rose-200">
@@ -584,7 +587,7 @@ export default function NotebooksPage() {
       )}
 
       {notebooks.length === 0 ? (
-        <div className="rounded-3xl bg-white/45 p-12 text-center backdrop-blur-xl dark:bg-white/[0.03]">
+        <motion.div variants={pageItem} className="rounded-3xl bg-white/45 p-12 text-center backdrop-blur-xl dark:bg-white/[0.03]">
           <NotebookPen className="mx-auto h-10 w-10 text-indigo-400" />
           <h2 className="mt-3 text-lg font-semibold">Todavía no tienes cuadernos</h2>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
@@ -594,9 +597,9 @@ export default function NotebooksPage() {
           <Button className="mt-4" onClick={() => setShowTemplates(true)}>
             <Plus className="h-4 w-4" /> Crear mi primer cuaderno
           </Button>
-        </div>
+        </motion.div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[250px_minmax(0,1fr)]">
+        <motion.div variants={pageItem} className="grid gap-6 lg:grid-cols-[250px_minmax(0,1fr)]">
           <aside className="space-y-1">
             <p className="px-3 pb-1 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
               Tus cuadernos
@@ -906,11 +909,11 @@ export default function NotebooksPage() {
               </p>
             )}
           </section>
-        </div>
+        </motion.div>
       )}
 
       {showSourcePicker && (
-        <div
+        <motion.div variants={pageItem}
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
           onClick={() => setShowSourcePicker(false)}
         >
@@ -1109,11 +1112,11 @@ export default function NotebooksPage() {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {showTemplates && (
-        <div
+        <motion.div variants={pageItem}
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
           onClick={() => setShowTemplates(false)}
         >
@@ -1166,8 +1169,8 @@ export default function NotebooksPage() {
               ))}
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }

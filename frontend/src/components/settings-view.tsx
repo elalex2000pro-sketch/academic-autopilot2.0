@@ -1,5 +1,8 @@
 "use client";
 
+import { motion } from "framer-motion";
+import { pageItem, pageStagger } from "@/components/page-animated-wrapper";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
@@ -545,8 +548,8 @@ export function SettingsView() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5 px-5 pb-12 pt-7 sm:px-8 lg:pt-9">
-      <header>
+    <motion.div variants={pageStagger} className="mx-auto max-w-5xl space-y-5 px-5 pb-12 pt-7 sm:px-8 lg:pt-9">
+      <motion.header variants={pageItem}>
         <p className="label-caps">Configuración</p>
         <h1 className="mt-2 text-[30px] font-semibold leading-tight tracking-[-0.035em] text-slate-800 dark:text-white/90">
           Ajustes
@@ -554,12 +557,12 @@ export function SettingsView() {
         <p className="mt-1.5 max-w-2xl text-[13px] leading-5 text-slate-500 dark:text-white/45">
           Apariencia, rendimiento, integraciones y cuenta en un solo lugar.
         </p>
-      </header>
+      </motion.header>
 
       <SettingsTabs active={tab} onChange={selectTab} />
 
       {notice && (
-        <div
+        <motion.div variants={pageItem}
           role="status"
           aria-live="polite"
           className="flex items-start gap-3 rounded-2xl border border-slate-300/40 bg-slate-100/60 px-4 py-3 text-[12.5px] leading-5 text-slate-700 shadow-lg shadow-slate-900/5 backdrop-blur-2xl dark:border-white/[0.07] dark:bg-white/[0.05] dark:text-white/75"
@@ -573,10 +576,10 @@ export function SettingsView() {
           >
             <X className="h-3.5 w-3.5" />
           </button>
-        </div>
+        </motion.div>
       )}
 
-      <div
+      <motion.div variants={pageItem}
         key={tab}
         id={`settings-panel-${tab}`}
         role="tabpanel"
@@ -1537,7 +1540,7 @@ export function SettingsView() {
             </SettingsCard>
           </div>
         )}
-      </div>
+      </motion.div>
 
       {SETTINGS_TABS.filter((definition) => definition.id !== tab).map((definition) => (
         <div
@@ -1548,6 +1551,6 @@ export function SettingsView() {
           hidden
         />
       ))}
-    </div>
+    </motion.div>
   );
 }

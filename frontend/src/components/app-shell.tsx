@@ -78,8 +78,8 @@ function RailNavLink({
       className="group relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-white/55"
     >
       {active ? (
-        <motion.span
-          layoutId="activeSidebarIcon"
+        <motion.div
+          layoutId="activeNavBubble"
           aria-hidden="true"
           className="absolute inset-0 rounded-full bg-[#e9e4f6] shadow-[0_10px_24px_-12px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.75)]"
           transition={reduceMotion ? { duration: 0 } : RAIL_SPRING}

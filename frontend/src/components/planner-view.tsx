@@ -1,5 +1,8 @@
 "use client";
 
+import { motion } from "framer-motion";
+import { pageItem, pageStagger } from "@/components/page-animated-wrapper";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
@@ -747,8 +750,8 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
   const monthLabel = `${MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`;
 
   return (
-    <div className="mx-auto max-w-[1500px] px-4 pb-10 pt-5 sm:px-6 lg:pt-7">
-      <header className="flex flex-wrap items-end justify-between gap-5">
+    <motion.div variants={pageStagger} className="mx-auto max-w-[1500px] px-4 pb-10 pt-5 sm:px-6 lg:pt-7">
+      <motion.header variants={pageItem} className="flex flex-wrap items-end justify-between gap-5">
         <div className="min-w-0">
           <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-white/35">
             <CalendarRange className="h-3.5 w-3.5" strokeWidth={1.9} />
@@ -783,10 +786,10 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
             <Plus className="h-4 w-4" /> Nuevo Evento
           </Button>
         </div>
-      </header>
+      </motion.header>
 
       {notice && (
-        <div
+        <motion.div variants={pageItem}
           role="status"
           aria-live="polite"
           className={cn(
@@ -812,10 +815,10 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
           >
             <X className="h-3.5 w-3.5" />
           </button>
-        </div>
+        </motion.div>
       )}
 
-      <div className="mt-6 grid items-start gap-5 lg:grid-cols-[1fr_1.2fr]">
+      <motion.div variants={pageItem} className="mt-6 grid items-start gap-5 lg:grid-cols-[1fr_1.2fr]">
         {/* Columna izquierda: calendario mensual compacto */}
         <section className="rounded-3xl bg-white/35 p-4 backdrop-blur-xl dark:bg-white/[0.025] sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1640,10 +1643,10 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
           </div>
           )}
         </section>
-      </div>
+      </motion.div>
 
       {/* Gestión del horario: añadir, editar, importar y quitar clases */}
-      <section className="mt-5 rounded-3xl bg-white/35 p-4 backdrop-blur-xl dark:bg-white/[0.025] sm:p-5">
+      <motion.section variants={pageItem} className="mt-5 rounded-3xl bg-white/35 p-4 backdrop-blur-xl dark:bg-white/[0.025] sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <button
             type="button"
@@ -1893,13 +1896,13 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
             </div>
           </div>
         )}
-      </section>
+      </motion.section>
 
       {loading && (
-        <div className="mt-4 flex items-center justify-center gap-2 text-[11.5px] text-slate-400 dark:text-white/30">
+        <motion.div variants={pageItem} className="mt-4 flex items-center justify-center gap-2 text-[11.5px] text-slate-400 dark:text-white/30">
           <RefreshCw className="h-3.5 w-3.5 animate-spin" />
           Actualizando tu planificador…
-        </div>
+        </motion.div>
       )}
 
       <ExamDialog
@@ -1924,6 +1927,6 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
           void load(true);
         }}
       />
-    </div>
+    </motion.div>
   );
 }

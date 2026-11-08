@@ -1,5 +1,7 @@
 "use client";
 
+import { pageItem, pageStagger } from "@/components/page-animated-wrapper";
+
 import Image from "next/image";
 import Link from "next/link";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -190,7 +192,7 @@ export default function LibraryView() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-[1240px] px-4 py-6 sm:px-6 lg:px-8">
+    <motion.div variants={pageStagger} className="mx-auto w-full max-w-[1240px] px-4 py-6 sm:px-6 lg:px-8">
       <input
         ref={inputRef}
         type="file"
@@ -203,7 +205,7 @@ export default function LibraryView() {
         }}
       />
 
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <motion.header variants={pageItem} className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-black/40 dark:text-white/35">
             <HardDrive className="h-3.5 w-3.5" /> Solo en este dispositivo
@@ -229,10 +231,10 @@ export default function LibraryView() {
           )}
           {importing ? "Importando…" : "Añadir PDFs"}
         </button>
-      </header>
+      </motion.header>
 
       {error && (
-        <div
+        <motion.div variants={pageItem}
           role="alert"
           className="mt-5 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50/90 p-3.5 text-sm text-rose-700 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-200"
         >
@@ -245,13 +247,13 @@ export default function LibraryView() {
           >
             <X className="h-4 w-4" />
           </button>
-        </div>
+        </motion.div>
       )}
 
       {loading ? (
-        <div className="mt-10 flex items-center justify-center gap-2 text-sm text-slate-500 dark:text-white/50">
+        <motion.div variants={pageItem} className="mt-10 flex items-center justify-center gap-2 text-sm text-slate-500 dark:text-white/50">
           <Loader2 className="h-4 w-4 animate-spin" /> Leyendo tu biblioteca local…
-        </div>
+        </motion.div>
       ) : books.length === 0 ? (
         <section className="glass-card mt-8 overflow-hidden rounded-[28px] border-dashed p-8 text-center sm:p-14">
           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[28px] bg-black/[0.045] text-black/45 dark:bg-white/[0.06] dark:text-white/55">
@@ -439,18 +441,18 @@ export default function LibraryView() {
       )}
 
       {importing && (
-        <div
+        <motion.div variants={pageItem}
           role="status"
           aria-live="polite"
           className="fixed bottom-[calc(var(--mobile-nav-offset,0px)+1rem)] right-4 z-[70] flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-2xl border border-white/50 bg-white/85 px-4 py-3 text-xs shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-slate-900/90 dark:text-white/80 lg:bottom-5"
         >
           <Loader2 className="h-4 w-4 shrink-0 animate-spin text-indigo-500" />
           <span className="min-w-0 truncate">{importLabel || "Preparando importación…"}</span>
-        </div>
+        </motion.div>
       )}
 
       {pendingDelete && (
-        <div
+        <motion.div variants={pageItem}
           className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-md"
           onClick={() => !deleting && setPendingDelete(null)}
         >
@@ -526,8 +528,8 @@ export default function LibraryView() {
               </button>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }

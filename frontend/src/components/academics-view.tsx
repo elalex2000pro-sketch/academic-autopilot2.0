@@ -1,5 +1,8 @@
 "use client";
 
+import { motion } from "framer-motion";
+import { pageItem, pageStagger } from "@/components/page-animated-wrapper";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowDown,
@@ -674,8 +677,8 @@ export function AcademicsView() {
   // El inset superior lo aporta el <main> del AppShell; aquí solo van los
   // márgenes laterales e inferiores para no duplicar la separación.
   return (
-    <div className="mx-auto max-w-7xl space-y-4 px-4 pb-12 md:px-6">
-      <section className="app-glass rounded-3xl p-4 md:p-6 lg:p-8">
+    <motion.div variants={pageStagger} className="mx-auto max-w-7xl space-y-4 px-4 pb-12 md:px-6">
+      <motion.section variants={pageItem} className="app-glass rounded-3xl p-4 md:p-6 lg:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#0066FF] dark:text-[#8ab9ff]">
@@ -719,10 +722,10 @@ export function AcademicsView() {
             hint="notas ≥ 5"
           />
         </div>
-      </section>
+      </motion.section>
 
       {notice && (
-        <div
+        <motion.div variants={pageItem}
           className={cn(
             "flex items-start gap-2 rounded-2xl border px-4 py-3 text-[12px] backdrop-blur-2xl",
             notice.tone === "success"
@@ -734,10 +737,10 @@ export function AcademicsView() {
           <button type="button" onClick={() => setNotice(null)} aria-label="Cerrar aviso">
             <X className="h-3.5 w-3.5 opacity-60" />
           </button>
-        </div>
+        </motion.div>
       )}
 
-      <section className="app-glass rounded-3xl p-4 sm:p-5">
+      <motion.section variants={pageItem} className="app-glass rounded-3xl p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
@@ -932,10 +935,10 @@ export function AcademicsView() {
             })}
           </div>
         )}
-      </section>
+      </motion.section>
 
       {showCourseForm && (
-        <div
+        <motion.div variants={pageItem}
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm"
           onClick={() => !savingCourse && setShowCourseForm(false)}
         >
@@ -1020,11 +1023,11 @@ export function AcademicsView() {
               </Button>
             </div>
           </form>
-        </div>
+        </motion.div>
       )}
 
       {selectedCourse && (
-        <div
+        <motion.div variants={pageItem}
           className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/45 p-3 backdrop-blur-sm sm:p-6"
           onClick={() => setSelectedCourseId(null)}
         >
@@ -1365,7 +1368,7 @@ export function AcademicsView() {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       <ExamDialog
@@ -1378,6 +1381,6 @@ export function AcademicsView() {
         onSaved={handleExamSaved}
         onDeleted={handleExamDeleted}
       />
-    </div>
+    </motion.div>
   );
 }

@@ -1,5 +1,8 @@
 "use client";
 
+import { motion } from "framer-motion";
+import { pageItem, pageStagger } from "@/components/page-animated-wrapper";
+
 // Vista de chat: conversaciones privadas y grupales, @usuarios, adjuntos
 // (PDF/imagenes) y enlaces clickeables. Los mensajes nuevos llegan por el
 // WebSocket compartido de la app (`useRealtime`, evento "chat").
@@ -517,9 +520,9 @@ export function ChatView() {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-9rem)] min-h-[520px] overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+    <motion.div variants={pageStagger} className="flex h-[calc(100dvh-9rem)] min-h-[520px] overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
       {/* -------------------------------------------------- lista lateral */}
-      <aside
+      <motion.aside variants={pageItem}
         className={cn(
           "flex w-full shrink-0 flex-col border-border md:w-80 md:border-r",
           mobileThread && "hidden md:flex",
@@ -639,10 +642,10 @@ export function ChatView() {
             })
           )}
         </div>
-      </aside>
+      </motion.aside>
 
       {/* ------------------------------------------------------- hilo */}
-      <section
+      <motion.section variants={pageItem}
         className={cn(
           "flex min-w-0 flex-1 flex-col",
           !mobileThread && "hidden md:flex",
@@ -853,7 +856,7 @@ export function ChatView() {
             </Button>
           </div>
         )}
-      </section>
+      </motion.section>
 
       {dialogOpen ? (
         <NewConversationDialog
@@ -865,7 +868,7 @@ export function ChatView() {
           }}
         />
       ) : null}
-    </div>
+    </motion.div>
   );
 }
 
