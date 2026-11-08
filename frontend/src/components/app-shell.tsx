@@ -118,7 +118,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // Studio y el lector de libros ocupan toda la altura disponible y ya
   // gestionan su propia cabecera; el inset del shell les haría desbordar.
-  const isImmersive = pathname === "/studio" || pathname.startsWith("/library/");
+  const isBookReader = pathname.startsWith("/library/");
+  const isImmersive = pathname === "/studio" || isBookReader;
   const currentSection =
     ALL_ITEMS.find((item) => isActive(pathname, item.href))?.label ?? "Academic Autopilot";
 
@@ -244,6 +245,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
 
         {/* Barra superior móvil, con la translucidez de una toolbar. */}
+        {!isBookReader && (
         <header className="sticky top-0 z-40 border-b border-slate-300/40 bg-slate-100/70 pt-[env(safe-area-inset-top,0px)] backdrop-blur-3xl dark:border-white/[0.06] dark:bg-black/40 lg:hidden">
           <div className="flex items-center justify-between gap-2 px-3 py-2">
             <Logo />
@@ -286,13 +288,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
         </header>
+        )}
 
         <OfflineStatus />
 
         {/* 40 px en móvil; en escritorio la barra superior ya ocupa 48 px. */}
         <main
           className={cn(
-            "min-w-0 flex-1 overflow-x-hidden bg-transparent",
+            "min-w-0 flex-1 bg-transparent",
+            isBookReader ? "overflow-x-clip" : "overflow-x-hidden",
             !isImmersive &&
               "pt-10 pb-[calc(var(--mobile-nav-offset)+1.25rem)] lg:pb-0 lg:pt-0",
           )}
@@ -304,7 +308,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
-      <MobileNavigationBar />
+      {!isBookReader && <MobileNavigationBar />}
       </div>
 
       {showOnboarding && (

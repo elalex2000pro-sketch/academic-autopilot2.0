@@ -1,1034 +1,1202 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useParams } from "next/navigation";
 import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
+import {
+  AlertCircle,
   ArrowLeft,
   BookOpen,
-  Check,
-  ChevronLeft,
+  Bookmark,
+  BookmarkCheck,
   ChevronRight,
-  Copy,
-  Headphones,
-  Highlighter,
-  List,
+  Download,
+  ListTree,
   Loader2,
-  MessageCircleQuestion,
+  Minus,
+  MoveHorizontal,
+  MoveVertical,
   NotebookPen,
-  Quote,
-  RefreshCcw,
-  Send,
-  Sparkles,
-  Square,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Plus,
+  Search,
   Trash2,
-  Volume2,
   X,
 } from "lucide-react";
+import { Document, Page, pdfjs } from "react-pdf";
+import type { PDFDocumentProxy } from "pdfjs-dist";
 
-import { AddToNotebookButton } from "@/components/add-to-notebook";
-import { NotificationBell } from "@/components/notification-center";
-import { PdfCanvasViewer } from "@/components/pdf-canvas-viewer";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { api, ApiError } from "@/lib/api";
-import type {
-  BookCitation,
-  BookDetail,
-  BookMessage,
-  BookSection,
-  BookSummary,
-} from "@/lib/types";
+import {
+  getBook,
+  getBookFile,
+  progressPercent,
+  updateBook,
+  type LocalBook,
+} from "@/lib/local-library";
 import { cn } from "@/lib/utils";
 
-const SUGGESTIONS = [
-  "¿Cuáles son las ideas principales de este capítulo?",
-  "Explícame lo más importante en palabras sencillas.",
-  "¿Qué conceptos debería memorizar?",
-  "Hazme un resumen para repasar.",
-];
+pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
-const FORMAT_LABEL: Record<string, string> = {
-  pdf: "PDF",
-  epub: "EPUB",
-  docx: "DOCX",
-  txt: "TXT",
-  md: "Markdown",
-};
+type ReaderTab = "outline" | "bookmarks" | "notes" | "search";
+type FitMode = "custom" | "width" | "height";
 
-function errorMessage(error: unknown): string {
-  if (error instanceof ApiError) return error.message;
-  if (error instanceof Error) return error.message;
-  return "Error inesperado";
+interface OutlineNode {
+  title: string;
+  page: number | null;
+  children: OutlineNode[];
 }
 
-function formatDate(value: string | null): string {
-  if (!value) return "Sin abrir todavía";
-  return new Date(value).toLocaleDateString("es-ES", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+interface SearchHit {
+  page: number;
+  snippet: string;
+  count: number;
+}
+
+interface SearchToken {
+  cancelled: boolean;
+}
+
+const PAGE_ASPECT = 1.414;
+
+function clamp(value: number, max: number): number {
+  if (!Number.isFinite(value)) return 1;
+  return Math.min(Math.max(Math.trunc(value), 1), Math.max(1, max));
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(
+    /[&<>"']/g,
+    (character) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[character] ?? character,
+  );
+}
+
+function highlightText(text: string, query: string): string {
+  const term = query.trim();
+  if (!term) return escapeHtml(text);
+  const safeTerm = escapeHtml(term).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return escapeHtml(text).replace(
+    new RegExp(`(${safeTerm})`, "gi"),
+    '<mark class="pdf-search-hit">$1</mark>',
+  );
+}
+
+function safeDownloadName(value: string): string {
+  return (
+    value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^\w.-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase() || "libro"
+  );
+}
+
+async function resolveDestPage(
+  pdf: PDFDocumentProxy,
+  dest: unknown,
+): Promise<number | null> {
+  try {
+    const explicit =
+      typeof dest === "string" ? await pdf.getDestination(dest) : dest;
+    if (!Array.isArray(explicit) || explicit.length === 0) return null;
+    const reference = explicit[0];
+    if (typeof reference === "number") {
+      return clamp(reference + 1, pdf.numPages);
+    }
+    const index = await pdf.getPageIndex(
+      reference as Parameters<PDFDocumentProxy["getPageIndex"]>[0],
+    );
+    return clamp(index + 1, pdf.numPages);
+  } catch {
+    return null;
+  }
+}
+
+interface RawOutlineItem {
+  title: string;
+  dest?: unknown;
+  items?: RawOutlineItem[];
+}
+
+async function mapOutline(
+  pdf: PDFDocumentProxy,
+  items: RawOutlineItem[],
+): Promise<OutlineNode[]> {
+  return Promise.all(
+    items.map(async (item) => ({
+      title: item.title,
+      page: await resolveDestPage(pdf, item.dest),
+      children: item.items?.length ? await mapOutline(pdf, item.items) : [],
+    })),
+  );
+}
+
+async function buildOutline(pdf: PDFDocumentProxy): Promise<OutlineNode[]> {
+  const outline = await pdf.getOutline();
+  if (!outline || outline.length === 0) return [];
+  return mapOutline(pdf, outline as RawOutlineItem[]);
+}
+
+async function searchDocument(
+  pdf: PDFDocumentProxy,
+  rawQuery: string,
+  token: SearchToken,
+  onProgress: (searched: number) => void,
+): Promise<SearchHit[]> {
+  const query = rawQuery.trim().toLocaleLowerCase("es");
+  if (!query) return [];
+
+  const hits: SearchHit[] = [];
+  const batchSize = 6;
+
+  for (let start = 1; start <= pdf.numPages && hits.length < 120; start += batchSize) {
+    if (token.cancelled) break;
+    const pageNumbers = Array.from(
+      { length: Math.min(batchSize, pdf.numPages - start + 1) },
+      (_, index) => start + index,
+    );
+    const batch = await Promise.all(
+      pageNumbers.map(async (pageNumber) => {
+        const page = await pdf.getPage(pageNumber);
+        try {
+          const content = await page.getTextContent();
+          const text = content.items
+            .map((item) => ("str" in item ? item.str : ""))
+            .join(" ")
+            .replace(/\s+/g, " ")
+            .trim();
+          const lower = text.toLocaleLowerCase("es");
+          let index = lower.indexOf(query);
+          if (index < 0) return null;
+          let count = 0;
+          while (index >= 0) {
+            count += 1;
+            index = lower.indexOf(query, index + query.length);
+          }
+          const first = lower.indexOf(query);
+          return {
+            page: pageNumber,
+            snippet: text.slice(
+              Math.max(0, first - 55),
+              Math.min(text.length, first + query.length + 95),
+            ),
+            count,
+          } satisfies SearchHit;
+        } finally {
+          page.cleanup();
+        }
+      }),
+    );
+    for (const hit of batch) {
+      if (hit) hits.push(hit);
+      if (hits.length >= 120) break;
+    }
+    onProgress(Math.min(pdf.numPages, start + batchSize - 1));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  return hits;
+}
+
+interface PdfPageProps {
+  pageNumber: number;
+  width?: number;
+  height?: number;
+  placeholderHeight: number;
+  forceVisible: boolean;
+  customTextRenderer: ((textItem: { str: string }) => string) | undefined;
+  register: (page: number, element: HTMLDivElement | null) => void;
+}
+
+function PdfPage({
+  pageNumber,
+  width,
+  height,
+  placeholderHeight,
+  forceVisible,
+  customTextRenderer,
+  register,
+}: PdfPageProps) {
+  const shellRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(forceVisible);
+
+  useEffect(() => {
+    if (forceVisible) setVisible(true);
+  }, [forceVisible]);
+
+  useEffect(() => {
+    register(pageNumber, shellRef.current);
+    return () => register(pageNumber, null);
+  }, [pageNumber, register]);
+
+  useEffect(() => {
+    if (visible) return;
+    const element = shellRef.current;
+    if (!element) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) setVisible(true);
+      },
+      { rootMargin: "1400px 0px" },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [visible]);
+
+  return (
+    <div
+      ref={shellRef}
+      id={`pdf-page-${pageNumber}`}
+      data-page={pageNumber}
+      className="pdf-page-shell"
+      style={{ minHeight: placeholderHeight }}
+    >
+      {visible ? (
+        height ? (
+          <Page
+            pageNumber={pageNumber}
+            height={height}
+            customTextRenderer={customTextRenderer}
+            className="pdf-page"
+          />
+        ) : (
+          <Page
+            pageNumber={pageNumber}
+            width={width ?? 800}
+            customTextRenderer={customTextRenderer}
+            className="pdf-page"
+          />
+        )
+      ) : (
+        <div className="pdf-page-placeholder" style={{ height: placeholderHeight }}>
+          <span>Página {pageNumber}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OutlineItems({
+  nodes,
+  depth = 0,
+  onGo,
+}: {
+  nodes: OutlineNode[];
+  depth?: number;
+  onGo: (page: number) => void;
+}) {
+  return (
+    <div>
+      {nodes.map((node, index) => (
+        <div key={`${depth}-${index}-${node.title}`}>
+          <button
+            type="button"
+            disabled={!node.page}
+            onClick={() => node.page && onGo(node.page)}
+            className="flex w-full items-baseline gap-2 rounded-lg py-1.5 pr-2 text-left text-[12px] text-white/65 transition hover:bg-white/[0.06] hover:text-white disabled:cursor-default disabled:opacity-50"
+            style={{ paddingLeft: `${10 + depth * 14}px` }}
+          >
+            <span className="min-w-0 flex-1 leading-4">{node.title}</span>
+            {node.page && (
+              <span className="shrink-0 text-[9px] tabular-nums text-white/30">
+                {node.page}
+              </span>
+            )}
+          </button>
+          {node.children.length > 0 && (
+            <OutlineItems nodes={node.children} depth={depth + 1} onGo={onGo} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ReaderState({
+  children,
+  error = false,
+}: {
+  children: React.ReactNode;
+  error?: boolean;
+}) {
+  return (
+    <div className="flex min-h-dvh items-center justify-center bg-[#0d1117] p-5 text-white">
+      <div
+        className={cn(
+          "w-full max-w-md rounded-3xl border p-6 text-center",
+          error
+            ? "border-rose-400/20 bg-rose-500/10"
+            : "border-white/10 bg-white/[0.04]",
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  );
 }
 
 export default function BookReaderView() {
   const params = useParams();
-  const router = useRouter();
   const bookId = String(params.id);
 
-  const [book, setBook] = useState<BookDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [book, setBook] = useState<LocalBook | null>(null);
+  const [file, setFile] = useState<Blob | null>(null);
+  const [loadingBook, setLoadingBook] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [index, setIndex] = useState(0);
-  const [section, setSection] = useState<BookSection | null>(null);
-  const [sectionLoading, setSectionLoading] = useState(false);
-  const [highlight, setHighlight] = useState<string | null>(null);
-  const [showChapters, setShowChapters] = useState(false);
-  const [fontSize, setFontSize] = useState(18);
-  const [panelTab, setPanelTab] = useState<"ask" | "summary">("ask");
-  const [messages, setMessages] = useState<BookMessage[]>([]);
-  const [question, setQuestion] = useState("");
-  const [asking, setAsking] = useState(false);
-  const [panelError, setPanelError] = useState<string | null>(null);
-  const [summary, setSummary] = useState<BookSummary | null>(null);
-  const [summaryScope, setSummaryScope] = useState<"current" | "book">("current");
-  const [summaryLoading, setSummaryLoading] = useState(false);
-  const [speaking, setSpeaking] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [pdfPage, setPdfPage] = useState(1);
-  const [pdfTotal, setPdfTotal] = useState(0);
+  const [numPages, setNumPages] = useState(0);
+  const [pdfDocument, setPdfDocument] = useState<PDFDocumentProxy | null>(null);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pageDraft, setPageDraft] = useState("1");
+  const [zoom, setZoom] = useState(100);
+  const [fitMode, setFitMode] = useState<FitMode>("custom");
+  const [sidebarOpen, setSidebarOpen] = useState(() =>
+    typeof window === "undefined" ? true : window.innerWidth >= 1024,
+  );
+  const [sidebarTab, setSidebarTab] = useState<ReaderTab>("outline");
+  const [outline, setOutline] = useState<OutlineNode[]>([]);
+  const [outlineLoading, setOutlineLoading] = useState(false);
+  const [bookmarks, setBookmarks] = useState<number[]>([]);
+  const [notes, setNotes] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchHit[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchDone, setSearchDone] = useState(false);
+  const [searchProgress, setSearchProgress] = useState(0);
+  const [contentSize, setContentSize] = useState({
+    width: typeof window === "undefined" ? 1200 : window.innerWidth,
+    height: typeof window === "undefined" ? 800 : window.innerHeight,
+  });
 
-  const initialized = useRef(false);
-  const readerRef = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const bookRef = useRef<LocalBook | null>(null);
+  const pageRefs = useRef(new Map<number, HTMLDivElement>());
+  const lastObservedPageRef = useRef(1);
+  const saveTimerRef = useRef<number | null>(null);
+  const pendingPatchRef = useRef<Partial<LocalBook>>({});
+  const searchTokenRef = useRef<SearchToken>({ cancelled: true });
+  const initialPageRef = useRef(1);
+  const scrollReadyRef = useRef(false);
 
-  const loadBook = useCallback(async () => {
+  const flushSave = useCallback(async () => {
+    if (!bookRef.current || Object.keys(pendingPatchRef.current).length === 0) return;
+    const patch = pendingPatchRef.current;
+    pendingPatchRef.current = {};
     try {
-      const data = await api.book(bookId);
-      setBook(data);
-      setError(null);
-      if (data.status === "ready" && !initialized.current) {
-        initialized.current = true;
-        setIndex(data.current_section_index);
-        // Marca la apertura para que "Continuar leyendo" sepa dónde volver.
-        api
-          .updateBookProgress(data.id, { section_index: data.current_section_index })
-          .then((updated) => setBook((current) => (current ? { ...current, ...updated } : current)))
-          .catch(() => undefined);
-      }
-    } catch (caught) {
-      setError(errorMessage(caught));
-    } finally {
-      setLoading(false);
+      await updateBook(bookId, patch);
+    } catch {
+      // IndexedDB puede fallar en modo privado; la lectura continúa en memoria.
     }
   }, [bookId]);
 
-  useEffect(() => {
-    initialized.current = false;
-    void loadBook();
-  }, [loadBook]);
+  const persist = useCallback(
+    (patch: Partial<LocalBook>) => {
+      if (!bookRef.current) return;
+      bookRef.current = {
+        ...bookRef.current,
+        ...patch,
+        updatedAt: Date.now(),
+      };
+      setBook((current) => (current ? { ...current, ...patch } : current));
+      pendingPatchRef.current = { ...pendingPatchRef.current, ...patch };
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = window.setTimeout(() => {
+        saveTimerRef.current = null;
+        void flushSave();
+      }, 400);
+    },
+    [flushSave],
+  );
 
   useEffect(() => {
-    if (book?.status !== "processing") return;
-    const timer = window.setTimeout(() => void loadBook(), 2600);
-    return () => window.clearTimeout(timer);
-  }, [book?.status, loadBook]);
-
-  useEffect(() => {
-    if (!book || book.status !== "ready" || book.text_available === false) return;
     let cancelled = false;
-    setSectionLoading(true);
-    api
-      .bookSection(book.id, index)
-      .then((data) => {
-        if (!cancelled) setSection(data);
-      })
-      .catch((caught) => {
-        if (!cancelled) setError(errorMessage(caught));
-      })
-      .finally(() => {
-        if (!cancelled) setSectionLoading(false);
-      });
+    setLoadingBook(true);
+    setBook(null);
+    setFile(null);
+    setError(null);
+    setPdfDocument(null);
+    setNumPages(0);
+    setPageNumber(1);
+    setPageDraft("1");
+    setBookmarks([]);
+    setNotes("");
+    setOutline([]);
+    setSearchInput("");
+    setSearchQuery("");
+    setSearchResults([]);
+    setSearchDone(false);
+    setSidebarTab("outline");
+    bookRef.current = null;
+    pendingPatchRef.current = {};
+    lastObservedPageRef.current = 1;
+    scrollReadyRef.current = false;
+
+    async function load() {
+      try {
+        const metadata = await getBook(bookId);
+        if (!metadata) {
+          if (!cancelled) setError("Este PDF no está guardado en este dispositivo.");
+          return;
+        }
+        const blob = await getBookFile(bookId);
+        if (cancelled) return;
+        bookRef.current = metadata;
+        setBook(metadata);
+        setBookmarks(metadata.bookmarks ?? []);
+        setNotes(metadata.notes ?? "");
+        setZoom(metadata.zoom >= 50 && metadata.zoom <= 200 ? metadata.zoom : 100);
+        const initial = clamp(metadata.lastPage, metadata.pages);
+        initialPageRef.current = initial;
+        setPageNumber(initial);
+        setPageDraft(String(initial));
+        lastObservedPageRef.current = initial;
+        if (!blob) {
+          setError("El archivo PDF no está disponible en este dispositivo.");
+          return;
+        }
+        setFile(blob);
+      } catch (caught) {
+        if (!cancelled) {
+          setError(
+            caught instanceof Error
+              ? caught.message
+              : "No se pudo abrir el PDF local.",
+          );
+        }
+      } finally {
+        if (!cancelled) setLoadingBook(false);
+      }
+    }
+
+    void load();
     return () => {
       cancelled = true;
+      searchTokenRef.current.cancelled = true;
+      if (saveTimerRef.current) {
+        window.clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      void flushSave();
     };
-  }, [book?.id, book?.status, book?.text_available, index]);
+  }, [bookId, flushSave]);
 
   useEffect(() => {
-    if (!book || book.status !== "ready" || book.text_available === false) return;
-    api
-      .bookMessages(book.id)
-      .then(setMessages)
-      .catch(() => setMessages([]));
-  }, [book?.id, book?.status, book?.text_available]);
-
-  useEffect(() => {
-    setSummary(null);
-  }, [index]);
-
-  useEffect(() => {
-    const stored = Number(window.localStorage.getItem("autopilot_reader_font"));
-    if (stored >= 15 && stored <= 26) setFontSize(stored);
+    const update = () => {
+      const width = contentRef.current?.clientWidth ?? window.innerWidth;
+      setContentSize({ width, height: window.innerHeight });
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    if (contentRef.current) observer.observe(contentRef.current);
+    window.addEventListener("resize", update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+    };
   }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem("autopilot_reader_font", String(fontSize));
-  }, [fontSize]);
 
   useEffect(() => {
     return () => {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-      }
+      searchTokenRef.current.cancelled = true;
     };
   }, []);
 
+  const totalPages = numPages || book?.pages || 1;
+  const availableWidth = Math.max(
+    260,
+    contentSize.width - (contentSize.width < 780 ? 24 : 48),
+  );
+  const availableHeight = Math.max(
+    360,
+    contentSize.height - (contentSize.width < 780 ? 250 : 150),
+  );
+  const pageWidth =
+    fitMode === "height"
+      ? undefined
+      : fitMode === "width"
+        ? availableWidth
+        : Math.max(260, Math.min(900, availableWidth) * (zoom / 100));
+  const pageHeight = fitMode === "height" ? availableHeight : undefined;
+  const placeholderHeight = pageHeight ?? Math.round((pageWidth ?? availableWidth) * PAGE_ASPECT);
+
+  const customTextRenderer = useCallback(
+    (textItem: { str: string }) => highlightText(textItem.str, searchQuery),
+    [searchQuery],
+  );
+
+  const registerPage = useCallback(
+    (page: number, element: HTMLDivElement | null) => {
+      if (element) pageRefs.current.set(page, element);
+      else pageRefs.current.delete(page);
+    },
+    [],
+  );
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [messages, asking]);
+    setPageDraft(String(pageNumber));
+  }, [pageNumber]);
 
-  const progress = useMemo(() => {
-    if (!book) return 0;
-    if (book.text_available === false || book.status === "error") {
-      return pdfTotal ? (pdfPage / pdfTotal) * 100 : book.progress_percent;
-    }
-    if (book.total_sections === 0) return 0;
-    return Math.max(book.progress_percent, ((index + 1) / book.total_sections) * 100);
-  }, [book, index, pdfPage, pdfTotal]);
+  const handleActivePage = useCallback(
+    (page: number) => {
+      if (page === lastObservedPageRef.current) return;
+      lastObservedPageRef.current = page;
+      setPageNumber(page);
+      persist({ lastPage: page });
+    },
+    [persist],
+  );
 
-  async function goToSection(next: number) {
-    if (!book || book.total_sections === 0) return;
-    const clamped = Math.max(0, Math.min(next, book.total_sections - 1));
-    if (clamped === index) {
-      readerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
-    }
-    setIndex(clamped);
-    setShowChapters(false);
-    setHighlight(null);
-    readerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    try {
-      const updated = await api.updateBookProgress(book.id, { section_index: clamped });
-      setBook((current) => (current ? { ...current, ...updated } : current));
-    } catch {
-      // El progreso se reintentará al cambiar de sección; la lectura no se bloquea.
-    }
-  }
+  useEffect(() => {
+    if (!numPages) return;
+    let frame = 0;
 
-  async function ask(text = question) {
-    if (!book || !text.trim() || asking) return;
-    const clean = text.trim();
-    setAsking(true);
-    setPanelError(null);
-    setQuestion("");
-    setPanelTab("ask");
-    try {
-      await api.askBook(book.id, { question: clean, section_index: index });
-      const updated = await api.bookMessages(book.id);
-      setMessages(updated);
-    } catch (caught) {
-      setPanelError(errorMessage(caught));
-      setQuestion(clean);
-    } finally {
-      setAsking(false);
-    }
-  }
+    const updateActivePage = () => {
+      frame = 0;
+      if (!scrollReadyRef.current) return;
+      let active = 1;
+      const readingLine = window.innerHeight * 0.35;
+      for (let page = 1; page <= numPages; page += 1) {
+        const element = pageRefs.current.get(page);
+        if (!element) continue;
+        if (element.getBoundingClientRect().top <= readingLine) active = page;
+        else break;
+      }
+      handleActivePage(active);
+    };
 
-  async function clearChat() {
+    const onScroll = () => {
+      if (!scrollReadyRef.current || frame) return;
+      frame = window.requestAnimationFrame(updateActivePage);
+    };
+
+    const readyTimer = window.setTimeout(() => {
+      scrollReadyRef.current = true;
+      updateActivePage();
+    }, 500);
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.clearTimeout(readyTimer);
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [handleActivePage, numPages]);
+
+  const goToPage = useCallback(
+    (value: number, behavior: ScrollBehavior = "smooth") => {
+      const next = clamp(value, totalPages);
+      lastObservedPageRef.current = next;
+      setPageNumber(next);
+      persist({ lastPage: next });
+      const element = pageRefs.current.get(next);
+      if (element) {
+        element.scrollIntoView({ behavior, block: "start" });
+      }
+    },
+    [persist, totalPages],
+  );
+
+  const handleLoadSuccess = useCallback(
+    (pdf: PDFDocumentProxy) => {
+      setPdfDocument(pdf);
+      setNumPages(pdf.numPages);
+      setError(null);
+      const initial = clamp(bookRef.current?.lastPage ?? 1, pdf.numPages);
+      lastObservedPageRef.current = initial;
+      setPageNumber(initial);
+      setPageDraft(String(initial));
+      setOutlineLoading(true);
+      void buildOutline(pdf)
+        .then((nodes) => setOutline(nodes))
+        .catch(() => setOutline([]))
+        .finally(() => setOutlineLoading(false));
+      window.setTimeout(() => {
+        pageRefs.current
+          .get(initial)
+          ?.scrollIntoView({ behavior: "auto", block: "start" });
+      }, 250);
+    },
+    [],
+  );
+
+  const toggleBookmark = useCallback(() => {
+    if (!bookRef.current) return;
+    const current = pageNumber;
+    const next = bookmarks.includes(current)
+      ? bookmarks.filter((page) => page !== current)
+      : [...bookmarks, current].sort((a, b) => a - b);
+    setBookmarks(next);
+    persist({ bookmarks: next });
+  }, [bookmarks, pageNumber, persist]);
+
+  const changeZoom = useCallback(
+    (delta: number) => {
+      const next = Math.min(200, Math.max(50, zoom + delta));
+      setFitMode("custom");
+      setZoom(next);
+      persist({ zoom: next });
+    },
+    [persist, zoom],
+  );
+
+  const chooseFit = useCallback((mode: FitMode) => {
+    setFitMode(mode);
+  }, []);
+
+  const runSearch = useCallback(
+    async (event?: FormEvent) => {
+      event?.preventDefault();
+      const term = searchInput.trim();
+      searchTokenRef.current.cancelled = true;
+      const token: SearchToken = { cancelled: false };
+      searchTokenRef.current = token;
+      setSearchQuery(term);
+      setSearchResults([]);
+      setSearchDone(false);
+      if (!term || !pdfDocument) {
+        setSearching(false);
+        return;
+      }
+      setSearching(true);
+      setSearchProgress(0);
+      try {
+        const hits = await searchDocument(pdfDocument, term, token, setSearchProgress);
+        if (!token.cancelled) {
+          setSearchResults(hits);
+          setSearchDone(true);
+        }
+      } catch {
+        if (!token.cancelled) {
+          setSearchResults([]);
+          setSearchDone(true);
+        }
+      } finally {
+        if (!token.cancelled) setSearching(false);
+      }
+    },
+    [pdfDocument, searchInput],
+  );
+
+  const clearSearch = useCallback(() => {
+    searchTokenRef.current.cancelled = true;
+    setSearchInput("");
+    setSearchQuery("");
+    setSearchResults([]);
+    setSearchDone(false);
+    setSearching(false);
+    setSearchProgress(0);
+  }, []);
+
+  const exportNotes = useCallback(() => {
     if (!book) return;
-    if (!window.confirm("¿Borrar el historial de preguntas de este libro?")) return;
-    try {
-      await api.clearBookMessages(book.id);
-      setMessages([]);
-    } catch (caught) {
-      setPanelError(errorMessage(caught));
-    }
+    const markdown = [
+      `# ${book.title}`,
+      "",
+      `**Autor:** ${book.author}`,
+      `**Páginas:** ${book.pages}`,
+      `**Página actual:** ${pageNumber}`,
+      bookmarks.length > 0
+        ? `**Marcapáginas:** ${bookmarks.map((page) => `p. ${page}`).join(", ")}`
+        : "",
+      "",
+      "## Notas",
+      "",
+      notes.trim() || "_Sin notas todavía._",
+      "",
+    ]
+      .filter((line) => line !== "")
+      .join("\n");
+    const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${safeDownloadName(book.title)}-notas.md`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }, [book, bookmarks, notes, pageNumber]);
+
+  function goFromSidebar(page: number) {
+    goToPage(page);
+    if (window.innerWidth < 1024) setSidebarOpen(false);
   }
 
-  async function makeSummary(scope: "current" | "book") {
-    if (!book || summaryLoading) return;
-    setSummaryScope(scope);
-    setSummaryLoading(true);
-    setPanelError(null);
-    try {
-      const data = await api.bookSummary(book.id, { scope, section_index: index });
-      setSummary(data);
-    } catch (caught) {
-      setPanelError(errorMessage(caught));
-    } finally {
-      setSummaryLoading(false);
-    }
-  }
-
-  function speakSummary() {
-    if (!summary || typeof window === "undefined" || !("speechSynthesis" in window)) {
-      setPanelError("Tu navegador no permite la lectura en voz alta.");
-      return;
-    }
-    if (speaking) {
-      window.speechSynthesis.cancel();
-      setSpeaking(false);
-      return;
-    }
-    const text = [summary.title, summary.summary, ...summary.key_points].filter(Boolean).join(". ");
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "es-ES";
-    utterance.rate = 0.98;
-    const voice = window.speechSynthesis
-      .getVoices()
-      .find((item) => item.lang.toLowerCase().startsWith("es"));
-    if (voice) utterance.voice = voice;
-    utterance.onend = () => setSpeaking(false);
-    utterance.onerror = () => setSpeaking(false);
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
-    setSpeaking(true);
-  }
-
-  async function copySummary() {
-    if (!summary) return;
-    const text = [summary.summary, ...summary.key_points.map((point) => `• ${point}`)].join("\n");
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1400);
-    } catch {
-      setPanelError("No se pudo copiar el resumen.");
-    }
-  }
-
-  function jumpToCitation(citation: BookCitation) {
-    void goToSection(citation.section_index);
-    setHighlight(citation.quote);
-  }
-
-  if (loading) {
+  if (loadingBook) {
     return (
-      <div className="flex min-h-[70dvh] items-center justify-center gap-3 text-sm text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin text-indigo-500" /> Abriendo el libro...
-      </div>
+      <ReaderState>
+        <Loader2 className="mx-auto h-8 w-8 animate-spin text-indigo-400" />
+        <p className="mt-3 text-sm text-white/60">Abriendo tu PDF local…</p>
+      </ReaderState>
     );
   }
 
-  if (!book) {
+  if (error || !book) {
     return (
-      <div className="mx-auto max-w-xl p-4 text-center md:p-8">
-        <BookOpen className="mx-auto h-10 w-10 text-slate-300" />
-        <h1 className="mt-3 text-lg font-bold">No encontramos este libro</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{error || "Puede que se haya borrado."}</p>
-        <Link href="/library" className="mt-4 inline-block">
-          <Button>Volver a la biblioteca</Button>
-        </Link>
-      </div>
-    );
-  }
-
-  if (book.status === "processing") {
-    return (
-      <div className="mx-auto max-w-xl p-4 text-center md:p-8">
-        <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-indigo-50 text-indigo-600">
-          <Loader2 className="h-7 w-7 animate-spin" />
-        </span>
-        <h1 className="mt-4 text-2xl font-bold">Preparando “{book.title}”</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Estamos extrayendo todo el texto y dividiéndolo en capítulos. Esta página se actualizará
-          sola en unos segundos.
+      <ReaderState error>
+        <AlertCircle className="mx-auto h-9 w-9 text-rose-300" />
+        <h1 className="mt-3 text-lg font-semibold text-white">
+          No se pudo abrir el PDF
+        </h1>
+        <p className="mt-2 text-sm leading-6 text-white/55">
+          {error ?? "El libro no está disponible en este dispositivo."}
         </p>
-        <Link href="/library" className="mt-5 inline-block">
-          <Button variant="secondary">Volver mientras tanto</Button>
+        <Link
+          href="/library"
+          className="mt-5 inline-flex h-10 items-center gap-2 rounded-xl bg-white px-4 text-xs font-semibold text-slate-900 hover:bg-indigo-50"
+        >
+          <ArrowLeft className="h-4 w-4" /> Volver a la biblioteca
         </Link>
-      </div>
+      </ReaderState>
     );
   }
 
-  const scannedPdf =
-    book.format === "pdf" &&
-    Boolean(book.document_id) &&
-    (book.status === "error" ||
-      book.text_available === false ||
-      (book.status === "ready" && book.total_chars === 0));
+  const progress = progressPercent({
+    lastPage: pageNumber,
+    pages: totalPages,
+  });
+  const isBookmarked = bookmarks.includes(pageNumber);
+  const sidebarTabs: Array<{
+    id: ReaderTab;
+    label: string;
+    icon: typeof ListTree;
+  }> = [
+    { id: "outline", label: "Índice", icon: ListTree },
+    { id: "bookmarks", label: "Marcas", icon: Bookmark },
+    { id: "notes", label: "Notas", icon: NotebookPen },
+    { id: "search", label: "Buscar", icon: Search },
+  ];
 
-  if (scannedPdf) {
-    return (
-      <div className="min-h-dvh">
-        <header className="sticky top-0 z-30 border-b border-white/40 bg-white/55 backdrop-blur-3xl dark:border-white/10 dark:bg-black/30">
-          <div className="mx-auto flex max-w-[1280px] flex-wrap items-center gap-3 px-4 py-3">
+  return (
+    <div className="pdf-reader flex min-h-dvh bg-[#0d1117] text-white">
+      {sidebarOpen && (
+        <>
+          <button
+            type="button"
+            aria-label="Cerrar panel lateral"
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+          <aside className="fixed inset-y-0 left-0 z-50 flex w-[86vw] max-w-[340px] flex-col border-r border-white/10 bg-[#151a22] shadow-2xl lg:sticky lg:top-0 lg:z-20 lg:h-dvh lg:w-[320px] lg:shrink-0 lg:shadow-none">
+            <div className="flex items-center justify-between border-b border-white/10 px-3 py-3">
+              <div className="flex items-center gap-2">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-300">
+                  <BookOpen className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold">Lector local</p>
+                  <p className="truncate text-[9.5px] text-white/35">
+                    {book.title}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(false)}
+                className="rounded-lg p-1.5 text-white/40 hover:bg-white/10 hover:text-white"
+                aria-label="Cerrar barra lateral"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-4 gap-1 border-b border-white/10 p-2">
+              {sidebarTabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setSidebarTab(tab.id)}
+                    aria-pressed={sidebarTab === tab.id}
+                    className={cn(
+                      "flex flex-col items-center gap-1 rounded-xl px-1 py-2 text-[9px] font-medium transition",
+                      sidebarTab === tab.id
+                        ? "bg-indigo-500/20 text-indigo-200"
+                        : "text-white/35 hover:bg-white/[0.06] hover:text-white/75",
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-3">
+              {sidebarTab === "outline" && (
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">
+                      Índice del documento
+                    </p>
+                    {outlineLoading && (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-300" />
+                    )}
+                  </div>
+                  {outline.length > 0 ? (
+                    <OutlineItems nodes={outline} onGo={goFromSidebar} />
+                  ) : (
+                    <p className="rounded-xl border border-dashed border-white/10 p-3 text-[11px] leading-5 text-white/35">
+                      Este PDF no incluye un índice navegable. Puedes usar el
+                      número de página de la barra superior.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {sidebarTab === "bookmarks" && (
+                <div>
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">
+                    Marcapáginas
+                  </p>
+                  {bookmarks.length === 0 ? (
+                    <p className="rounded-xl border border-dashed border-white/10 p-3 text-[11px] leading-5 text-white/35">
+                      Aún no has guardado ninguna página. Pulsa el icono de
+                      marcapáginas en la barra superior.
+                    </p>
+                  ) : (
+                    <div className="space-y-1">
+                      {bookmarks.map((page) => (
+                        <div
+                          key={page}
+                          className="flex items-center gap-1 rounded-lg hover:bg-white/[0.06]"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => goFromSidebar(page)}
+                            className="flex min-w-0 flex-1 items-center gap-2 px-2 py-2 text-left text-[12px] text-white/70"
+                          >
+                            <BookmarkCheck className="h-3.5 w-3.5 shrink-0 text-indigo-300" />
+                            <span className="flex-1">Página {page}</span>
+                            <ChevronRight className="h-3.5 w-3.5 text-white/25" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = bookmarks.filter((item) => item !== page);
+                              setBookmarks(next);
+                              persist({ bookmarks: next });
+                            }}
+                            aria-label={`Quitar marca de la página ${page}`}
+                            className="mr-1 rounded-md p-1 text-white/25 hover:bg-rose-500/15 hover:text-rose-300"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {sidebarTab === "notes" && (
+                <div className="flex h-full min-h-[320px] flex-col">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">
+                      Notas del libro
+                    </p>
+                    <span className="text-[9px] text-white/25">Autoguardado</span>
+                  </div>
+                  <textarea
+                    value={notes}
+                    onChange={(event) => {
+                      setNotes(event.target.value);
+                      persist({ notes: event.target.value });
+                    }}
+                    placeholder="Escribe aquí tus apuntes, citas o ideas sobre este PDF…"
+                    className="min-h-[220px] flex-1 resize-none rounded-xl border border-white/10 bg-black/20 p-3 text-[12px] leading-5 text-white/75 outline-none placeholder:text-white/20 focus:border-indigo-400/50"
+                  />
+                  <button
+                    type="button"
+                    onClick={exportNotes}
+                    className="mt-2 inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-white/10 px-3 text-[11px] font-semibold text-white/75 transition hover:bg-white/15 hover:text-white"
+                  >
+                    <Download className="h-3.5 w-3.5" /> Exportar notas a Markdown
+                  </button>
+                </div>
+              )}
+
+              {sidebarTab === "search" && (
+                <div>
+                  <form onSubmit={(event) => void runSearch(event)} className="space-y-2">
+                    <label className="relative block">
+                      <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/30" />
+                      <input
+                        value={searchInput}
+                        onChange={(event) => setSearchInput(event.target.value)}
+                        placeholder="Buscar en el PDF…"
+                        aria-label="Buscar texto en el PDF"
+                        className="h-9 w-full rounded-xl border border-white/10 bg-black/20 pl-8 pr-2 text-[12px] text-white/80 outline-none placeholder:text-white/25 focus:border-indigo-400/50"
+                      />
+                    </label>
+                    <div className="flex gap-1.5">
+                      <button
+                        type="submit"
+                        disabled={searching || !searchInput.trim()}
+                        className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg bg-indigo-500 px-2 text-[11px] font-semibold text-white disabled:opacity-40"
+                      >
+                        {searching ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Search className="h-3.5 w-3.5" />
+                        )}
+                        Buscar
+                      </button>
+                      {(searchQuery || searchResults.length > 0) && (
+                        <button
+                          type="button"
+                          onClick={clearSearch}
+                          className="h-8 rounded-lg bg-white/10 px-2.5 text-[11px] text-white/55 hover:bg-white/15"
+                        >
+                          Limpiar
+                        </button>
+                      )}
+                    </div>
+                  </form>
+
+                  {searching && (
+                    <p className="mt-3 flex items-center gap-2 text-[10px] text-white/35">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Buscando en {searchProgress} de {totalPages} páginas…
+                    </p>
+                  )}
+                  {!searching && searchDone && searchResults.length === 0 && (
+                    <p className="mt-3 rounded-xl border border-dashed border-white/10 p-3 text-[11px] leading-5 text-white/35">
+                      No se ha encontrado «{searchQuery}». Si el PDF es escaneado,
+                      no contiene una capa de texto seleccionable.
+                    </p>
+                  )}
+                  {searchResults.length > 0 && (
+                    <div className="mt-3 space-y-1.5">
+                      <p className="text-[10px] text-white/30">
+                        {searchResults.reduce((total, hit) => total + hit.count, 0)}{" "}
+                        coincidencias en {searchResults.length} páginas
+                      </p>
+                      {searchResults.map((hit) => (
+                        <button
+                          key={hit.page}
+                          type="button"
+                          onClick={() => goFromSidebar(hit.page)}
+                          className="w-full rounded-xl border border-white/5 bg-white/[0.03] p-2.5 text-left transition hover:border-indigo-400/30 hover:bg-white/[0.06]"
+                        >
+                          <span className="flex items-center justify-between gap-2">
+                            <span className="text-[10px] font-semibold text-indigo-200">
+                              Página {hit.page}
+                            </span>
+                            <span className="text-[9px] text-white/25">
+                              {hit.count} {hit.count === 1 ? "vez" : "veces"}
+                            </span>
+                          </span>
+                          <span className="mt-1 line-clamp-3 block text-[10.5px] leading-4 text-white/45">
+                            …{hit.snippet}…
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-white/10 px-3 py-2 text-[9px] text-white/25">
+              {book.pages} páginas · {Math.round(progress)}% leído
+            </div>
+          </aside>
+        </>
+      )}
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-30 border-b border-white/10 bg-[#11151c]/95 backdrop-blur-xl">
+          <div className="flex flex-wrap items-center gap-2 px-2.5 py-2 sm:px-4">
             <Link
               href="/library"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-white/60 hover:text-slate-900 dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/55 hover:bg-white/10 hover:text-white"
               aria-label="Volver a la biblioteca"
             >
               <ArrowLeft className="h-4 w-4" />
             </Link>
-            <div
-              className="hidden h-11 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-lg sm:flex"
-              style={{ background: `linear-gradient(145deg, ${book.cover_color}, #0f172a)` }}
+            <button
+              type="button"
+              onClick={() => setSidebarOpen((value) => !value)}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/45 hover:bg-white/10 hover:text-white"
+              aria-label={sidebarOpen ? "Ocultar panel lateral" : "Mostrar panel lateral"}
             >
-              <BookOpen className="h-4 w-4" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="truncate text-sm font-bold text-slate-900 dark:text-white sm:text-base">
+              {sidebarOpen ? (
+                <PanelLeftClose className="h-4 w-4" />
+              ) : (
+                <PanelLeftOpen className="h-4 w-4" />
+              )}
+            </button>
+            <div className="min-w-[110px] flex-1">
+              <h1 className="truncate text-[12px] font-semibold text-white/90">
                 {book.title}
               </h1>
-              <p className="truncate text-[11px] text-slate-500 dark:text-white/50">
-                {book.author || "Autor desconocido"} · PDF escaneado · visor de imagen
+              <p className="truncate text-[9.5px] text-white/35">
+                {book.author} · PDF local
               </p>
             </div>
-            <div className="hidden min-w-[160px] max-w-[240px] flex-1 md:block">
-              <div className="flex items-center justify-between text-[10px] font-medium text-slate-500 dark:text-white/50">
-                <span>Progreso</span>
-                <span>{Math.round(progress)}%</span>
-              </div>
-              <Progress value={progress} className="mt-1 h-1.5 bg-white/35 dark:bg-white/10" />
-            </div>
-            <NotificationBell className="hidden lg:inline-flex" />
-            <Badge
-              variant="secondary"
-              className="rounded-full border border-white/50 bg-white/55 text-[10px] font-semibold text-slate-600 backdrop-blur-xl dark:border-white/10 dark:bg-white/10 dark:text-white/65"
+
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                goToPage(Number(pageDraft), "auto");
+              }}
+              className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.05] px-1.5 py-1"
             >
-              Modo imagen
-            </Badge>
-            <AddToNotebookButton bookId={book.id} label="Cuaderno" />
+              <input
+                type="number"
+                min={1}
+                max={totalPages}
+                value={pageDraft}
+                onChange={(event) => setPageDraft(event.target.value)}
+                onBlur={() => {
+                  const value = Number(pageDraft);
+                  if (Number.isFinite(value)) goToPage(value, "auto");
+                  else setPageDraft(String(pageNumber));
+                }}
+                aria-label="Ir a la página"
+                className="w-10 bg-transparent text-center text-[11px] font-medium text-white/80 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+              <span className="text-[10px] text-white/30">/ {totalPages}</span>
+            </form>
+
+            <button
+              type="button"
+              onClick={toggleBookmark}
+              aria-label={isBookmarked ? "Quitar marcapáginas" : "Guardar marcapáginas"}
+              aria-pressed={isBookmarked}
+              title={isBookmarked ? "Quitar marcapáginas" : "Guardar página"}
+              className={cn(
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition",
+                isBookmarked
+                  ? "bg-indigo-500/20 text-indigo-300"
+                  : "text-white/45 hover:bg-white/10 hover:text-white",
+              )}
+            >
+              {isBookmarked ? (
+                <BookmarkCheck className="h-4 w-4" />
+              ) : (
+                <Bookmark className="h-4 w-4" />
+              )}
+            </button>
+
+            <div className="flex items-center gap-0.5 rounded-lg border border-white/10 bg-white/[0.04] p-0.5">
+              <button
+                type="button"
+                onClick={() => changeZoom(-10)}
+                aria-label="Reducir zoom"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-white/45 hover:bg-white/10 hover:text-white"
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </button>
+              <span className="min-w-[38px] text-center text-[10px] text-white/55">
+                {fitMode === "width" ? "Ancho" : fitMode === "height" ? "Alto" : `${zoom}%`}
+              </span>
+              <button
+                type="button"
+                onClick={() => changeZoom(10)}
+                aria-label="Aumentar zoom"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-white/45 hover:bg-white/10 hover:text-white"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => chooseFit("width")}
+              aria-label="Ajustar al ancho"
+              title="Ajustar al ancho"
+              className={cn(
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                fitMode === "width"
+                  ? "bg-indigo-500/20 text-indigo-300"
+                  : "text-white/40 hover:bg-white/10 hover:text-white",
+              )}
+            >
+              <MoveHorizontal className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => chooseFit("height")}
+              aria-label="Ajustar al alto"
+              title="Ajustar al alto"
+              className={cn(
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                fitMode === "height"
+                  ? "bg-indigo-500/20 text-indigo-300"
+                  : "text-white/40 hover:bg-white/10 hover:text-white",
+              )}
+            >
+              <MoveVertical className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="h-0.5 bg-white/5">
+            <div
+              className="h-full bg-indigo-400/80 transition-[width]"
+              style={{ width: `${progress}%` }}
+            />
           </div>
         </header>
 
-        <main className="mx-auto max-w-[1280px] px-4 py-5">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-white/50">
-            <span>
-              Vista de imagen: el PDF se dibuja directamente en canvas y puedes leerlo con
-              normalidad. Las herramientas que necesitan texto seleccionable no están disponibles
-              en este archivo.
-            </span>
-            <span className="rounded-full border border-white/40 bg-white/45 px-2.5 py-1 font-medium backdrop-blur-xl dark:border-white/10 dark:bg-white/10">
-              {pdfTotal ? `Página ${pdfPage} de ${pdfTotal}` : "Preparando visor"}
-            </span>
-          </div>
-          <PdfCanvasViewer
-            documentId={book.document_id as string}
-            initialPage={Math.max(1, book.current_section_index + 1)}
-            title={book.title}
-            onPageChange={(page, total) => {
-              setPdfPage(page);
-              setPdfTotal(total);
-              api
-                .updateBookProgress(book.id, {
-                  section_index: Math.max(0, page - 1),
-                  percent: total ? (page / total) * 100 : undefined,
-                })
-                .catch(() => undefined);
-            }}
-          />
-        </main>
-      </div>
-    );
-  }
-
-  if (book.status === "error") {
-    return (
-      <div className="mx-auto max-w-xl p-4 text-center md:p-8">
-        <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-rose-50 text-rose-600">
-          <BookOpen className="h-7 w-7" />
-        </span>
-        <h1 className="mt-4 text-2xl font-bold">No se pudo abrir el libro</h1>
-        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-          {book.error_message || "El archivo no contiene texto legible."}
-        </p>
-        <div className="mt-5 flex justify-center gap-2">
-          <Button
-            onClick={async () => {
-              const updated = await api.reprocessBook(book.id);
-              setBook((current) => (current ? { ...current, ...updated } : current));
-            }}
-          >
-            <RefreshCcw className="h-4 w-4" /> Reintentar
-          </Button>
-          <Link href="/library">
-            <Button variant="secondary">Biblioteca</Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const currentIndex = section?.section_index ?? index;
-
-  return (
-    <div className="min-h-dvh bg-slate-50/70 pb-[calc(var(--mobile-nav-offset)+1.25rem)] dark:bg-[#070b14] lg:pb-0">
-      <header className="sticky top-0 z-30 border-b border-border/70 bg-card/90 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/70">
-        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-3 px-4 py-3">
-          <Link
-            href="/library"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white"
-            aria-label="Volver a la biblioteca"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <div
-            className="hidden h-11 w-9 shrink-0 items-center justify-center rounded-lg text-white shadow-sm sm:flex"
-            style={{ background: `linear-gradient(145deg, ${book.cover_color}, #0f172a)` }}
-          >
-            <BookOpen className="h-4 w-4" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-sm font-bold sm:text-base">{book.title}</h1>
-            <p className="truncate text-[11px] text-muted-foreground">
-              {book.author || "Autor desconocido"} · {FORMAT_LABEL[book.format] || book.format} ·{" "}
-              {book.total_sections} secciones
-            </p>
-          </div>
-          <div className="hidden min-w-[180px] max-w-[260px] flex-1 md:block">
-            <div className="flex items-center justify-between text-[10px] font-medium text-muted-foreground">
-              <span>Progreso</span>
-              <span>{Math.round(progress)}%</span>
-            </div>
-            <Progress value={progress} className="mt-1 h-1.5" />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <NotificationBell className="hidden lg:inline-flex" />
-            <AddToNotebookButton bookId={book.id} label="Cuaderno" />
-            <button
-              type="button"
-              onClick={() => setShowChapters((value) => !value)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-white/55 dark:hover:bg-white/10 xl:hidden"
-              aria-label="Ver capítulos"
+        <main ref={contentRef} className="pdf-reader-pages flex-1 px-3 py-5 sm:px-5">
+          {file && (
+            <Document
+              file={file}
+              onLoadSuccess={handleLoadSuccess}
+              onLoadError={(reason) => {
+                setError(
+                  reason instanceof Error
+                    ? reason.message
+                    : "No se pudo procesar el PDF.",
+                );
+              }}
+              loading={
+                <div className="flex min-h-[60vh] flex-col items-center justify-center gap-2 text-white/40">
+                  <Loader2 className="h-6 w-6 animate-spin text-indigo-400" />
+                  <span className="text-[11px]">Preparando el documento…</span>
+                </div>
+              }
+              error={
+                <div className="flex min-h-[60vh] flex-col items-center justify-center gap-2 text-center text-white/50">
+                  <AlertCircle className="h-7 w-7 text-rose-300" />
+                  <span className="text-sm">No se pudo abrir este PDF.</span>
+                </div>
+              }
             >
-              <List className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto grid max-w-[1600px] gap-5 px-4 py-5 xl:grid-cols-[250px_minmax(0,1fr)_390px]">
-        <aside className="hidden xl:block">
-          <div className="sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-2xl border border-border/70 bg-card p-3 shadow-sm">
-            <div className="px-2 pb-2">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/40">
-                Contenido
-              </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {book.total_sections} secciones · {Math.round(progress)}% leído
-              </p>
-            </div>
-            <div className="space-y-0.5">
-              {book.sections.map((chapter) => (
-                <button
-                  key={chapter.id}
-                  type="button"
-                  onClick={() => void goToSection(chapter.section_index)}
-                  className={cn(
-                    "flex w-full items-start gap-2 rounded-xl px-2.5 py-2 text-left text-xs transition-colors",
-                    chapter.section_index === currentIndex
-                      ? "bg-indigo-50 font-semibold text-indigo-700 dark:bg-blue-500/15 dark:text-blue-300"
-                      : "text-slate-600 hover:bg-slate-50 dark:text-white/60 dark:hover:bg-white/[0.06]",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px]",
-                      chapter.section_index < currentIndex
-                        ? "bg-emerald-100 text-emerald-700"
-                        : chapter.section_index === currentIndex
-                          ? "bg-indigo-600 text-white"
-                          : "bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-white/50",
-                    )}
-                  >
-                    {chapter.section_index < currentIndex ? (
-                      <Check className="h-3 w-3" />
-                    ) : (
-                      chapter.section_index + 1
-                    )}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="line-clamp-2 leading-5">{chapter.title}</span>
-                    {chapter.page_start && (
-                      <span className="mt-0.5 block text-[10px] font-normal text-slate-400">
-                        Pág. {chapter.page_start}
-                        {chapter.page_end && chapter.page_end !== chapter.page_start
-                          ? `–${chapter.page_end}`
-                          : ""}
-                      </span>
-                    )}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </aside>
-
-        <main ref={readerRef} className="min-w-0 scroll-mt-24">
-          {showChapters && (
-            <div className="mb-4 rounded-2xl border border-border/70 bg-card p-3 shadow-sm xl:hidden">
-              <div className="flex items-center justify-between px-1 pb-2">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Capítulos</p>
-                <button type="button" onClick={() => setShowChapters(false)}>
-                  <X className="h-4 w-4 text-slate-400" />
-                </button>
-              </div>
-              <div className="max-h-64 space-y-1 overflow-y-auto">
-                {book.sections.map((chapter) => (
-                  <button
-                    key={chapter.id}
-                    type="button"
-                    onClick={() => void goToSection(chapter.section_index)}
-                    className={cn(
-                      "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs",
-                      chapter.section_index === currentIndex
-                        ? "bg-indigo-50 font-semibold text-indigo-700 dark:bg-blue-500/15 dark:text-blue-300"
-                        : "text-slate-600 dark:text-white/60",
-                    )}
-                  >
-                    <span className="w-5 text-right text-[10px] text-slate-400">
-                      {chapter.section_index + 1}
-                    </span>
-                    <span className="truncate">{chapter.title}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {highlight && (
-            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-100">
-              <div className="flex items-start gap-2">
-                <Quote className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-                    Cita de la sección
-                  </p>
-                  <p className="mt-1 leading-6">{highlight}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setHighlight(null)}
-                  className="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200"
-                  aria-label="Quitar cita"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          <article className="rounded-3xl border border-border/70 bg-card px-5 py-6 shadow-sm sm:px-8 sm:py-8">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4 dark:border-white/10">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-indigo-500">
-                  Sección {currentIndex + 1} de {book.total_sections}
-                </p>
-                <h2 className="mt-1 text-2xl font-bold leading-tight sm:text-3xl">
-                  {section?.title || `Sección ${currentIndex + 1}`}
-                </h2>
-                {section?.page_start && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Páginas {section.page_start}
-                    {section.page_end && section.page_end !== section.page_start
-                      ? `–${section.page_end}`
-                      : ""}
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center gap-1 rounded-xl border border-slate-200 p-1 dark:border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setFontSize((value) => Math.max(15, value - 1))}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-100 dark:text-white/55 dark:hover:bg-white/10"
-                  aria-label="Reducir texto"
-                >
-                  A-
-                </button>
-                <span className="px-1 text-[10px] text-slate-400">{fontSize}</span>
-                <button
-                  type="button"
-                  onClick={() => setFontSize((value) => Math.min(26, value + 1))}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-sm font-bold text-slate-500 hover:bg-slate-100 dark:text-white/55 dark:hover:bg-white/10"
-                  aria-label="Aumentar texto"
-                >
-                  A+
-                </button>
-              </div>
-            </div>
-
-            {sectionLoading ? (
-              <div className="flex min-h-[320px] items-center justify-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Cargando sección...
-              </div>
-            ) : section ? (
-              <div
-                className="prose-reader mt-6 leading-8 text-slate-700 dark:text-white/75"
-                style={{ fontSize: `${fontSize}px` }}
-              >
-                {section.content.split(/\n{2,}/).map((paragraph, position) => (
-                  <p key={position} className="mb-5 whitespace-pre-wrap">
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
-            ) : (
-              <div className="mt-8 rounded-2xl bg-slate-50 p-6 text-sm text-muted-foreground dark:bg-white/[0.05]">
-                No se pudo cargar esta sección. Prueba a recargar la página.
-              </div>
-            )}
-
-            <div className="mt-8 flex flex-col gap-3 border-t border-slate-100 pt-5 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between">
-              <Button
-                variant="secondary"
-                onClick={() => void goToSection(currentIndex - 1)}
-                disabled={currentIndex <= 0}
-              >
-                <ChevronLeft className="h-4 w-4" /> Anterior
-              </Button>
-              <span className="text-center text-[11px] text-muted-foreground">
-                {formatDate(book.last_opened_at)} · {Math.round(progress)}% del libro
-              </span>
-              <Button
-                onClick={() => void goToSection(currentIndex + 1)}
-                disabled={currentIndex >= book.total_sections - 1}
-              >
-                Siguiente <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </article>
-
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border/70 bg-card px-4 py-3 text-xs text-muted-foreground shadow-sm">
-            <span className="flex items-center gap-2">
-              <Highlighter className="h-4 w-4 text-indigo-500" />
-              Pregunta con citas o escucha el resumen sin perder la página.
-            </span>
-            <div className="flex gap-1.5">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setPanelTab("ask");
-                  document.getElementById("book-panel")?.scrollIntoView({ behavior: "smooth" });
-                }}
-              >
-                <MessageCircleQuestion className="h-4 w-4" /> Preguntar
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setPanelTab("summary");
-                  document.getElementById("book-panel")?.scrollIntoView({ behavior: "smooth" });
-                }}
-              >
-                <Headphones className="h-4 w-4" /> Resumen
-              </Button>
-            </div>
-          </div>
-        </main>
-
-        <aside id="book-panel" className="min-w-0 scroll-mt-24">
-          <div className="space-y-3 xl:sticky xl:top-24">
-            <div className="flex rounded-xl bg-slate-200/60 p-1 text-xs font-semibold dark:bg-white/[0.06]">
-              <button
-                type="button"
-                onClick={() => setPanelTab("ask")}
-                className={cn(
-                  "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 transition-colors",
-                  panelTab === "ask" ? "bg-white text-indigo-700 shadow-sm dark:bg-white/[0.12] dark:text-white/90" : "text-slate-500 dark:text-white/50",
-                )}
-              >
-                <MessageCircleQuestion className="h-4 w-4" /> Preguntar
-              </button>
-              <button
-                type="button"
-                onClick={() => setPanelTab("summary")}
-                className={cn(
-                  "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 transition-colors",
-                  panelTab === "summary" ? "bg-white text-indigo-700 shadow-sm dark:bg-white/[0.12] dark:text-white/90" : "text-slate-500 dark:text-white/50",
-                )}
-              >
-                <Headphones className="h-4 w-4" /> Resumen
-              </button>
-            </div>
-
-            {panelError && (
-              <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-300">
-                {panelError}
-              </p>
-            )}
-
-            {panelTab === "ask" ? (
-              <div className="flex max-h-[70dvh] flex-col rounded-2xl border border-border/70 bg-card shadow-sm xl:h-[calc(100dvh-9rem)] xl:max-h-none">
-                <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-white/10">
-                  <div>
-                    <p className="flex items-center gap-1.5 text-sm font-bold">
-                      <Sparkles className="h-4 w-4 text-indigo-500" /> Preguntar al libro
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      Respuestas con citas de la sección exacta
-                    </p>
-                  </div>
-                  {messages.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => void clearChat()}
-                      className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-rose-500 dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-rose-400"
-                      aria-label="Borrar historial"
-                      title="Borrar historial"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
-                  {messages.length === 0 && !asking && (
-                    <div className="space-y-3">
-                      <div className="rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-50 p-3 text-xs leading-5 text-slate-600 dark:from-blue-500/10 dark:to-purple-500/10 dark:text-white/65">
-                        <p className="font-semibold text-indigo-800 dark:text-blue-200">Empieza por una pregunta</p>
-                        <p className="mt-1">
-                          Estás en “{section?.title || `sección ${currentIndex + 1}`}”. Puedo
-                          responder usando solo este libro y enseñarte de dónde sale cada idea.
-                        </p>
-                      </div>
-                      <div className="space-y-1.5">
-                        {SUGGESTIONS.map((suggestion) => (
-                          <button
-                            key={suggestion}
-                            type="button"
-                            onClick={() => void ask(suggestion)}
-                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-left text-xs text-slate-600 transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 hover:text-indigo-800 dark:border-white/10 dark:text-white/65 dark:hover:border-blue-500/40 dark:hover:bg-white/[0.06] dark:hover:text-blue-200"
-                          >
-                            {suggestion}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={cn(
-                        "flex",
-                        message.role === "user" ? "justify-end" : "justify-start",
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          "max-w-[92%] rounded-2xl px-3 py-2 text-xs leading-5",
-                          message.role === "user"
-                            ? "bg-indigo-600 text-white"
-                            : "bg-slate-50 text-slate-700 ring-1 ring-slate-100 dark:bg-white/[0.06] dark:text-white/75 dark:ring-white/10",
-                        )}
-                      >
-                        <p className="whitespace-pre-wrap">{message.content}</p>
-                        {message.role === "assistant" && message.citations.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1.5 border-t border-slate-200/70 pt-2 dark:border-white/10">
-                            {message.citations.map((citation) => (
-                              <button
-                                key={`${message.id}-${citation.section_id}`}
-                                type="button"
-                                onClick={() => jumpToCitation(citation)}
-                                className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-[10px] font-medium text-indigo-700 ring-1 ring-indigo-100 hover:bg-indigo-50 dark:bg-white/10 dark:text-indigo-200 dark:ring-white/10 dark:hover:bg-white/15"
-                                title={citation.quote}
-                              >
-                                <Quote className="h-2.5 w-2.5" />
-                                {citation.section_index + 1}. {citation.title.slice(0, 34)}
-                                {citation.title.length > 34 ? "…" : ""}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        {message.role === "assistant" && message.source !== "ai" && (
-                          <p className="mt-2 text-[10px] text-amber-700">
-                            Extraído literalmente del libro · sin IA conectada
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-
-                  {asking && (
-                    <div className="flex items-center gap-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs text-slate-500 ring-1 ring-slate-100 dark:bg-white/[0.05] dark:text-white/60 dark:ring-white/10">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-500" />
-                      Buscando en el libro y preparando la respuesta...
-                    </div>
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
-
-                <div className="border-t border-slate-100 p-2.5">
-                  <div className="flex items-end gap-2">
-                    <textarea
-                      value={question}
-                      onChange={(event) => setQuestion(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" && !event.shiftKey) {
-                          event.preventDefault();
-                          void ask();
-                        }
-                      }}
-                      rows={2}
-                      placeholder="Pregunta algo sobre este capítulo..."
-                      className="max-h-28 min-h-[42px] flex-1 resize-none rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/80"
+              {numPages > 0 &&
+                Array.from({ length: numPages }, (_, index) => {
+                  const page = index + 1;
+                  return (
+                    <PdfPage
+                      key={page}
+                      pageNumber={page}
+                      width={pageWidth}
+                      height={pageHeight}
+                      placeholderHeight={placeholderHeight}
+                      forceVisible={page === initialPageRef.current}
+                      customTextRenderer={customTextRenderer}
+                      register={registerPage}
                     />
-                    <Button
-                      size="icon"
-                      onClick={() => void ask()}
-                      disabled={asking || !question.trim()}
-                      aria-label="Enviar pregunta"
-                    >
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <p className="mt-1 px-1 text-[10px] text-muted-foreground">
-                    Las citas te llevan a la sección. El historial se guarda.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex max-h-[70dvh] flex-col rounded-2xl border border-border/70 bg-card shadow-sm xl:h-[calc(100dvh-9rem)] xl:max-h-none">
-                <div className="border-b border-slate-100 px-4 py-3 dark:border-white/10">
-                  <p className="flex items-center gap-1.5 text-sm font-bold">
-                    <Headphones className="h-4 w-4 text-indigo-500" /> Resumen para estudiar
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">
-                    Escúchalo con la voz del navegador
-                  </p>
-                </div>
-                <div className="flex-1 overflow-y-auto p-3">
-                  <div className="flex gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => void makeSummary("current")}
-                      disabled={summaryLoading}
-                      className={cn(
-                        "flex-1 rounded-xl border px-2 py-2 text-[11px] font-semibold transition-colors",
-                        summaryScope === "current" && summary
-                          ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                          : "border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/[0.06]",
-                      )}
-                    >
-                      Este capítulo
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void makeSummary("book")}
-                      disabled={summaryLoading}
-                      className={cn(
-                        "flex-1 rounded-xl border px-2 py-2 text-[11px] font-semibold transition-colors",
-                        summaryScope === "book" && summary
-                          ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                          : "border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/[0.06]",
-                      )}
-                    >
-                      Todo el libro
-                    </button>
-                  </div>
-
-                  {!summary && !summaryLoading && (
-                    <div className="mt-4 rounded-2xl bg-gradient-to-br from-violet-50 to-indigo-50 p-4 text-xs leading-5 text-slate-600 dark:from-purple-500/10 dark:to-blue-500/10 dark:text-white/65">
-                      <p className="font-semibold text-indigo-800 dark:text-blue-200">Estudia sin releerlo todo</p>
-                      <p className="mt-1">
-                        Genera un resumen del capítulo actual o una visión general del libro.
-                        Después puedes escucharlo mientras ordenas apuntes.
-                      </p>
-                      <Button
-                        size="sm"
-                        className="mt-3"
-                        onClick={() => void makeSummary("current")}
-                      >
-                        <Sparkles className="h-3.5 w-3.5" /> Resumir este capítulo
-                      </Button>
-                    </div>
-                  )}
-
-                  {summaryLoading && (
-                    <div className="mt-5 flex items-center gap-2 text-xs text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
-                      Leyendo y resumiendo...
-                    </div>
-                  )}
-
-                  {summary && (
-                    <div className="mt-3 space-y-3">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <Badge variant={summary.source === "ai" ? "default" : "warning"}>
-                          {summary.source === "ai" ? "Resumen con IA" : "Resumen extractivo"}
-                        </Badge>
-                        <span className="text-[10px] text-muted-foreground">
-                          {summaryScope === "book" ? "Visión general" : "Capítulo actual"}
-                        </span>
-                      </div>
-                      <h3 className="text-sm font-bold leading-5">{summary.title}</h3>
-                      <p className="text-xs leading-6 text-slate-600 dark:text-white/65">{summary.summary}</p>
-                      {summary.key_points.length > 0 && (
-                        <ul className="space-y-1.5">
-                          {summary.key_points.map((point, position) => (
-                            <li
-                              key={position}
-                              className="flex gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-700 dark:bg-white/[0.05] dark:text-white/75"
-                            >
-                              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400" />
-                              {point}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      {summary.notice && (
-                        <p className="rounded-xl bg-amber-50 px-3 py-2 text-[10px] leading-4 text-amber-800">
-                          {summary.notice}
-                        </p>
-                      )}
-                      {summary.citations.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {summary.citations.map((citation) => (
-                            <button
-                              key={citation.section_id}
-                              type="button"
-                              onClick={() => jumpToCitation(citation)}
-                              className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-medium text-indigo-700 hover:bg-indigo-100 dark:bg-blue-500/10 dark:text-blue-200 dark:hover:bg-blue-500/20"
-                            >
-                              <Quote className="h-2.5 w-2.5" />
-                              {citation.title.slice(0, 30)}
-                              {citation.title.length > 30 ? "…" : ""}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      <div className="flex flex-wrap gap-1.5 border-t border-slate-100 pt-3 dark:border-white/10">
-                        <Button size="sm" variant="secondary" onClick={speakSummary}>
-                          {speaking ? (
-                            <Square className="h-3.5 w-3.5" />
-                          ) : (
-                            <Volume2 className="h-3.5 w-3.5" />
-                          )}
-                          {speaking ? "Detener" : "Escuchar resumen"}
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => void copySummary()}>
-                          {copied ? (
-                            <Check className="h-3.5 w-3.5 text-emerald-500" />
-                          ) : (
-                            <Copy className="h-3.5 w-3.5" />
-                          )}
-                          {copied ? "Copiado" : "Copiar"}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div className="rounded-2xl border border-border/70 bg-card p-3 text-[10px] leading-4 text-muted-foreground shadow-sm">
-              <p className="flex items-center gap-1.5 font-semibold text-slate-600 dark:text-white/60">
-                <NotebookPen className="h-3.5 w-3.5 text-indigo-500" /> Llévalo a un cuaderno
-              </p>
-              <p className="mt-1">
-                Añade este libro como fuente para tener apuntes, preguntas y citas en el mismo
-                sitio.
-              </p>
-              <div className="mt-2">
-                <AddToNotebookButton bookId={book.id} label="Añadir a un cuaderno" variant="outline" />
-              </div>
-            </div>
-          </div>
-        </aside>
+                  );
+                })}
+            </Document>
+          )}
+        </main>
       </div>
     </div>
   );

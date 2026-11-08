@@ -1,0 +1,92 @@
+/* Visor PDF local: paginas blancas sobre lienzo oscuro y capa de texto
+   resaltable. Los estilos de react-pdf se importan desde la pagina. */
+
+.pdf-reader {
+  color-scheme: dark;
+}
+
+.pdf-reader-pages {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(60, 72, 100, 0.16), transparent 55%),
+    #0d1117;
+}
+
+.pdf-page-shell {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 auto 18px;
+  scroll-margin-top: 62px;
+}
+
+@media (max-width: 1023px) {
+  .pdf-page-shell {
+    scroll-margin-top: 138px;
+  }
+}
+
+.pdf-page-shell .react-pdf__Page {
+  margin: 0 auto;
+  background: #ffffff;
+  box-shadow:
+    0 2px 5px rgba(0, 0, 0, 0.4),
+    0 22px 55px rgba(0, 0, 0, 0.45);
+}
+
+.pdf-page-shell .react-pdf__Page__canvas {
+  display: block;
+  max-width: 100%;
+  height: auto !important;
+}
+
+.pdf-page-shell .react-pdf__Page__textContent {
+  user-select: text;
+}
+
+.pdf-page-placeholder {
+  display: flex;
+  width: 100%;
+  max-width: 920px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 2px;
+  background: #171c25;
+  color: rgba(255, 255, 255, 0.2);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pdf-search-hit {
+  border-radius: 2px;
+  background: #fde047;
+  color: transparent;
+  box-shadow: 0 0 0 1px rgba(253, 224, 71, 0.65);
+}
+
+.pdf-reader .react-pdf__Page__annotations a {
+  color: #1d4ed8;
+}
+
+.pdf-reader ::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+.pdf-reader ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pdf-reader ::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  background-clip: padding-box;
+}
+
+.pdf-reader ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+  background-clip: padding-box;
+}

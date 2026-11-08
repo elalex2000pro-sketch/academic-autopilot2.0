@@ -1,15 +1,14 @@
 "use client";
 
-import { lazy, Suspense } from "react";
+import dynamic from "next/dynamic";
 
 import { ViewLoading } from "@/components/view-loading";
 
-const LibraryView = lazy(() => import("@/components/library-view"));
+const LibraryView = dynamic(() => import("@/components/library-view"), {
+  ssr: false,
+  loading: () => <ViewLoading label="Cargando biblioteca…" />,
+});
 
 export default function LibraryPage() {
-  return (
-    <Suspense fallback={<ViewLoading label="Cargando biblioteca…" />}>
-      <LibraryView />
-    </Suspense>
-  );
+  return <LibraryView />;
 }
