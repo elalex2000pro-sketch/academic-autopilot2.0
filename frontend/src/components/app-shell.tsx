@@ -53,6 +53,10 @@ const RAIL_SPRING = {
 const HEADER_CONTROL =
   "flex items-center justify-center rounded-full border border-white/20 bg-white/50 p-2 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/[0.07]";
 
+// En Academic-Office los controles flotan sobre el lienzo, sin la píldora
+// blanca que rompía la continuidad del fondo.
+const HEADER_CONTROL_FLAT = "flex items-center justify-center p-2";
+
 const HEADER_BUTTON =
   "h-9 w-9 rounded-full text-[#3f3852] hover:bg-white/60 hover:text-[#1d1d1f] dark:text-white/65 dark:hover:bg-white/10 dark:hover:text-white";
 
@@ -156,6 +160,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // Studio y el lector de libros ocupan toda la altura disponible y ya
   // gestionan su propia cabecera; el inset del shell les haría desbordar.
   const isBookReader = pathname.startsWith("/library/");
+  const isOffice = pathname === "/office";
   const isImmersive = pathname === "/studio" || isBookReader;
 
   return (
@@ -222,7 +227,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex min-w-0 flex-1 flex-col bg-transparent">
           {/* Cabecera móvil: el rail de escritorio empieza en `md`. */}
           {!isBookReader ? (
-            <header className="sticky top-0 z-40 border-b border-black/[0.04] bg-[#f4f4f7]/82 pt-[env(safe-area-inset-top,0px)] backdrop-blur-2xl dark:border-white/[0.06] dark:bg-[#0c0c0f]/82 md:hidden">
+            <header
+              className={cn(
+                "sticky top-0 z-40 border-b pt-[env(safe-area-inset-top,0px)] md:hidden",
+                isOffice
+                  ? "border-transparent bg-transparent"
+                  : "border-black/[0.04] bg-[#f4f4f7]/82 backdrop-blur-2xl dark:border-white/[0.06] dark:bg-[#0c0c0f]/82",
+              )}
+            >
               <div className="flex items-center justify-between gap-2 px-3 py-2">
                 <Link
                   href="/"
@@ -288,21 +300,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <motion.div
                 whileHover={reduceMotion ? undefined : { scale: 1.05, y: -2 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className={HEADER_CONTROL}
+                className={isOffice ? HEADER_CONTROL_FLAT : HEADER_CONTROL}
               >
                 <NotificationBell className={HEADER_BUTTON} />
               </motion.div>
               <motion.div
                 whileHover={reduceMotion ? undefined : { scale: 1.05, y: -2 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className={HEADER_CONTROL}
+                className={isOffice ? HEADER_CONTROL_FLAT : HEADER_CONTROL}
               >
                 <ThemeCycleButton className={HEADER_BUTTON} />
               </motion.div>
               <motion.div
                 whileHover={reduceMotion ? undefined : { scale: 1.05, y: -2 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className={HEADER_CONTROL}
+                className={isOffice ? HEADER_CONTROL_FLAT : HEADER_CONTROL}
               >
                 <Link
                   href="/settings"
@@ -327,9 +339,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
           >
             <PageTransition>{children}</PageTransition>
-            <Suspense fallback={null}>
-              <HelpWidget />
-            </Suspense>
+            {!isOffice ? (
+              <Suspense fallback={null}>
+                <HelpWidget />
+              </Suspense>
+            ) : null}
           </main>
         </div>
 

@@ -7,7 +7,16 @@
 // El motor es local (no hay iframe ni servidor Collabora/OnlyOffice): funciona
 // en la web, en Electron y sin claves de API. La paginacion es visual (guias
 // A4 + saltos de pagina); el PDF se obtiene con el dialogo de impresion.
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import { CKEditor } from "@ckeditor/ckeditor5-react";
 import {
   Alignment,
@@ -418,6 +427,8 @@ export function WriterEditor({
 }: WriterEditorProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const menuBarRef = useRef<HTMLDivElement>(null);
+  const rulerRef = useRef<HTMLDivElement>(null);
+  const marginDragRef = useRef<"left" | "right" | null>(null);
   const editorRef = useRef<Editor | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const listenersRef = useRef<Array<() => void>>([]);
@@ -431,6 +442,21 @@ export function WriterEditor({
   const painterRef = useRef<Record<string, unknown> | null>(null);
 
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [menuShift, setMenuShift] = useState(0);
+
+  const MENU_DROPDOWN_WIDTH = 246;
+  const VIEWPORT_MARGIN = 8;
+
+  function positionMenu(trigger: HTMLElement | null) {
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const maxLeft = Math.max(
+      VIEWPORT_MARGIN,
+      window.innerWidth - MENU_DROPDOWN_WIDTH - VIEWPORT_MARGIN,
+    );
+    const left = Math.min(Math.max(VIEWPORT_MARGIN, rect.left), maxLeft);
+    setMenuShift(left - rect.left);
+  }
   const [sidebarOpen, setSidebarOpen] = useState(() =>
     typeof window === "undefined" ? true : window.innerWidth > 1100,
   );
@@ -1106,6 +1132,59 @@ export function WriterEditor({
   const pageHeightMm = orientation === "portrait" ? 297 : 210;
   const pageWidthMm = orientation === "portrait" ? 210 : 297;
 
+  const MIN_MARGIN_MM = 5;
+  const MAX_MARGIN_MM = 60;
+
+  function applyRulerMargin(clientX: number, side: "left" | "right") {
+    const rect = rulerRef.current?.getBoundingClientRect();
+    if (!rect || rect.width <= 0) return;
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    const millimetres = ratio * pageWidthMm;
+    const raw = side === "left" ? millimetres : pageWidthMm - millimetres;
+    const value = Math.min(MAX_MARGIN_MM, Math.max(MIN_MARGIN_MM, Math.round(raw)));
+    setMargins((current) =>
+      current[side] === value ? current : { ...current, [side]: value },
+    );
+  }
+
+  function startRulerDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const millimetres = ((event.clientX - rect.left) / rect.width) * pageWidthMm;
+    const distanceToLeft = Math.abs(millimetres - margins.left);
+    const distanceToRight = Math.abs(millimetres - (pageWidthMm - margins.right));
+    const side = distanceToLeft <= distanceToRight ? "left" : "right";
+    marginDragRef.current = side;
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // Los eventos sinteticos no siempre tienen un puntero capturable.
+    }
+    event.preventDefault();
+    applyRulerMargin(event.clientX, side);
+  }
+
+  function moveRulerDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    const side = marginDragRef.current;
+    if (!side) return;
+    event.preventDefault();
+    applyRulerMargin(event.clientX, side);
+  }
+
+  function endRulerDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    const side = marginDragRef.current;
+    if (!side) return;
+    marginDragRef.current = null;
+    try {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    } catch {
+      // Ignorar: el puntero sintetico puede no existir.
+    }
+    setStatusMessage("Márgenes actualizados desde la regla.");
+  }
+
   const pageStyle = {
     "--office-page-width": `${pageWidthMm}mm`,
     "--office-page-height": `${pageHeightMm}mm`,
@@ -1122,8 +1201,10 @@ export function WriterEditor({
           <div
             key={menu.label}
             className="office-menu"
-            onMouseEnter={() => {
-              if (openMenu) setOpenMenu(menu.label);
+            onMouseEnter={(event) => {
+              if (!openMenu) return;
+              positionMenu(event.currentTarget.querySelector(".office-menu-trigger"));
+              setOpenMenu(menu.label);
             }}
           >
             <button
@@ -1131,12 +1212,23 @@ export function WriterEditor({
               className="office-menu-trigger"
               aria-haspopup="menu"
               aria-expanded={openMenu === menu.label}
-              onClick={() => setOpenMenu((current) => (current === menu.label ? null : menu.label))}
+              onClick={(event) => {
+                if (openMenu === menu.label) {
+                  setOpenMenu(null);
+                  return;
+                }
+                positionMenu(event.currentTarget);
+                setOpenMenu(menu.label);
+              }}
             >
               {menu.label}
             </button>
             {openMenu === menu.label && (
-              <div className="office-menu-dropdown" role="menu">
+              <div
+                className="office-menu-dropdown"
+                role="menu"
+                style={{ transform: `translateX(${menuShift}px)` }}
+              >
                 {menu.items.map((item, index) =>
                   "separator" in item && item.separator ? (
                     <div key={`separator-${index}`} className="office-menu-sep" />
@@ -1427,7 +1519,32 @@ export function WriterEditor({
       <div className="office-body">
         <div className="office-canvas" onClick={() => setOpenMenu(null)}>
           <div className="office-page-shell" style={{ zoom: zoom / 100 }}>
-            {showRuler && <div className="office-ruler" aria-hidden="true" />}
+            {showRuler && (
+              <div
+                ref={rulerRef}
+                className="office-ruler"
+                role="group"
+                aria-label="Regla de márgenes. Haz clic o arrastra para ajustar los márgenes izquierdo y derecho."
+                title="Haz clic o arrastra para ajustar los márgenes"
+                onPointerDown={startRulerDrag}
+                onPointerMove={moveRulerDrag}
+                onPointerUp={endRulerDrag}
+                onPointerCancel={endRulerDrag}
+              >
+                <span
+                  className="office-ruler-handle"
+                  style={{ left: `${(margins.left / pageWidthMm) * 100}%` }}
+                  aria-hidden="true"
+                />
+                <span
+                  className="office-ruler-handle"
+                  style={{
+                    left: `${((pageWidthMm - margins.right) / pageWidthMm) * 100}%`,
+                  }}
+                  aria-hidden="true"
+                />
+              </div>
+            )}
             <div className="office-page" style={pageStyle}>
               <span className="office-page-corner tl" aria-hidden="true" />
               <span className="office-page-corner tr" aria-hidden="true" />

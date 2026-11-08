@@ -11,8 +11,8 @@
   --ow-hover: #dde1e6;
   --ow-accent: #0b57d0;
   --ow-accent-soft: #d7e6fb;
-  --ow-canvas: #30343a;
-  --ow-canvas-dot: rgba(255, 255, 255, 0.13);
+  --ow-canvas: rgba(255, 255, 255, 0.55);
+  --ow-canvas-dot: rgba(29, 29, 31, 0.06);
   --ow-page-shadow: 0 2px 5px rgba(0, 0, 0, 0.35), 0 20px 55px rgba(0, 0, 0, 0.38);
   display: flex;
   min-height: 0;
@@ -36,20 +36,22 @@
   --ow-hover: #2d333c;
   --ow-accent: #8ab4f8;
   --ow-accent-soft: rgba(138, 180, 248, 0.16);
-  --ow-canvas: #111418;
-  --ow-canvas-dot: rgba(255, 255, 255, 0.1);
+  --ow-canvas: rgba(255, 255, 255, 0.1);
+  --ow-canvas-dot: rgba(255, 255, 255, 0.08);
   --ow-page-shadow: 0 2px 6px rgba(0, 0, 0, 0.5), 0 24px 60px rgba(0, 0, 0, 0.6);
 }
 
 .office-menu-bar {
   display: flex;
   flex: none;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0;
-  height: 28px;
-  padding: 0 4px;
-  overflow-x: auto;
-  overflow-y: visible;
+  gap: 2px 0;
+  min-height: 28px;
+  padding: 2px 4px;
+  position: relative;
+  z-index: 60;
+  overflow: visible;
   border-bottom: 1px solid var(--ow-border);
   background: var(--ow-chrome);
   scrollbar-width: none;
@@ -73,7 +75,8 @@
   font-size: 12px;
   line-height: 1;
   white-space: nowrap;
-  cursor: default;
+  cursor: pointer;
+  user-select: none;
 }
 .office-menu-trigger:hover,
 .office-menu-trigger[aria-expanded="true"] {
@@ -110,7 +113,7 @@
   font-size: 12px;
   text-align: left;
   white-space: nowrap;
-  cursor: default;
+  cursor: pointer;
 }
 .office-menu-item:hover:not(:disabled),
 .office-menu-item:focus-visible {
@@ -278,6 +281,8 @@
   background-color: var(--ow-canvas);
   background-image: radial-gradient(var(--ow-canvas-dot) 0.7px, transparent 0.7px);
   background-size: 16px 16px;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
 }
 
 .office-page-shell {
@@ -305,23 +310,34 @@
   background-position: 0 11px;
   background-size: 100% 5px;
   background-repeat: repeat-x;
-  opacity: 0.8;
+  opacity: 0.9;
+  cursor: ew-resize;
+  touch-action: none;
+  user-select: none;
 }
-.office-ruler::before,
-.office-ruler::after {
+.office-ruler-handle {
   position: absolute;
   top: 0;
   bottom: 0;
   width: 2px;
+  margin-left: -1px;
+  background: var(--ow-accent);
+  opacity: 0.8;
+  pointer-events: none;
+}
+.office-ruler-handle::after {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 7px;
+  height: 6px;
+  transform: translateX(-50%);
+  border-radius: 0 0 2px 2px;
   background: var(--ow-accent);
   content: "";
-  opacity: 0.65;
 }
-.office-ruler::before {
-  left: 20mm;
-}
-.office-ruler::after {
-  right: 20mm;
+.office-ruler:hover .office-ruler-handle {
+  opacity: 1;
 }
 
 .office-page {
