@@ -1,41 +1,45 @@
+import type { SVGProps } from "react";
+
 import { cn } from "@/lib/utils";
 
 /**
- * Marca abstracta de Academic Autopilot.
+ * Isotipo geométrico de Academic Autopilot.
  *
- * Es SVG puro, monocromo y hereda `currentColor`, de modo que funciona igual
- * sobre el rail carbón, el cristal claro o el login. No contiene imágenes ni
- * degradados saturados.
+ * Un hexágono central del que nacen seis pétalos entrelazados, con simetría
+ * radial de 60°. Es SVG puro, sin fondo y monocromo: hereda `currentColor`,
+ * así que funciona igual sobre el rail carbón, el cristal claro o el login.
  */
-export function Logo({ className }: { className?: string }) {
+const HEXAGON_PATH =
+  "M42 32L37 40.66L27 40.66L22 32L27 23.34L37 23.34Z";
+const PETAL_PATH =
+  "M27 23.34C23.8 16 26 9.6 32 5.6C38 9.6 40.2 16 37 23.34";
+const PETAL_ROTATIONS = [0, 60, 120, 180, 240, 300] as const;
+
+export function Logo({ className, ...props }: SVGProps<SVGSVGElement>) {
   return (
     <svg
-      viewBox="0 0 32 32"
+      viewBox="0 0 64 64"
       fill="none"
       aria-hidden="true"
       focusable="false"
       className={cn("shrink-0", className)}
+      {...props}
     >
-      <path
-        d="M16 3.25c7.04 0 12.75 5.71 12.75 12.75S23.04 28.75 16 28.75 3.25 23.04 3.25 16 8.96 3.25 16 3.25Z"
+      <g
         stroke="currentColor"
-        strokeOpacity="0.22"
-        strokeWidth="1.3"
-      />
-      <path
-        d="M9.2 23.1 14.35 8.9h3.3L22.8 23.1"
-        stroke="currentColor"
-        strokeWidth="2.15"
+        strokeWidth="3"
         strokeLinecap="round"
         strokeLinejoin="round"
-      />
-      <path
-        d="M11.55 18.1h8.9"
-        stroke="currentColor"
-        strokeWidth="2.15"
-        strokeLinecap="round"
-      />
-      <circle cx="24.9" cy="8.6" r="2.35" fill="currentColor" />
+      >
+        <path d={HEXAGON_PATH} />
+        {PETAL_ROTATIONS.map((angle) => (
+          <path
+            key={angle}
+            d={PETAL_PATH}
+            transform={`rotate(${angle} 32 32)`}
+          />
+        ))}
+      </g>
     </svg>
   );
 }
