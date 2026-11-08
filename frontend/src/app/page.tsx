@@ -307,7 +307,6 @@ export default function DashboardPage() {
 
   const tasks = activeTasks;
   const name = user?.full_name?.trim() || user?.email.split("@")[0] || "estudiante";
-  const initials = name.slice(0, 2).toUpperCase();
   const now = new Date();
   const dateLabel = capitalize(
     now.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" }),
@@ -505,19 +504,14 @@ export default function DashboardPage() {
           />
 
           <div className="relative z-10 flex h-full min-h-[238px] flex-col justify-between gap-6">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/45 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#5b536e] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-xl">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.55)]" />
                 {dateLabel}
               </span>
-              <div className="flex shrink-0 items-center gap-2">
-                <span className="hidden rounded-full bg-white/45 px-2.5 py-1 text-[10px] font-semibold text-[#5b536e] sm:block">
-                  Tu espacio
-                </span>
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1b1b1f] text-[10px] font-semibold text-white shadow-[0_8px_18px_-10px_rgba(20,20,28,0.8)]">
-                  {initials}
-                </span>
-              </div>
+              <span className="hidden rounded-full bg-white/45 px-2.5 py-1 text-[10px] font-semibold text-[#5b536e] sm:block">
+                Tu espacio
+              </span>
             </div>
 
             <div>

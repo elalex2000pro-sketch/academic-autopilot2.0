@@ -46,9 +46,15 @@ const OnboardingModal = lazy(() =>
 
 const RAIL_SPRING = {
   type: "spring",
-  stiffness: 390,
-  damping: 32,
+  stiffness: 300,
+  damping: 30,
 } as const;
+
+const HEADER_CONTROL =
+  "flex items-center justify-center rounded-full border border-white/20 bg-white/50 p-2 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/[0.07]";
+
+const HEADER_BUTTON =
+  "h-9 w-9 rounded-full text-[#3f3852] hover:bg-white/60 hover:text-[#1d1d1f] dark:text-white/65 dark:hover:bg-white/10 dark:hover:text-white";
 
 function RailNavLink({
   href,
@@ -73,20 +79,27 @@ function RailNavLink({
     >
       {active ? (
         <motion.span
-          layoutId="v18-rail-active"
+          layoutId="activeSidebarIcon"
           aria-hidden="true"
           className="absolute inset-0 rounded-full bg-[#e9e4f6] shadow-[0_10px_24px_-12px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.75)]"
           transition={reduceMotion ? { duration: 0 } : RAIL_SPRING}
         />
       ) : null}
-      <Icon
+      <motion.span
         aria-hidden="true"
-        className={cn(
-          "relative z-10 h-[19px] w-[19px] transition-colors",
-          active ? "text-[#1d1d1f]" : "text-white/55 group-hover:text-white",
-        )}
-        strokeWidth={active ? 2.05 : 1.8}
-      />
+        className="relative z-10 flex h-full w-full items-center justify-center"
+        whileHover={active || reduceMotion ? undefined : { scale: 1.1 }}
+        transition={{ type: "spring", stiffness: 400, damping: 24 }}
+      >
+        <Icon
+          aria-hidden="true"
+          className={cn(
+            "h-[19px] w-[19px] transition-colors",
+            active ? "text-[#1d1d1f]" : "text-white/55 group-hover:text-white",
+          )}
+          strokeWidth={active ? 2.05 : 1.8}
+        />
+      </motion.span>
     </Link>
   );
 }
@@ -186,8 +199,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="mt-2 flex shrink-0 flex-col items-center gap-1 border-t border-white/10 px-2 pt-3">
-            <NotificationBell className="h-11 w-11 rounded-full text-white/55 hover:bg-white/10 hover:text-white dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white" />
-            <ThemeCycleButton className="h-11 w-11 rounded-full text-white/55 hover:bg-white/10 hover:text-white dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white" />
             <RailNavLink
               href={SETTINGS_ITEM.href}
               label={SETTINGS_ITEM.label}
@@ -205,12 +216,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <LogOut className="h-[18px] w-[18px]" />
             </Button>
-            <span
-              title={name}
-              className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-[#e9e4f6] text-[10px] font-semibold text-[#1d1d1f] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
-            >
-              {initials}
-            </span>
           </div>
         </aside>
 
@@ -277,6 +282,40 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </header>
           ) : null}
 
+          {/* Barra superior de escritorio: controles globales fuera del rail. */}
+          {!isImmersive ? (
+            <header className="hidden shrink-0 items-center justify-end gap-4 px-6 pt-6 pb-1 md:flex">
+              <motion.div
+                whileHover={reduceMotion ? undefined : { scale: 1.05, y: -2 }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                className={HEADER_CONTROL}
+              >
+                <NotificationBell className={HEADER_BUTTON} />
+              </motion.div>
+              <motion.div
+                whileHover={reduceMotion ? undefined : { scale: 1.05, y: -2 }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                className={HEADER_CONTROL}
+              >
+                <ThemeCycleButton className={HEADER_BUTTON} />
+              </motion.div>
+              <motion.div
+                whileHover={reduceMotion ? undefined : { scale: 1.05, y: -2 }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                className={HEADER_CONTROL}
+              >
+                <Link
+                  href="/settings"
+                  aria-label={`Perfil de ${name}`}
+                  title={name}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1b1b1f] text-[10.5px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)] outline-none transition-colors hover:bg-[#2a2a31] focus-visible:ring-2 focus-visible:ring-[#1d1d1f]/25 dark:bg-[#e9e4f6] dark:text-[#1d1d1f] dark:hover:bg-white dark:focus-visible:ring-white/40"
+                >
+                  {initials}
+                </Link>
+              </motion.div>
+            </header>
+          ) : null}
+
           <OfflineStatus />
 
           <main
@@ -284,7 +323,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               "min-w-0 flex-1 bg-transparent",
               isBookReader ? "overflow-x-clip" : "overflow-x-hidden",
               !isImmersive &&
-                "pb-[calc(var(--mobile-nav-offset)+1.25rem)] pt-4 md:pb-0 md:pt-0",
+                "pb-[calc(var(--mobile-nav-offset)+1.25rem)] pt-4 md:pb-0 md:pt-2",
             )}
           >
             <PageTransition>{children}</PageTransition>
