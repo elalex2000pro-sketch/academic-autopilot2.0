@@ -1,9 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { motion, useReducedMotion, type Variants } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { ArrowUpRight, type LucideIcon } from "lucide-react";
 
+import { usePreferences } from "@/components/preferences-provider";
 import { cn } from "@/lib/utils";
 
 export type StatsCardTone = "positive" | "warning" | "neutral";
@@ -51,7 +52,8 @@ export function StatsCard({
   tone = "positive",
   className,
 }: StatsCardProps) {
-  const reduceMotion = useReducedMotion();
+  const { animationLevel } = usePreferences();
+  const reduceMotion = animationLevel === "reduced";
 
   return (
     <motion.div

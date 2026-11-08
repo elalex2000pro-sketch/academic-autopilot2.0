@@ -681,16 +681,6 @@ html[data-performance="efficiency"] :is([data-spotlight], .glass-card, .glass-st
   background: hsl(240 8% 6% / 0.48);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
-  }
-}
 
 /* --------------------------------------------------------------------------
    Movimiento Ultra.

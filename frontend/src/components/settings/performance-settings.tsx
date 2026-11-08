@@ -241,8 +241,9 @@ export function PerformanceSettings() {
         </div>
 
         <p className="mt-3 text-[10.5px] leading-4 text-slate-500 dark:text-white/35">
-          Los cambios se aplican al instante y se guardan en este navegador. Si tu sistema pide
-          movimiento reducido, se respeta por encima de esta preferencia.
+          Los cambios se aplican al instante y se guardan en este navegador. «Desactivadas /
+          Reducidas» apaga el movimiento; el resto de niveles mantiene las animaciones activas
+          aunque el sistema pida movimiento reducido.
         </p>
       </SettingsCard>
     </div>

@@ -1,11 +1,12 @@
 "use client";
 
 import { pageItem, pageStagger } from "@/components/page-animated-wrapper";
+import { usePreferences } from "@/components/preferences-provider";
 
 import Image from "next/image";
 import Link from "next/link";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion, useReducedMotion, type Variants } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import {
   ArrowRight,
   BookOpen,
@@ -104,7 +105,8 @@ export default function LibraryView() {
   const [pendingDelete, setPendingDelete] = useState<LocalBook | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [filter, setFilter] = useState<LibraryFilter>("all");
-  const reduceMotion = useReducedMotion();
+  const { animationLevel } = usePreferences();
+  const reduceMotion = animationLevel === "reduced";
   const inputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {

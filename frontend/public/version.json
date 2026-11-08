@@ -1,13 +1,12 @@
 {
-  "version": "1.1.0",
-  "publishedAt": "2026-11-08T22:56:22.000Z",
+  "version": "1.1.1",
+  "publishedAt": "2026-11-08T23:32:56.611Z",
   "sizeBytes": 8388608,
   "notes": [
-    "Rediseño visual glassmorphism y cabecera integrada en Academic-Office.",
-    "Lector PDF local con navegación y búsqueda, sin depender de servicios externos.",
-    "Menús, regla de márgenes y lienzo del editor de documentos corregidos.",
-    "Nuevo logo geométrico, semáforos de escritorio y mejoras de estabilidad.",
-    "Canal de actualizaciones automáticas con instaladores para Windows y macOS."
+    "Animaciones globales restauradas: la preferencia de la app controla el movimiento.",
+    "Eliminado el botón flotante de ayuda y sus tutoriales.",
+    "Correcciones de estabilidad visual y de navegación.",
+    "Instaladores actualizados para Windows y macOS desde Ajustes → Actualizaciones."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases"
 }

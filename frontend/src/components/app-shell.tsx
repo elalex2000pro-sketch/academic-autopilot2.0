@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Fragment, lazy, Suspense, useCallback, useEffect, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 import { Loader2, LogOut, Settings, type LucideIcon } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
@@ -12,6 +12,7 @@ import { MobileNavigationBar } from "@/components/mobile-navigation-bar";
 import { NotificationBell, NotificationCenter } from "@/components/notification-center";
 import { OfflineStatus } from "@/components/offline-status";
 import { PageTransition } from "@/components/page-transition";
+import { usePreferences } from "@/components/preferences-provider";
 import { SystemNotifications } from "@/components/system-notifications";
 import { ThemeCycleButton } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -107,7 +108,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
-  const reduceMotion = useReducedMotion();
+  const { animationLevel } = usePreferences();
+  const reduceMotion = animationLevel === "reduced";
   const isPublic = pathname === "/login";
   const [showOnboarding, setShowOnboarding] = useState(false);
 

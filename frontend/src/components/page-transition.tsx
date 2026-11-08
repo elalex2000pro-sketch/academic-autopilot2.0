@@ -17,14 +17,17 @@ export { pageItem, pageStagger } from "@/components/page-animated-wrapper";
  * siguiente vista, que entra con sus bloques en cascada.
  */
 export function PageTransition({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
+  // En App Router no existen `<Routes>` ni `useLocation`: `usePathname` es la
+  // location y la key debe vivir en el hijo directo de AnimatePresence. Esta es
+  // la adaptación exacta del patrón `location` + `key` de React Router.
+  const location = usePathname();
 
   return (
     <AnimatePresence mode="wait">
       <PageAnimatedWrapper
-        key={pathname}
+        key={location}
         className="min-w-0"
-        dataPageTransition={pathname}
+        dataPageTransition={location}
       >
         {children}
       </PageAnimatedWrapper>

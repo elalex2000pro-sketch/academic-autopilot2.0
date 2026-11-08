@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion, type Variants } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import type { ReactNode } from "react";
 
 import { usePreferences } from "@/components/preferences-provider";
@@ -47,6 +47,18 @@ const INSTANT_VARIANTS: Variants = {
 };
 
 /**
+ * Entrada del contenedor de ruta. No ocultamos el wrapper para no dejar la
+ * página en blanco si Framer aún no ha hidratado; el desplazamiento ya hace
+ * visible la transición incluso en vistas sin bloques `pageItem` (por ejemplo,
+ * Academic-Office).
+ */
+const pageShell: Variants = {
+  hidden: { y: 12 },
+  visible: { y: 0, transition: { duration: 0.28, ease: "easeOut" } },
+  exit: { opacity: 0, y: -12, transition: { duration: 0.18, ease: "easeOut" } },
+};
+
+/**
  * Envoltorio de entrada de todas las vistas.
  *
  * Al vivir dentro de `AnimatePresence`, la vista actual termina su salida antes
@@ -62,13 +74,14 @@ export function PageAnimatedWrapper({
   className?: string;
   dataPageTransition?: string;
 }) {
-  const systemReduced = useReducedMotion();
   const { animationLevel } = usePreferences();
-  const reduced = systemReduced || animationLevel === "reduced";
+  // La preferencia explícita de la app manda: el nivel reducido sigue apagando
+  // el movimiento, pero el sistema no anula los niveles estándar/ultra.
+  const reduced = animationLevel === "reduced";
 
   return (
     <motion.div
-      variants={reduced ? INSTANT_VARIANTS : pageStagger}
+      variants={reduced ? INSTANT_VARIANTS : pageShell}
       initial={reduced ? false : "hidden"}
       animate="visible"
       exit="exit"

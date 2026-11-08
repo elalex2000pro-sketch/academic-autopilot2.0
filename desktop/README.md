@@ -72,17 +72,17 @@ actualizador.
 
 1. Actualiza `version` en `frontend/package.json`, `desktop/package.json` y
    `frontend/public/version.json` con la misma versión y las notas.
-2. Crea y sube el tag:
+2. Publica desde una rama de release:
 
    ```bash
-   git tag v1.1.0
-   git push origin v1.1.0
+   git switch -c release/v1.1.1
+   git push origin release/v1.1.1
    ```
 
-3. El workflow `.github/workflows/release-desktop.yml` compila Windows y macOS en GitHub Actions y
-   publica una release con `Academic-Autopilot-Setup.exe`, el `.dmg`, `latest.yml` y
-   `latest-mac.yml`.
-4. Comprueba la URL `releases/latest/download/Academic-Autopilot-Setup.exe` y la release.
+   El workflow `.github/workflows/release-desktop.yml` compila Windows y macOS en GitHub Actions,
+   crea el tag `v1.1.1` y publica la release con `Academic-Autopilot-Setup.exe`, el `.dmg`,
+   `latest.yml` y `latest-mac.yml`. También se puede seguir publicando con un tag `v*` manual.
+3. Comprueba la URL `releases/latest/download/Academic-Autopilot-Setup.exe` y la release.
 
 El instalador no está firmado digitalmente. Windows puede mostrar SmartScreen con "Editor
 desconocido"; es necesario indicar al usuario que pulse **Más información → Ejecutar de todas

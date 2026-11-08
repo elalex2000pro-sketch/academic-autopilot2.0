@@ -7,7 +7,7 @@ import { SkeletonScreen } from "@/components/skeleton-screen";
 /**
  * Splash inicial renderizado en el HTML del servidor. Permanece visible hasta
  * que React hidrata y se retira en dos frames, dejando ver la interfaz ya
- * pintada. No bloquea clics y respeta `prefers-reduced-motion`.
+ * pintada. No bloquea clics y sigue el nivel de animación elegido en la app.
  */
 export function BootSplash() {
   const [leaving, setLeaving] = useState(false);

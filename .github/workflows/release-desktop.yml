@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - "v*"
+    branches:
+      - "release/**"
 
 permissions:
   contents: write
@@ -85,17 +87,23 @@ jobs:
     needs: [windows, macos]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           path: release-assets
           merge-multiple: true
-      - uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: Academic Autopilot ${{ github.ref_name }}
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-          make_latest: true
-          files: release-assets/*
-          fail_on_unmatched_files: true
+      - name: Read release version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./desktop/package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ steps.version.outputs.version }}" \
+            release-assets/* \
+            --target "${{ github.sha }}" \
+            --title "Academic Autopilot v${{ steps.version.outputs.version }}" \
+            --generate-notes \
+            --latest

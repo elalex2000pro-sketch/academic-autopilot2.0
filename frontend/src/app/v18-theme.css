@@ -117,14 +117,3 @@ html.dark body {
 .v18-rail {
   background-color: #1b1b1f;
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .glass-card,
-  .glass-strong,
-  .app-glass,
-  .app-glass-strong,
-  .app-glass-soft,
-  .v18-rail {
-    transition-duration: 0.01ms !important;
-  }
-}
