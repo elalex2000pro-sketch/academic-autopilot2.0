@@ -344,7 +344,7 @@ function MessageBubble({ message }: { message: AssistantMessage }) {
                       <img
                         src={attachment.preview}
                         alt={caption}
-                        className="h-32 w-full bg-slate-100/80 object-contain"
+                        className="h-32 w-full bg-slate-100/80 object-contain dark:bg-white/[0.04]"
                       />
                     ) : (
                       <span className="flex h-20 items-center justify-center gap-1.5 px-2 text-[10px] opacity-70">

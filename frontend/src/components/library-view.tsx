@@ -350,7 +350,7 @@ export default function LibraryView() {
       ) : books.length === 0 ? (
         <div className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
           <div className="rounded-3xl border border-dashed border-indigo-200 bg-gradient-to-br from-slate-100/80 via-indigo-50/40 to-violet-50/60 p-5 md:p-10 dark:border-indigo-900/60 dark:from-[#0b0f18] dark:via-[#0b0f18]/70 dark:to-[#0b0f18]">
-            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100/80 text-indigo-600 shadow-md shadow-indigo-500/10">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100/80 text-indigo-600 shadow-md shadow-indigo-500/10 dark:bg-white/[0.06] dark:text-blue-300">
               <BookOpen className="h-7 w-7" />
             </span>
             <h2 className="mt-5 text-2xl font-bold">Tu primera biblioteca empieza con un libro</h2>
@@ -391,7 +391,7 @@ export default function LibraryView() {
             ].map((item) => (
               <div
                 key={item.title}
-                className="flex gap-3 rounded-2xl border border-slate-300/40 bg-slate-100/70 p-4 shadow-lg shadow-slate-900/5 backdrop-blur-3xl"
+                className="flex gap-3 rounded-2xl border border-slate-300/40 bg-slate-100/70 p-4 shadow-lg shadow-slate-900/5 backdrop-blur-3xl dark:border-white/10 dark:bg-white/[0.04] dark:shadow-black/20"
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
                   <item.icon className="h-4 w-4" />
@@ -407,19 +407,19 @@ export default function LibraryView() {
       ) : (
         <>
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-slate-300/40 bg-slate-100/70 p-4 shadow-lg shadow-slate-900/5 backdrop-blur-3xl">
+            <div className="rounded-2xl border border-slate-300/40 bg-slate-100/70 p-4 shadow-lg shadow-slate-900/5 backdrop-blur-3xl dark:border-white/10 dark:bg-white/[0.04] dark:shadow-black/20">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Libros</p>
               <p className="mt-1 text-2xl font-bold">{books.length}</p>
             </div>
-            <div className="rounded-2xl border border-slate-300/40 bg-slate-100/70 p-4 shadow-lg shadow-slate-900/5 backdrop-blur-3xl">
+            <div className="rounded-2xl border border-slate-300/40 bg-slate-100/70 p-4 shadow-lg shadow-slate-900/5 backdrop-blur-3xl dark:border-white/10 dark:bg-white/[0.04] dark:shadow-black/20">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Leyendo</p>
               <p className="mt-1 text-2xl font-bold">{readingCount}</p>
             </div>
-            <div className="rounded-2xl border border-slate-300/40 bg-slate-100/70 p-4 shadow-lg shadow-slate-900/5 backdrop-blur-3xl">
+            <div className="rounded-2xl border border-slate-300/40 bg-slate-100/70 p-4 shadow-lg shadow-slate-900/5 backdrop-blur-3xl dark:border-white/10 dark:bg-white/[0.04] dark:shadow-black/20">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Páginas de texto</p>
               <p className="mt-1 text-2xl font-bold">{readyBooks.reduce((sum, book) => sum + book.total_sections, 0)}</p>
             </div>
-            <div className="rounded-2xl border border-slate-300/40 bg-slate-100/70 p-4 shadow-lg shadow-slate-900/5 backdrop-blur-3xl">
+            <div className="rounded-2xl border border-slate-300/40 bg-slate-100/70 p-4 shadow-lg shadow-slate-900/5 backdrop-blur-3xl dark:border-white/10 dark:bg-white/[0.04] dark:shadow-black/20">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Tiempo estimado</p>
               <p className="mt-1 text-2xl font-bold">
                 {Math.floor(totalMinutes / 60)} h {totalMinutes % 60} min
@@ -487,7 +487,7 @@ export default function LibraryView() {
                     "rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
                     filter === value
                       ? "bg-indigo-600 text-white shadow-sm"
-                      : "bg-slate-100/80 text-slate-600 ring-1 ring-slate-300/40 hover:bg-slate-100",
+                      : "bg-slate-100/80 text-slate-600 ring-1 ring-slate-300/40 hover:bg-slate-100 dark:bg-white/[0.06] dark:text-white/60 dark:ring-white/10 dark:hover:bg-white/[0.1]",
                   )}
                 >
                   {label}
@@ -501,14 +501,14 @@ export default function LibraryView() {
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Buscar por título o autor"
-                  className="w-full rounded-xl border border-slate-300/40 bg-slate-100/70 py-2 pl-9 pr-3 text-sm outline-none backdrop-blur-xl focus:border-indigo-400"
+                  className="w-full rounded-xl border border-slate-300/40 bg-slate-100/70 py-2 pl-9 pr-3 text-sm outline-none backdrop-blur-xl focus:border-indigo-400 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/80"
                 />
               </label>
               {courses.length > 0 && (
                 <select
                   value={courseFilter}
                   onChange={(event) => setCourseFilter(event.target.value)}
-                  className="rounded-xl border border-slate-300/40 bg-slate-100/70 px-3 py-2 text-sm outline-none backdrop-blur-xl focus:border-indigo-400"
+                  className="rounded-xl border border-slate-300/40 bg-slate-100/70 px-3 py-2 text-sm outline-none backdrop-blur-xl focus:border-indigo-400 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/80"
                 >
                   <option value="">Todas las asignaturas</option>
                   {courses.map((course) => (
@@ -522,7 +522,7 @@ export default function LibraryView() {
           </div>
 
           {filtered.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-slate-300/50 bg-slate-100/55 p-10 text-center backdrop-blur-3xl">
+            <div className="rounded-3xl border border-dashed border-slate-300/50 bg-slate-100/55 p-10 text-center backdrop-blur-3xl dark:border-white/10 dark:bg-white/[0.03]">
               <Search className="mx-auto h-8 w-8 text-slate-300" />
               <p className="mt-2 text-sm font-semibold">No hay libros con ese filtro</p>
               <p className="mt-1 text-xs text-muted-foreground">Prueba otra búsqueda o asignatura.</p>
@@ -668,7 +668,7 @@ export default function LibraryView() {
             </section>
           )}
 
-          <section className="rounded-3xl border border-slate-300/40 bg-slate-100/70 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-3xl sm:p-6">
+          <section className="rounded-3xl border border-slate-300/40 bg-slate-100/70 p-5 shadow-lg shadow-slate-900/5 backdrop-blur-3xl dark:border-white/10 dark:bg-white/[0.04] dark:shadow-black/20 sm:p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
                 <Sparkles className="h-5 w-5" />
@@ -799,7 +799,7 @@ export default function LibraryView() {
           onClick={() => !uploading && setUploadOpen(false)}
         >
           <div
-            className="animate-pop w-full max-w-lg rounded-3xl border border-slate-300/40 bg-slate-100/85 p-6 shadow-[0_28px_80px_-36px_rgba(32,39,48,0.45)] backdrop-blur-3xl"
+            className="animate-pop max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-3xl border border-slate-300/40 bg-slate-100/85 p-6 shadow-[0_28px_80px_-36px_rgba(32,39,48,0.45)] backdrop-blur-3xl dark:border-white/10 dark:bg-[#0b0f18]/92 dark:shadow-[0_28px_80px_-36px_rgba(0,0,0,0.9)]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3">
@@ -814,7 +814,7 @@ export default function LibraryView() {
               <button
                 type="button"
                 onClick={() => !uploading && setUploadOpen(false)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:text-white/40 dark:hover:bg-white/10"
                 aria-label="Cerrar"
               >
                 <X className="h-5 w-5" />
@@ -828,8 +828,8 @@ export default function LibraryView() {
               className={cn(
                 "mt-5 flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition-colors",
                 file
-                  ? "border-indigo-300 bg-indigo-50/50"
-                  : "border-slate-200 bg-slate-50/60 hover:border-indigo-300 hover:bg-indigo-50/30",
+                  ? "border-indigo-300 bg-indigo-50/50 dark:border-blue-500/50 dark:bg-blue-500/10"
+                  : "border-slate-200 bg-slate-50/60 hover:border-indigo-300 hover:bg-indigo-50/30 dark:border-white/10 dark:bg-white/[0.04] dark:hover:border-blue-500/40 dark:hover:bg-white/[0.07]",
               )}
             >
               <Upload className="h-7 w-7 text-indigo-500" />
@@ -850,22 +850,22 @@ export default function LibraryView() {
 
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <label className="block">
-                <span className="text-xs font-semibold text-slate-600">Título (opcional)</span>
+                <span className="text-xs font-semibold text-slate-600 dark:text-white/55">Título (opcional)</span>
                 <input
                   value={uploadTitle}
                   onChange={(event) => setUploadTitle(event.target.value)}
                   placeholder="El título del libro"
                   disabled={uploading}
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/80"
                 />
               </label>
               <label className="block">
-                <span className="text-xs font-semibold text-slate-600">Asignatura (opcional)</span>
+                <span className="text-xs font-semibold text-slate-600 dark:text-white/55">Asignatura (opcional)</span>
                 <select
                   value={uploadCourse}
                   onChange={(event) => setUploadCourse(event.target.value)}
                   disabled={uploading}
-                  className="mt-1 w-full rounded-xl border border-slate-300/40 bg-slate-100/70 px-3 py-2 text-sm outline-none backdrop-blur-xl focus:border-indigo-400"
+                  className="mt-1 w-full rounded-xl border border-slate-300/40 bg-slate-100/70 px-3 py-2 text-sm outline-none backdrop-blur-xl focus:border-indigo-400 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/80"
                 >
                   <option value="">Sin asignatura</option>
                   {courses.map((course) => (

@@ -241,7 +241,7 @@ export function AcademicOfficeView() {
   }
 
   return (
-    <div className="relative flex h-[calc(100dvh-9rem)] min-h-[560px] flex-col overflow-hidden rounded-2xl border border-white/50 bg-gradient-to-br from-white/80 via-white/60 to-white/40 shadow-[0_24px_70px_-40px_rgba(15,23,42,0.55)] backdrop-blur-2xl dark:border-white/10 dark:from-slate-900/80 dark:via-slate-900/60 dark:to-slate-950/60">
+    <div className="relative flex h-[calc(100dvh-9rem)] min-h-[480px] flex-col overflow-hidden rounded-2xl border border-white/50 bg-gradient-to-br from-white/80 via-white/60 to-white/40 shadow-[0_24px_70px_-40px_rgba(15,23,42,0.55)] backdrop-blur-2xl dark:border-white/10 dark:from-slate-900/80 dark:via-slate-900/60 dark:to-slate-950/60 sm:min-h-[560px]">
       {/* Brillo ambiental del cristal */}
       <div
         aria-hidden="true"

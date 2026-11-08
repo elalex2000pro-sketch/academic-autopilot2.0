@@ -459,7 +459,7 @@ export default function BookReaderView() {
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-3 px-4 py-3">
           <Link
             href="/library"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white"
             aria-label="Volver a la biblioteca"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -490,7 +490,7 @@ export default function BookReaderView() {
             <button
               type="button"
               onClick={() => setShowChapters((value) => !value)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 xl:hidden"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-white/55 dark:hover:bg-white/10 xl:hidden"
               aria-label="Ver capítulos"
             >
               <List className="h-4 w-4" />
@@ -503,7 +503,7 @@ export default function BookReaderView() {
         <aside className="hidden xl:block">
           <div className="sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-2xl border border-border/70 bg-card p-3 shadow-sm">
             <div className="px-2 pb-2">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/40">
                 Contenido
               </p>
               <p className="mt-1 text-[11px] text-muted-foreground">
@@ -519,8 +519,8 @@ export default function BookReaderView() {
                   className={cn(
                     "flex w-full items-start gap-2 rounded-xl px-2.5 py-2 text-left text-xs transition-colors",
                     chapter.section_index === currentIndex
-                      ? "bg-indigo-50 font-semibold text-indigo-700"
-                      : "text-slate-600 hover:bg-slate-50",
+                      ? "bg-indigo-50 font-semibold text-indigo-700 dark:bg-blue-500/15 dark:text-blue-300"
+                      : "text-slate-600 hover:bg-slate-50 dark:text-white/60 dark:hover:bg-white/[0.06]",
                   )}
                 >
                   <span
@@ -530,7 +530,7 @@ export default function BookReaderView() {
                         ? "bg-emerald-100 text-emerald-700"
                         : chapter.section_index === currentIndex
                           ? "bg-indigo-600 text-white"
-                          : "bg-slate-100 text-slate-500",
+                          : "bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-white/50",
                     )}
                   >
                     {chapter.section_index < currentIndex ? (
@@ -574,8 +574,8 @@ export default function BookReaderView() {
                     className={cn(
                       "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs",
                       chapter.section_index === currentIndex
-                        ? "bg-indigo-50 font-semibold text-indigo-700"
-                        : "text-slate-600",
+                        ? "bg-indigo-50 font-semibold text-indigo-700 dark:bg-blue-500/15 dark:text-blue-300"
+                        : "text-slate-600 dark:text-white/60",
                     )}
                   >
                     <span className="w-5 text-right text-[10px] text-slate-400">
@@ -589,11 +589,11 @@ export default function BookReaderView() {
           )}
 
           {highlight && (
-            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-100">
               <div className="flex items-start gap-2">
                 <Quote className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">
                     Cita de la sección
                   </p>
                   <p className="mt-1 leading-6">{highlight}</p>
@@ -601,7 +601,7 @@ export default function BookReaderView() {
                 <button
                   type="button"
                   onClick={() => setHighlight(null)}
-                  className="text-amber-600 hover:text-amber-800"
+                  className="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200"
                   aria-label="Quitar cita"
                 >
                   <X className="h-4 w-4" />
@@ -611,7 +611,7 @@ export default function BookReaderView() {
           )}
 
           <article className="rounded-3xl border border-border/70 bg-card px-5 py-6 shadow-sm sm:px-8 sm:py-8">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4 dark:border-white/10">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-indigo-500">
                   Sección {currentIndex + 1} de {book.total_sections}
@@ -628,11 +628,11 @@ export default function BookReaderView() {
                   </p>
                 )}
               </div>
-              <div className="flex items-center gap-1 rounded-xl border border-slate-200 p-1">
+              <div className="flex items-center gap-1 rounded-xl border border-slate-200 p-1 dark:border-white/10">
                 <button
                   type="button"
                   onClick={() => setFontSize((value) => Math.max(15, value - 1))}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-100"
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-100 dark:text-white/55 dark:hover:bg-white/10"
                   aria-label="Reducir texto"
                 >
                   A-
@@ -641,7 +641,7 @@ export default function BookReaderView() {
                 <button
                   type="button"
                   onClick={() => setFontSize((value) => Math.min(26, value + 1))}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-sm font-bold text-slate-500 hover:bg-slate-100"
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-sm font-bold text-slate-500 hover:bg-slate-100 dark:text-white/55 dark:hover:bg-white/10"
                   aria-label="Aumentar texto"
                 >
                   A+
@@ -655,7 +655,7 @@ export default function BookReaderView() {
               </div>
             ) : section ? (
               <div
-                className="prose-reader mt-6 leading-8 text-slate-700"
+                className="prose-reader mt-6 leading-8 text-slate-700 dark:text-white/75"
                 style={{ fontSize: `${fontSize}px` }}
               >
                 {section.content.split(/\n{2,}/).map((paragraph, position) => (
@@ -670,7 +670,7 @@ export default function BookReaderView() {
               </div>
             )}
 
-            <div className="mt-8 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-8 flex flex-col gap-3 border-t border-slate-100 pt-5 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between">
               <Button
                 variant="secondary"
                 onClick={() => void goToSection(currentIndex - 1)}
@@ -728,7 +728,7 @@ export default function BookReaderView() {
                 onClick={() => setPanelTab("ask")}
                 className={cn(
                   "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 transition-colors",
-                  panelTab === "ask" ? "bg-white text-indigo-700 shadow-sm dark:bg-white/[0.12] dark:text-white/90" : "text-slate-500",
+                  panelTab === "ask" ? "bg-white text-indigo-700 shadow-sm dark:bg-white/[0.12] dark:text-white/90" : "text-slate-500 dark:text-white/50",
                 )}
               >
                 <MessageCircleQuestion className="h-4 w-4" /> Preguntar
@@ -738,7 +738,7 @@ export default function BookReaderView() {
                 onClick={() => setPanelTab("summary")}
                 className={cn(
                   "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 transition-colors",
-                  panelTab === "summary" ? "bg-white text-indigo-700 shadow-sm dark:bg-white/[0.12] dark:text-white/90" : "text-slate-500",
+                  panelTab === "summary" ? "bg-white text-indigo-700 shadow-sm dark:bg-white/[0.12] dark:text-white/90" : "text-slate-500 dark:text-white/50",
                 )}
               >
                 <Headphones className="h-4 w-4" /> Resumen
@@ -746,14 +746,14 @@ export default function BookReaderView() {
             </div>
 
             {panelError && (
-              <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+              <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-300">
                 {panelError}
               </p>
             )}
 
             {panelTab === "ask" ? (
               <div className="flex max-h-[70dvh] flex-col rounded-2xl border border-border/70 bg-card shadow-sm xl:h-[calc(100dvh-9rem)] xl:max-h-none">
-                <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-white/10">
                   <div>
                     <p className="flex items-center gap-1.5 text-sm font-bold">
                       <Sparkles className="h-4 w-4 text-indigo-500" /> Preguntar al libro
@@ -766,7 +766,7 @@ export default function BookReaderView() {
                     <button
                       type="button"
                       onClick={() => void clearChat()}
-                      className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-rose-500"
+                      className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-rose-500 dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-rose-400"
                       aria-label="Borrar historial"
                       title="Borrar historial"
                     >
@@ -778,8 +778,8 @@ export default function BookReaderView() {
                 <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
                   {messages.length === 0 && !asking && (
                     <div className="space-y-3">
-                      <div className="rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-50 p-3 text-xs leading-5 text-slate-600">
-                        <p className="font-semibold text-indigo-800">Empieza por una pregunta</p>
+                      <div className="rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-50 p-3 text-xs leading-5 text-slate-600 dark:from-blue-500/10 dark:to-purple-500/10 dark:text-white/65">
+                        <p className="font-semibold text-indigo-800 dark:text-blue-200">Empieza por una pregunta</p>
                         <p className="mt-1">
                           Estás en “{section?.title || `sección ${currentIndex + 1}`}”. Puedo
                           responder usando solo este libro y enseñarte de dónde sale cada idea.
@@ -791,7 +791,7 @@ export default function BookReaderView() {
                             key={suggestion}
                             type="button"
                             onClick={() => void ask(suggestion)}
-                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-left text-xs text-slate-600 transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 hover:text-indigo-800"
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-left text-xs text-slate-600 transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 hover:text-indigo-800 dark:border-white/10 dark:text-white/65 dark:hover:border-blue-500/40 dark:hover:bg-white/[0.06] dark:hover:text-blue-200"
                           >
                             {suggestion}
                           </button>
@@ -813,12 +813,12 @@ export default function BookReaderView() {
                           "max-w-[92%] rounded-2xl px-3 py-2 text-xs leading-5",
                           message.role === "user"
                             ? "bg-indigo-600 text-white"
-                            : "bg-slate-50 text-slate-700 ring-1 ring-slate-100",
+                            : "bg-slate-50 text-slate-700 ring-1 ring-slate-100 dark:bg-white/[0.06] dark:text-white/75 dark:ring-white/10",
                         )}
                       >
                         <p className="whitespace-pre-wrap">{message.content}</p>
                         {message.role === "assistant" && message.citations.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1.5 border-t border-slate-200/70 pt-2">
+                          <div className="mt-2 flex flex-wrap gap-1.5 border-t border-slate-200/70 pt-2 dark:border-white/10">
                             {message.citations.map((citation) => (
                               <button
                                 key={`${message.id}-${citation.section_id}`}
@@ -865,7 +865,7 @@ export default function BookReaderView() {
                       }}
                       rows={2}
                       placeholder="Pregunta algo sobre este capítulo..."
-                      className="max-h-28 min-h-[42px] flex-1 resize-none rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-indigo-400"
+                      className="max-h-28 min-h-[42px] flex-1 resize-none rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/80"
                     />
                     <Button
                       size="icon"
@@ -883,7 +883,7 @@ export default function BookReaderView() {
               </div>
             ) : (
               <div className="flex max-h-[70dvh] flex-col rounded-2xl border border-border/70 bg-card shadow-sm xl:h-[calc(100dvh-9rem)] xl:max-h-none">
-                <div className="border-b border-slate-100 px-4 py-3">
+                <div className="border-b border-slate-100 px-4 py-3 dark:border-white/10">
                   <p className="flex items-center gap-1.5 text-sm font-bold">
                     <Headphones className="h-4 w-4 text-indigo-500" /> Resumen para estudiar
                   </p>
@@ -901,7 +901,7 @@ export default function BookReaderView() {
                         "flex-1 rounded-xl border px-2 py-2 text-[11px] font-semibold transition-colors",
                         summaryScope === "current" && summary
                           ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                          : "border-slate-200 text-slate-600 hover:bg-slate-50",
+                          : "border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/[0.06]",
                       )}
                     >
                       Este capítulo
@@ -914,7 +914,7 @@ export default function BookReaderView() {
                         "flex-1 rounded-xl border px-2 py-2 text-[11px] font-semibold transition-colors",
                         summaryScope === "book" && summary
                           ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                          : "border-slate-200 text-slate-600 hover:bg-slate-50",
+                          : "border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/[0.06]",
                       )}
                     >
                       Todo el libro
@@ -922,8 +922,8 @@ export default function BookReaderView() {
                   </div>
 
                   {!summary && !summaryLoading && (
-                    <div className="mt-4 rounded-2xl bg-gradient-to-br from-violet-50 to-indigo-50 p-4 text-xs leading-5 text-slate-600">
-                      <p className="font-semibold text-indigo-800">Estudia sin releerlo todo</p>
+                    <div className="mt-4 rounded-2xl bg-gradient-to-br from-violet-50 to-indigo-50 p-4 text-xs leading-5 text-slate-600 dark:from-purple-500/10 dark:to-blue-500/10 dark:text-white/65">
+                      <p className="font-semibold text-indigo-800 dark:text-blue-200">Estudia sin releerlo todo</p>
                       <p className="mt-1">
                         Genera un resumen del capítulo actual o una visión general del libro.
                         Después puedes escucharlo mientras ordenas apuntes.
@@ -956,7 +956,7 @@ export default function BookReaderView() {
                         </span>
                       </div>
                       <h3 className="text-sm font-bold leading-5">{summary.title}</h3>
-                      <p className="text-xs leading-6 text-slate-600">{summary.summary}</p>
+                      <p className="text-xs leading-6 text-slate-600 dark:text-white/65">{summary.summary}</p>
                       {summary.key_points.length > 0 && (
                         <ul className="space-y-1.5">
                           {summary.key_points.map((point, position) => (
@@ -982,7 +982,7 @@ export default function BookReaderView() {
                               key={citation.section_id}
                               type="button"
                               onClick={() => jumpToCitation(citation)}
-                              className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-medium text-indigo-700 hover:bg-indigo-100"
+                              className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-medium text-indigo-700 hover:bg-indigo-100 dark:bg-blue-500/10 dark:text-blue-200 dark:hover:bg-blue-500/20"
                             >
                               <Quote className="h-2.5 w-2.5" />
                               {citation.title.slice(0, 30)}
@@ -991,7 +991,7 @@ export default function BookReaderView() {
                           ))}
                         </div>
                       )}
-                      <div className="flex flex-wrap gap-1.5 border-t border-slate-100 pt-3">
+                      <div className="flex flex-wrap gap-1.5 border-t border-slate-100 pt-3 dark:border-white/10">
                         <Button size="sm" variant="secondary" onClick={speakSummary}>
                           {speaking ? (
                             <Square className="h-3.5 w-3.5" />
@@ -1016,7 +1016,7 @@ export default function BookReaderView() {
             )}
 
             <div className="rounded-2xl border border-border/70 bg-card p-3 text-[10px] leading-4 text-muted-foreground shadow-sm">
-              <p className="flex items-center gap-1.5 font-semibold text-slate-600">
+              <p className="flex items-center gap-1.5 font-semibold text-slate-600 dark:text-white/60">
                 <NotebookPen className="h-3.5 w-3.5 text-indigo-500" /> Llévalo a un cuaderno
               </p>
               <p className="mt-1">

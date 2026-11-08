@@ -108,7 +108,7 @@ export function AddToNotebookButton({
             onClick={() => setOpen(false)}
           >
           <div
-            className="w-full max-w-md rounded-3xl border border-slate-300/40 bg-slate-100/85 p-6 shadow-[0_28px_80px_-36px_rgba(32,39,48,0.45)] backdrop-blur-3xl animate-pop"
+            className="animate-pop max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-slate-300/40 bg-slate-100/85 p-6 shadow-[0_28px_80px_-36px_rgba(32,39,48,0.45)] backdrop-blur-3xl dark:border-white/10 dark:bg-[#0b0f18]/92 dark:shadow-[0_28px_80px_-36px_rgba(0,0,0,0.9)]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3">
@@ -123,7 +123,7 @@ export function AddToNotebookButton({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200/60"
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200/60 dark:text-white/40 dark:hover:bg-white/10"
                 aria-label="Cerrar"
               >
                 <X className="h-5 w-5" />
@@ -135,8 +135,8 @@ export function AddToNotebookButton({
                 <Loader2 className="h-4 w-4 animate-spin" /> Cargando tus cuadernos...
               </div>
             ) : notebooks.length === 0 ? (
-              <div className="mt-5 rounded-2xl border border-dashed border-indigo-200 bg-indigo-50/50 p-4 text-sm">
-                <p className="font-medium text-slate-800">Todavía no tienes cuadernos.</p>
+              <div className="mt-5 rounded-2xl border border-dashed border-indigo-200 bg-indigo-50/50 p-4 text-sm dark:border-blue-900/60 dark:bg-blue-950/20">
+                <p className="font-medium text-slate-800 dark:text-white/85">Todavía no tienes cuadernos.</p>
                 <p className="mt-1 text-muted-foreground">
                   Crea uno y vuelve a añadir esta fuente.
                 </p>
@@ -148,13 +148,13 @@ export function AddToNotebookButton({
               </div>
             ) : (
               <>
-                <label className="mt-5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <label className="mt-5 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-white/50">
                   Cuaderno de destino
                 </label>
                 <select
                   value={selectedId}
                   onChange={(event) => setSelectedId(event.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-slate-300/40 bg-slate-100/70 px-3 py-2.5 text-sm text-slate-800 outline-none backdrop-blur-xl focus:border-indigo-400"
+                  className="mt-1.5 w-full rounded-xl border border-slate-300/40 bg-slate-100/70 px-3 py-2.5 text-sm text-slate-800 outline-none backdrop-blur-xl focus:border-indigo-400 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/80"
                 >
                   {notebooks.map((notebook) => (
                     <option key={notebook.id} value={notebook.id}>
@@ -163,12 +163,12 @@ export function AddToNotebookButton({
                   ))}
                 </select>
                 {error && (
-                  <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                  <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
                     {error}
                   </p>
                 )}
                 {done && (
-                  <p className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
+                  <p className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
                     <Check className="h-4 w-4" /> {done}
                   </p>
                 )}
@@ -187,7 +187,7 @@ export function AddToNotebookButton({
                 </div>
                 <p className="mt-3 text-right text-[11px] text-muted-foreground">
                   ¿No aparece?{" "}
-                  <Link href="/notebooks" className="font-semibold text-indigo-600 hover:underline">
+                  <Link href="/notebooks" className="font-semibold text-indigo-600 hover:underline dark:text-blue-300">
                     Crear otro cuaderno
                   </Link>
                 </p>
