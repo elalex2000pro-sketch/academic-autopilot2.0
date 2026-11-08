@@ -1,4 +1,4 @@
-# Academic Autopilot para Windows
+# Academic Autopilot para Windows y macOS
 
 App de escritorio que abre Academic Autopilot en una ventana propia, con sesión persistente y sin
 depender del navegador. Carga la web de producción y conserva la copia local de datos que ya usa la
@@ -56,16 +56,33 @@ archivo es fijo para que funcione la URL estable de descarga:
 https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases/latest/download/Academic-Autopilot-Setup.exe
 ```
 
+En macOS (x64):
+
+```bash
+cd desktop
+npm run dist:mac
+```
+
+El resultado es `desktop/dist/Academic-Autopilot-<versión>-mac.dmg` y el `.zip` que usa el
+actualizador.
+
 `desktop/dist/` no se sube al repositorio. El instalador se adjunta a una release de GitHub.
 
 ## Publicar una versión
 
-1. Cambia `version` en `desktop/package.json`.
-2. Ejecuta `npm run dist`.
-3. Crea una release nueva (por ejemplo `desktop-v1.0.1`) y adjunta el `.exe` con el nombre exacto
-   `Academic-Autopilot-Setup.exe`.
-4. Comprueba la URL `releases/latest/download/Academic-Autopilot-Setup.exe` y la descarga desde la
-   web.
+1. Actualiza `version` en `frontend/package.json`, `desktop/package.json` y
+   `frontend/public/version.json` con la misma versión y las notas.
+2. Crea y sube el tag:
+
+   ```bash
+   git tag v1.1.0
+   git push origin v1.1.0
+   ```
+
+3. El workflow `.github/workflows/release-desktop.yml` compila Windows y macOS en GitHub Actions y
+   publica una release con `Academic-Autopilot-Setup.exe`, el `.dmg`, `latest.yml` y
+   `latest-mac.yml`.
+4. Comprueba la URL `releases/latest/download/Academic-Autopilot-Setup.exe` y la release.
 
 El instalador no está firmado digitalmente. Windows puede mostrar SmartScreen con "Editor
 desconocido"; es necesario indicar al usuario que pulse **Más información → Ejecutar de todas
@@ -75,7 +92,7 @@ formas**. Para eliminar ese aviso habría que comprar un certificado de firma de
 
 El frontend detecta el canal por el user agent `AcademicAutopilotDesktop/<version>`:
 
-- **Escritorio:** consulta la última release `desktop-*` de GitHub que tenga adjunto
+- **Escritorio:** consulta la última release de GitHub que tenga adjunto
   `Academic-Autopilot-Setup.exe`. Si la versión es mayor, muestra el modal y el botón abre la
   descarga del instalador en el navegador del sistema.
 - **Web / PWA:** lee `frontend/public/version.json`. Para publicar una versión web, cambia

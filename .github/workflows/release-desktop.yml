@@ -1,0 +1,101 @@
+name: Release Desktop
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Windows x64
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Build NSIS installer
+        run: npx electron-builder --win nsis --x64 --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - name: Verify Windows artifacts
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "dist/Academic-Autopilot-Setup.exe")) {
+            throw "No se generó Academic-Autopilot-Setup.exe."
+          }
+          if (-not (Test-Path "dist/latest.yml")) {
+            throw "No se generó latest.yml."
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: |
+            desktop/dist/Academic-Autopilot-Setup.exe
+            desktop/dist/Academic-Autopilot-Setup.exe.blockmap
+            desktop/dist/latest.yml
+          if-no-files-found: error
+
+  macos:
+    name: macOS x64
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Build DMG and ZIP
+        run: npm run dist:mac
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - name: Verify macOS artifacts
+        run: |
+          test -f dist/latest-mac.yml
+          test -n "$(find dist -maxdepth 1 -name '*.dmg' -print -quit)"
+          test -n "$(find dist -maxdepth 1 -name '*.zip' -print -quit)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-release
+          path: |
+            desktop/dist/*.dmg
+            desktop/dist/*.zip
+            desktop/dist/*.blockmap
+            desktop/dist/latest-mac.yml
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Academic Autopilot ${{ github.ref_name }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          make_latest: true
+          files: release-assets/*
+          fail_on_unmatched_files: true

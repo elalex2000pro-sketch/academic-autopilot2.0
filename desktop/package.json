@@ -1,6 +1,6 @@
 {
   "name": "academic-autopilot-desktop",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "private": true,
   "description": "App de escritorio de Academic Autopilot",
   "author": "Academic Autopilot",
@@ -9,6 +9,7 @@
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder --win nsis --x64",
+    "dist:mac": "electron-builder --mac --publish never",
     "dist:publish": "electron-builder --win nsis --x64 --publish always"
   },
   "dependencies": {
@@ -46,6 +47,24 @@
       "icon": "build/icon.ico",
       "artifactName": "Academic-Autopilot-Setup.exe",
       "requestedExecutionLevel": "asInvoker"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "artifactName": "Academic-Autopilot-${version}-mac.${ext}"
     },
     "nsis": {
       "oneClick": false,

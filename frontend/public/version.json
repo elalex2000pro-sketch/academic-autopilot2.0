@@ -1,12 +1,13 @@
 {
-  "version": "1.0.2",
-  "publishedAt": "2026-11-08T10:00:00.000Z",
+  "version": "1.1.0",
+  "publishedAt": "2026-11-08T22:56:22.000Z",
   "sizeBytes": 8388608,
   "notes": [
-    "Animaciones de entrada en cascada unificadas en todas las vistas.",
-    "La burbuja activa de la barra lateral y de la barra inferior se desliza con física spring.",
-    "Transiciones entre páginas con salida suave y entrada escalonada.",
-    "Mejoras de rendimiento: vistas pesadas cargadas bajo demanda."
+    "Rediseño visual glassmorphism y cabecera integrada en Academic-Office.",
+    "Lector PDF local con navegación y búsqueda, sin depender de servicios externos.",
+    "Menús, regla de márgenes y lienzo del editor de documentos corregidos.",
+    "Nuevo logo geométrico, semáforos de escritorio y mejoras de estabilidad.",
+    "Canal de actualizaciones automáticas con instaladores para Windows y macOS."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases"
 }
