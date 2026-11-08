@@ -2,19 +2,20 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
-import { CalendarCheck, Loader2, LogOut, Settings } from "lucide-react";
+import { Fragment, lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { Loader2, LogOut, Settings, type LucideIcon } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
+import { Logo } from "@/components/logo";
 import { MobileNavigationBar } from "@/components/mobile-navigation-bar";
 import { NotificationBell, NotificationCenter } from "@/components/notification-center";
 import { OfflineStatus } from "@/components/offline-status";
+import { PageTransition } from "@/components/page-transition";
 import { SystemNotifications } from "@/components/system-notifications";
 import { ThemeCycleButton } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { WindowControls } from "@/components/window-controls";
 import {
-  ALL_ITEMS,
   NAV_GROUPS,
   SECONDARY_NAV_ITEMS,
   SETTINGS_ITEM,
@@ -43,35 +44,58 @@ const OnboardingModal = lazy(() =>
   })),
 );
 
-function Logo() {
+const RAIL_SPRING = {
+  type: "spring",
+  stiffness: 390,
+  damping: 32,
+} as const;
+
+function RailNavLink({
+  href,
+  label,
+  icon: Icon,
+  active,
+  reduceMotion,
+}: {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  active: boolean;
+  reduceMotion: boolean;
+}) {
   return (
-    <Link href="/" className="app-no-drag flex min-w-0 items-center gap-2.5">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-[#3b8cff] to-[#0066ff] text-white shadow-[0_5px_14px_-6px_rgba(0,102,255,0.9),inset_0_1px_0_rgba(255,255,255,0.4)]">
-        <CalendarCheck className="h-[17px] w-[17px]" strokeWidth={2.2} />
-      </span>
-      <span className="min-w-0">
-        <span className="block truncate text-[13px] font-semibold leading-tight tracking-[-0.01em] text-slate-800 dark:text-white/90">
-          Academic Autopilot
-        </span>
-        <span className="block truncate text-[10.5px] leading-tight text-slate-500 dark:text-white/35">
-          Planificador de estudio
-        </span>
-      </span>
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      aria-label={label}
+      title={label}
+      className="group relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-white/55"
+    >
+      {active ? (
+        <motion.span
+          layoutId="v18-rail-active"
+          aria-hidden="true"
+          className="absolute inset-0 rounded-full bg-[#e9e4f6] shadow-[0_10px_24px_-12px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.75)]"
+          transition={reduceMotion ? { duration: 0 } : RAIL_SPRING}
+        />
+      ) : null}
+      <Icon
+        aria-hidden="true"
+        className={cn(
+          "relative z-10 h-[19px] w-[19px] transition-colors",
+          active ? "text-[#1d1d1f]" : "text-white/55 group-hover:text-white",
+        )}
+        strokeWidth={active ? 2.05 : 1.8}
+      />
     </Link>
   );
 }
-
-const navItemBase =
-  "group flex h-9 items-center gap-2.5 rounded-xl px-3 text-[12.5px] transition-[background-color,color,box-shadow] duration-150 ease-mac";
-const navItemActive =
-  "bg-[#0066FF] font-medium text-white shadow-[0_10px_24px_-12px_rgba(0,102,255,0.95)]";
-const navItemIdle =
-  "font-normal text-slate-600 hover:bg-slate-200/60 hover:text-slate-800 dark:text-white/55 dark:hover:bg-white/[0.055] dark:hover:text-white/90";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
   const isPublic = pathname === "/login";
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -96,7 +120,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (isPublic) {
     return (
       <>
-        {children}
+        <PageTransition>{children}</PageTransition>
         <Suspense fallback={null}>
           <HelpWidget />
         </Suspense>
@@ -107,7 +131,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (loading || !user) {
     return (
       <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-transparent text-slate-500 dark:text-white/45">
-        <Loader2 className="h-5 w-5 animate-spin text-[#0066FF]" />
+        <Loader2 className="h-5 w-5 animate-spin text-[#1d1d1f] dark:text-white" />
         <span className="text-[12.5px]">Cargando tu espacio…</span>
       </div>
     );
@@ -120,202 +144,164 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // gestionan su propia cabecera; el inset del shell les haría desbordar.
   const isBookReader = pathname.startsWith("/library/");
   const isImmersive = pathname === "/studio" || isBookReader;
-  const currentSection =
-    ALL_ITEMS.find((item) => isActive(pathname, item.href))?.label ?? "Academic Autopilot";
 
   return (
     <NotificationCenter>
       <SystemNotifications />
-      <div className="app-shell flex min-h-dvh flex-col bg-transparent lg:flex-row">
-      <aside className="sticky top-0 hidden h-dvh w-[236px] shrink-0 flex-col border-r border-slate-300/40 bg-slate-100/70 shadow-[18px_0_60px_-48px_rgba(32,39,48,0.22)] backdrop-blur-3xl dark:border-white/5 dark:bg-black/20 dark:shadow-[18px_0_60px_-48px_rgba(0,0,0,0.9)] lg:flex">
-        <div className="app-drag flex h-12 shrink-0 items-center px-4">
-          <WindowControls />
-        </div>
-
-        <div className="px-4 pb-5">
-          <Logo />
-        </div>
-
-        <nav className="flex flex-1 flex-col gap-4 overflow-y-auto px-2.5 pb-3">
-          {NAV_GROUPS.map((group) => (
-            <div key={group.label}>
-              <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-white/30">
-                {group.label}
-              </p>
-              <div className="space-y-0.5">
-                {group.items.map(({ href, label, icon: Icon }) => {
-                  const active = isActive(pathname, href);
-                  return (
-                    <Link
-                      key={href}
-                      href={href}
-                      aria-current={active ? "page" : undefined}
-                      className={cn(navItemBase, active ? navItemActive : navItemIdle)}
-                    >
-                      <Icon
-                        className={cn(
-                          "h-4 w-4 shrink-0 transition-colors",
-                          active
-                            ? "text-white"
-                            : "text-slate-400 group-hover:text-slate-700 dark:text-white/40 dark:group-hover:text-white/70",
-                        )}
-                        strokeWidth={1.8}
-                      />
-                      <span className="truncate">{label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </nav>
-
-        <div className="shrink-0 space-y-2 border-t border-slate-300/40 px-2.5 py-3 dark:border-white/[0.06]">
-          <Suspense
-            fallback={
-              <span className="block h-9 w-full rounded-xl bg-slate-200/40 dark:bg-white/[0.03]" />
-            }
+      <div className="app-shell flex min-h-dvh flex-col bg-transparent md:flex-row">
+        <aside className="v18-rail sticky top-4 ml-4 hidden h-[calc(100dvh-2rem)] w-[78px] shrink-0 flex-col items-center overflow-hidden rounded-[32px] border border-white/10 bg-[#1b1b1f] py-4 shadow-[0_30px_70px_-30px_rgba(20,20,28,0.72),inset_0_1px_0_rgba(255,255,255,0.09)] md:flex">
+          <Link
+            href="/"
+            aria-label="Academic Autopilot · Inicio"
+            title="Academic Autopilot"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white outline-none transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/55"
           >
-            <InstallAppButton
-              variant="ghost"
-              className="h-9 w-full justify-start rounded-xl px-3 text-[12.5px] font-normal text-slate-600 hover:bg-slate-200/60 hover:text-slate-800 dark:text-white/55 dark:hover:bg-white/[0.06] dark:hover:text-white/90 [&_svg]:text-slate-400 dark:[&_svg]:text-white/40"
-            />
-          </Suspense>
+            <Logo className="h-10 w-10" />
+          </Link>
 
-          <div className="flex items-center gap-0.5">
-            <Link
+          <nav
+            aria-label="Navegación principal"
+            className="hide-scrollbar mt-6 flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto px-2"
+          >
+            {NAV_GROUPS.map((group, groupIndex) => (
+              <Fragment key={group.label}>
+                {groupIndex > 0 ? (
+                  <span
+                    aria-hidden="true"
+                    className="my-2 h-px w-6 shrink-0 bg-white/10"
+                  />
+                ) : null}
+                {group.items.map(({ href, label, icon }) => (
+                  <RailNavLink
+                    key={href}
+                    href={href}
+                    label={label}
+                    icon={icon}
+                    active={isActive(pathname, href)}
+                    reduceMotion={Boolean(reduceMotion)}
+                  />
+                ))}
+              </Fragment>
+            ))}
+          </nav>
+
+          <div className="mt-2 flex shrink-0 flex-col items-center gap-1 border-t border-white/10 px-2 pt-3">
+            <NotificationBell className="h-11 w-11 rounded-full text-white/55 hover:bg-white/10 hover:text-white dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white" />
+            <ThemeCycleButton className="h-11 w-11 rounded-full text-white/55 hover:bg-white/10 hover:text-white dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white" />
+            <RailNavLink
               href={SETTINGS_ITEM.href}
-              className={cn(
-                "flex h-9 flex-1 items-center gap-2.5 rounded-xl px-3 text-[12.5px] transition-[background-color,color,box-shadow] duration-150",
-                isActive(pathname, SETTINGS_ITEM.href) ? navItemActive : navItemIdle,
-              )}
-            >
-              <Settings
-                className={cn(
-                  "h-4 w-4",
-                  isActive(pathname, SETTINGS_ITEM.href)
-                    ? "text-white"
-                    : "text-slate-400 dark:text-white/40",
-                )}
-                strokeWidth={1.8}
-              />
-              Ajustes
-            </Link>
-            <ThemeCycleButton className="text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:text-white/45 dark:hover:bg-white/[0.06] dark:hover:text-white/90" />
-          </div>
-
-          <div className="flex items-center gap-2 rounded-2xl border border-slate-300/40 bg-slate-100/60 px-2 py-2 dark:border-white/[0.04] dark:bg-white/[0.025]">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0066FF]/10 text-[10px] font-semibold text-[#0066FF] ring-1 ring-[#0066FF]/15 dark:bg-white/10 dark:text-white/90 dark:ring-white/10">
-              {initials}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-[12px] font-medium leading-tight text-slate-800 dark:text-white/85">
-                {name}
-              </span>
-              <span className="block truncate text-[10.5px] leading-tight text-slate-500 dark:text-white/35">
-                {user.email}
-              </span>
-            </span>
+              label={SETTINGS_ITEM.label}
+              icon={Settings}
+              active={isActive(pathname, SETTINGS_ITEM.href)}
+              reduceMotion={Boolean(reduceMotion)}
+            />
             <Button
               variant="ghost"
               size="icon"
               onClick={logout}
               aria-label="Cerrar sesión"
               title="Cerrar sesión"
-              className="h-7 w-7 text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 dark:text-white/40 dark:hover:bg-white/[0.06] dark:hover:text-white/90"
+              className="h-11 w-11 rounded-full text-white/55 hover:bg-white/10 hover:text-white dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white"
             >
-              <LogOut className="h-3.5 w-3.5" />
+              <LogOut className="h-[18px] w-[18px]" />
             </Button>
-          </div>
-        </div>
-      </aside>
-
-      <div className="flex min-w-0 flex-1 flex-col bg-transparent">
-        {/* Barra superior de escritorio: ocupa el alto que antes reservaba el
-            contenido y aloja el centro de avisos. */}
-        {!isImmersive && (
-          <header className="app-drag sticky top-0 z-40 hidden h-12 shrink-0 items-center justify-between gap-3 border-b border-slate-300/40 bg-slate-100/70 px-5 backdrop-blur-3xl dark:border-white/[0.06] dark:bg-black/40 lg:flex">
-            <span className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">
-              {currentSection}
+            <span
+              title={name}
+              className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-[#e9e4f6] text-[10px] font-semibold text-[#1d1d1f] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
+            >
+              {initials}
             </span>
-            <div className="app-no-drag flex shrink-0 items-center gap-0.5">
-              <NotificationBell />
-            </div>
-          </header>
-        )}
-
-        {/* Barra superior móvil, con la translucidez de una toolbar. */}
-        {!isBookReader && (
-        <header className="sticky top-0 z-40 border-b border-slate-300/40 bg-slate-100/70 pt-[env(safe-area-inset-top,0px)] backdrop-blur-3xl dark:border-white/[0.06] dark:bg-black/40 lg:hidden">
-          <div className="flex items-center justify-between gap-2 px-3 py-2">
-            <Logo />
-            <div className="flex shrink-0 items-center gap-0.5">
-              <Suspense fallback={<span className="block h-8 w-8" />}>
-                <InstallAppButton compact />
-              </Suspense>
-              <NotificationBell />
-              <ThemeCycleButton className="text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:text-white/50 dark:hover:bg-white/10 dark:hover:text-white" />
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={logout}
-                aria-label="Cerrar sesión"
-                className="text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:text-white/50 dark:hover:bg-white/10 dark:hover:text-white"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
           </div>
-          <nav className="hide-scrollbar flex gap-1 overflow-x-auto px-2.5 pb-2">
-            {SECONDARY_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-              const active = isActive(pathname, href);
-              return (
+        </aside>
+
+        <div className="flex min-w-0 flex-1 flex-col bg-transparent">
+          {/* Cabecera móvil: el rail de escritorio empieza en `md`. */}
+          {!isBookReader ? (
+            <header className="sticky top-0 z-40 border-b border-black/[0.04] bg-[#f4f4f7]/82 pt-[env(safe-area-inset-top,0px)] backdrop-blur-2xl dark:border-white/[0.06] dark:bg-[#0c0c0f]/82 md:hidden">
+              <div className="flex items-center justify-between gap-2 px-3 py-2">
                 <Link
-                  key={href}
-                  href={href}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "flex h-11 shrink-0 items-center gap-1.5 rounded-xl px-3 text-xs font-medium transition-colors",
-                    active
-                      ? "bg-[#0066FF] text-white shadow-[0_8px_18px_-10px_rgba(0,102,255,0.9)]"
-                      : "text-slate-600 hover:bg-slate-200/60 hover:text-slate-800 dark:text-white/45 dark:hover:bg-white/[0.06] dark:hover:text-white/85",
-                  )}
+                  href="/"
+                  className="flex min-w-0 items-center gap-2.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[#1d1d1f]/25 dark:focus-visible:ring-white/35"
+                  aria-label="Academic Autopilot · Inicio"
                 >
-                  <Icon className="h-4 w-4" strokeWidth={1.8} />
-                  {label}
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#1b1b1f] text-white">
+                    <Logo className="h-6 w-6" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-[12.5px] font-semibold leading-tight tracking-[-0.02em] text-[#1d1d1f] dark:text-white/90">
+                      Academic Autopilot
+                    </span>
+                    <span className="block truncate text-[9.5px] leading-tight text-black/45 dark:text-white/35">
+                      Planificador de estudio
+                    </span>
+                  </span>
                 </Link>
-              );
-            })}
-          </nav>
-        </header>
-        )}
+                <div className="flex shrink-0 items-center gap-0.5">
+                  <Suspense fallback={<span className="block h-9 w-9" />}>
+                    <InstallAppButton compact />
+                  </Suspense>
+                  <NotificationBell className="h-10 w-10 rounded-full text-slate-500 hover:bg-black/[0.05] hover:text-slate-800 dark:text-white/50 dark:hover:bg-white/10 dark:hover:text-white" />
+                  <ThemeCycleButton className="h-10 w-10 rounded-full text-slate-500 hover:bg-black/[0.05] hover:text-slate-800 dark:text-white/50 dark:hover:bg-white/10 dark:hover:text-white" />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={logout}
+                    aria-label="Cerrar sesión"
+                    className="h-10 w-10 rounded-full text-slate-500 hover:bg-black/[0.05] hover:text-slate-800 dark:text-white/50 dark:hover:bg-white/10 dark:hover:text-white"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <nav className="hide-scrollbar flex gap-1.5 overflow-x-auto px-3 pb-2">
+                {SECONDARY_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+                  const active = isActive(pathname, href);
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      aria-current={active ? "page" : undefined}
+                      className={cn(
+                        "flex h-11 shrink-0 touch-manipulation items-center gap-1.5 rounded-full px-3 text-[11px] font-medium transition-colors",
+                        active
+                          ? "bg-[#1b1b1f] text-white shadow-[0_6px_16px_-9px_rgba(0,0,0,0.7)]"
+                          : "bg-white/55 text-black/55 hover:bg-white/80 hover:text-black/80 dark:bg-white/[0.06] dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white/85",
+                      )}
+                    >
+                      <Icon className="h-3.5 w-3.5" strokeWidth={1.8} />
+                      {label}
+                    </Link>
+                  );
+                })}
+              </nav>
+            </header>
+          ) : null}
 
-        <OfflineStatus />
+          <OfflineStatus />
 
-        {/* 40 px en móvil; en escritorio la barra superior ya ocupa 48 px. */}
-        <main
-          className={cn(
-            "min-w-0 flex-1 bg-transparent",
-            isBookReader ? "overflow-x-clip" : "overflow-x-hidden",
-            !isImmersive &&
-              "pt-10 pb-[calc(var(--mobile-nav-offset)+1.25rem)] lg:pb-0 lg:pt-0",
-          )}
-        >
-          {children}
-          <Suspense fallback={null}>
-            <HelpWidget />
-          </Suspense>
-        </main>
+          <main
+            className={cn(
+              "min-w-0 flex-1 bg-transparent",
+              isBookReader ? "overflow-x-clip" : "overflow-x-hidden",
+              !isImmersive &&
+                "pb-[calc(var(--mobile-nav-offset)+1.25rem)] pt-4 md:pb-0 md:pt-0",
+            )}
+          >
+            <PageTransition>{children}</PageTransition>
+            <Suspense fallback={null}>
+              <HelpWidget />
+            </Suspense>
+          </main>
+        </div>
+
+        {!isBookReader ? <MobileNavigationBar /> : null}
       </div>
 
-      {!isBookReader && <MobileNavigationBar />}
-      </div>
-
-      {showOnboarding && (
+      {showOnboarding ? (
         <Suspense fallback={null}>
           <OnboardingModal onClose={finishOnboarding} />
         </Suspense>
-      )}
+      ) : null}
     </NotificationCenter>
   );
 }

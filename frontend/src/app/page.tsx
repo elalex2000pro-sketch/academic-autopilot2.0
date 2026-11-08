@@ -3,15 +3,19 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { motion, type Variants } from "framer-motion";
 import {
   ArrowUpRight,
   BookOpen,
   Brain,
   CalendarClock,
   CalendarRange,
+  ChevronLeft,
+  ChevronRight,
   Check,
   CheckCircle2,
   FolderOpen,
+  Layers,
   Library,
   ListTodo,
   Loader2,
@@ -31,6 +35,7 @@ import { usePreferences } from "@/components/preferences-provider";
 import { Input } from "@/components/ui/input";
 import { SyncStatus } from "@/components/sync-status";
 import { TaskList } from "@/components/task-list";
+import { StatsCard } from "@/components/ui/stats-card";
 import { useRealtime } from "@/components/realtime-provider";
 import { useTaskManager } from "@/hooks/use-task-manager";
 import { api } from "@/lib/api";
@@ -50,6 +55,29 @@ import type {
   OptimizedPlan,
 } from "@/lib/types";
 import { cn, formatMinutes } from "@/lib/utils";
+
+const STATS_STAGGER: Variants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.1, delayChildren: 0.1 },
+  },
+};
+
+const DASHBOARD_STAGGER: Variants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.1, delayChildren: 0.14 },
+  },
+};
+
+const DASHBOARD_ITEM: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 280, damping: 28 },
+  },
+};
 
 const PRIORITY_COLOR: Record<string, string> = {
   urgent: "#ff453a",
@@ -149,62 +177,6 @@ function groupByDay<T extends { start_at: string }>(items: T[]) {
   return Array.from(groups.entries());
 }
 
-function ProgressRing({
-  value,
-  color,
-  size = 54,
-  stroke = 5,
-  children,
-}: {
-  value: number;
-  color: string;
-  size?: number;
-  stroke?: number;
-  children?: React.ReactNode;
-}) {
-  const radius = (size - stroke) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const percent = Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
-  const offset = circumference - (percent / 100) * circumference;
-
-  return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <svg viewBox={`0 0 ${size} ${size}`} className="h-full w-full -rotate-90">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={stroke}
-          className="text-slate-900/10 dark:text-white/10"
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke={color}
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          className="transition-[stroke-dashoffset] duration-700 ease-out"
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">{children}</div>
-    </div>
-  );
-}
-
-function StatLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.09em] text-slate-400 dark:text-white/35">
-      {children}
-    </p>
-  );
-}
-
 export default function DashboardPage() {
   const { user } = useAuth();
   const { autoStrikeOverdue } = usePreferences();
@@ -219,6 +191,7 @@ export default function DashboardPage() {
   const [savingGradeId, setSavingGradeId] = useState<string | null>(null);
   const [gradeNotice, setGradeNotice] = useState<string | null>(null);
   const [editingExam, setEditingExam] = useState<Grade | null>(null);
+  const [weekOffset, setWeekOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [, setTick] = useState(0);
   const initialLoading = loading && !plan && !agenda;
@@ -334,6 +307,7 @@ export default function DashboardPage() {
 
   const tasks = activeTasks;
   const name = user?.full_name?.trim() || user?.email.split("@")[0] || "estudiante";
+  const initials = name.slice(0, 2).toUpperCase();
   const now = new Date();
   const dateLabel = capitalize(
     now.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" }),
@@ -387,11 +361,27 @@ export default function DashboardPage() {
   const totalMinutes = agenda?.total_minutes ?? 0;
   const planProgress = Math.round(agenda?.progress_percent ?? 0);
   const urgentCount = tasks.filter((task) => task.priority === "urgent").length;
-  const projectCount = tasks.filter((task) => task.priority === "long_project").length;
-  const shortCount = tasks.filter((task) => task.priority === "short_task").length;
-  const taskTotal = Math.max(1, tasks.length);
 
   const todayKey = localDateKey();
+
+  const weekStart = new Date(now);
+  weekStart.setHours(12, 0, 0, 0);
+  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7) + weekOffset * 7);
+  const weekDays = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(weekStart);
+    date.setDate(weekStart.getDate() + index);
+    return {
+      key: `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`,
+      weekday: date.toLocaleDateString("es-ES", { weekday: "short" }).replace(".", ""),
+      day: date.getDate(),
+      isToday: date.toDateString() === now.toDateString(),
+    };
+  });
+  const calendarMonth = capitalize(
+    weekStart.toLocaleDateString("es-ES", { month: "long", year: "numeric" }),
+  );
+  const calendarPreview = [...todayItems, ...upcoming].slice(0, 3);
+
   const courseById = useMemo(
     () => new Map(courses.map((course) => [course.id, course])),
     [courses],
@@ -489,169 +479,234 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="relative mx-auto max-w-[1500px] px-4 pb-12 pt-5 sm:px-7 lg:pt-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-white/35">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#30d158]" />
-            {dateLabel}
-          </p>
+    <motion.div
+      variants={DASHBOARD_STAGGER}
+      className="relative mx-auto max-w-[1500px] px-4 pb-12 pt-4 sm:px-6 lg:px-8 lg:pt-6"
+    >
+      <motion.div
+        variants={DASHBOARD_STAGGER}
+        className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.9fr)]"
+      >
+        <motion.section
+          variants={DASHBOARD_ITEM}
+          className="relative overflow-hidden rounded-[30px] border border-white/55 bg-[linear-gradient(118deg,#e9e4f8_0%,#f2eefb_52%,#ddd7f3_100%)] p-6 text-[#28233a] shadow-[0_22px_58px_-42px_rgba(55,45,90,0.4),inset_0_1px_0_rgba(255,255,255,0.82)] sm:p-7"
+        >
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-12 -top-20 h-64 w-64 rounded-full bg-[#c8bdf2]/55 blur-3xl"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-2 top-8 h-36 w-36 rotate-45 rounded-[38%] border border-white/55 bg-white/10"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -bottom-20 left-1/3 h-48 w-48 rounded-full bg-white/30 blur-3xl"
+          />
 
-          <h1 className="mt-3 text-[30px] font-light leading-[1.05] tracking-[-0.035em] text-slate-800 dark:text-white/90 sm:text-[36px]">
-            {greeting}, <span className="font-semibold">{name}</span>
-          </h1>
+          <div className="relative z-10 flex h-full min-h-[238px] flex-col justify-between gap-6">
+            <div className="flex items-start justify-between gap-4">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/45 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#5b536e] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-xl">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.55)]" />
+                {dateLabel}
+              </span>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="hidden rounded-full bg-white/45 px-2.5 py-1 text-[10px] font-semibold text-[#5b536e] sm:block">
+                  Tu espacio
+                </span>
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1b1b1f] text-[10px] font-semibold text-white shadow-[0_8px_18px_-10px_rgba(20,20,28,0.8)]">
+                  {initials}
+                </span>
+              </div>
+            </div>
 
-          <p className="mt-2 max-w-xl text-[12.5px] leading-5 text-slate-500 dark:text-white/45">
-            {tasks.length > 0
-              ? `Tienes ${tasks.length} tarea${tasks.length === 1 ? "" : "s"} pendiente${
-                  tasks.length === 1 ? "" : "s"
-                }. Tu plan de hoy ya está repartido en huecos.`
-              : "No tienes tareas pendientes. Buen momento para adelantar apuntes o crear un cuaderno nuevo."}
-          </p>
+            <div>
+              <h1 className="max-w-2xl text-[30px] font-semibold leading-[1.02] tracking-[-0.055em] text-[#211d2e] sm:text-[40px]">
+                {greeting}, {name}.
+              </h1>
+              <p className="mt-2 max-w-xl text-[12.5px] leading-5 text-[#5b536e] sm:text-[13px]">
+                {tasks.length > 0
+                  ? `Tienes ${tasks.length} tarea${tasks.length === 1 ? "" : "s"} pendiente${
+                      tasks.length === 1 ? "" : "s"
+                    } · ${planProgress}% del plan de hoy completado.`
+                  : "No tienes tareas pendientes. Buen momento para adelantar apuntes o crear un cuaderno nuevo."}
+              </p>
+              <p className="mt-2 flex max-w-xl items-start gap-1.5 text-[11px] leading-5 text-[#5b536e]/80">
+                <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#6d5ca8]" strokeWidth={1.8} />
+                <span className="line-clamp-2">{impulse}</span>
+              </p>
+            </div>
 
-          <p className="mt-3 flex max-w-xl items-start gap-2 text-[11.5px] leading-5 text-slate-500 dark:text-white/35">
-            <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#bf5af2]" strokeWidth={1.8} />
-            <span>{impulse}</span>
-          </p>
-        </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href="/planner"
+                className="inline-flex h-11 touch-manipulation items-center gap-1.5 rounded-full bg-[#1b1b1f] px-4 text-[11.5px] font-semibold text-white shadow-[0_12px_26px_-14px_rgba(20,20,28,0.9)] transition-transform hover:-translate-y-0.5"
+              >
+                Abrir planificador
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </Link>
+              <Link
+                href="/studio"
+                className="inline-flex h-11 touch-manipulation items-center gap-1.5 rounded-full border border-white/60 bg-white/45 px-4 text-[11.5px] font-semibold text-[#3f3852] shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] backdrop-blur-xl transition-colors hover:bg-white/65"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Crear con IA
+              </Link>
+              {urgentCount > 0 ? (
+                <span className="ml-auto hidden rounded-full bg-[#ff3b30]/10 px-2.5 py-1 text-[10px] font-semibold text-[#a52b24] md:block">
+                  {urgentCount} urgente{urgentCount === 1 ? "" : "s"}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        </motion.section>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <motion.section
+          variants={DASHBOARD_ITEM}
+          className="glass-card flex flex-col rounded-[30px] p-5 sm:p-6"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[9.5px] font-semibold uppercase tracking-[0.18em] text-black/40 dark:text-white/35">
+                Calendario
+              </p>
+              <h2 className="mt-1 text-[19px] font-semibold tracking-[-0.035em] text-[#1d1d1f] dark:text-white">
+                {calendarMonth}
+              </h2>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setWeekOffset((value) => value - 1)}
+                aria-label="Semana anterior"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-black/[0.06] bg-white/45 text-black/45 transition-colors hover:bg-white/80 hover:text-black/75 dark:border-white/10 dark:bg-white/[0.05] dark:text-white/45 dark:hover:bg-white/10 dark:hover:text-white"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setWeekOffset((value) => value + 1)}
+                aria-label="Semana siguiente"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-black/[0.06] bg-white/45 text-black/45 transition-colors hover:bg-white/80 hover:text-black/75 dark:border-white/10 dark:bg-white/[0.05] dark:text-white/45 dark:hover:bg-white/10 dark:hover:text-white"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-7 gap-1">
+            {weekDays.map((day) => (
+              <div key={day.key} className="flex min-w-0 flex-col items-center gap-1.5">
+                <span className="text-[9px] font-medium uppercase tracking-[0.08em] text-black/35 dark:text-white/30">
+                  {day.weekday}
+                </span>
+                <span
+                  className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums transition-colors",
+                    day.isToday
+                      ? "bg-[#1b1b1f] text-white shadow-[0_7px_16px_-10px_rgba(20,20,28,0.9)]"
+                      : "text-black/55 hover:bg-black/[0.04] dark:text-white/55 dark:hover:bg-white/[0.06]",
+                  )}
+                >
+                  {day.day}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 min-h-0 flex-1 space-y-1 border-t border-black/[0.06] pt-3 dark:border-white/[0.07]">
+            {calendarPreview.length > 0 ? (
+              calendarPreview.map((item, index) => (
+                <div
+                  key={`${item.start_at}-${item.title}-${index}`}
+                  className="flex items-center gap-2.5 rounded-xl px-1.5 py-1.5 transition-colors hover:bg-black/[0.025] dark:hover:bg-white/[0.035]"
+                >
+                  <span
+                    className="h-1.5 w-1.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: PRIORITY_COLOR[item.priority] ?? "#8e8e93" }}
+                  />
+                  <span className="w-9 shrink-0 text-[10px] font-medium tabular-nums text-black/35 dark:text-white/30">
+                    {formatTime(item.start_at)}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-[11.5px] font-medium text-black/65 dark:text-white/65">
+                    {item.title}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <p className="rounded-xl border border-dashed border-black/[0.08] px-3 py-2.5 text-[11px] leading-4 text-black/40 dark:border-white/10 dark:text-white/35">
+                Sin bloques en esta semana. Abre el planificador para repartir tu estudio.
+              </p>
+            )}
+          </div>
+
           <Link
             href="/planner"
-            className="app-glass-soft flex h-11 items-center gap-1.5 rounded-xl px-3 text-[12px] md:h-9 font-medium text-slate-600 transition-colors hover:bg-slate-100/65 hover:text-slate-900 dark:text-white/65 dark:hover:bg-white/[0.08] dark:hover:text-white"
+            className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-black/45 transition-colors hover:text-black/80 dark:text-white/40 dark:hover:text-white/80"
           >
-            <CalendarRange className="h-3.5 w-3.5" strokeWidth={1.8} />
-            Planificador
+            Ver calendario completo
+            <ArrowUpRight className="h-3 w-3" />
           </Link>
-          <Link
-            href="/studio"
-            className="flex h-11 items-center gap-1.5 rounded-xl bg-slate-900/[0.06] px-3 text-[12px] md:h-9 font-medium text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] transition-colors hover:bg-slate-900/[0.09] dark:bg-white/[0.10] dark:text-white/85 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] dark:hover:bg-white/[0.15]"
-          >
-            <Sparkles className="h-3.5 w-3.5" strokeWidth={1.8} />
-            Crear con IA
-          </Link>
-        </div>
-      </header>
+        </motion.section>
+      </motion.div>
 
       {/* ---- Widgets superiores ---- */}
-      <section
+      <motion.section
+        variants={STATS_STAGGER}
         aria-busy={initialLoading}
-        className="relative mt-6 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4"
+        className="relative mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"
       >
         {initialLoading ? (
           <div
             aria-hidden="true"
-            className="absolute inset-0 z-10 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4"
+            className="absolute inset-0 z-10 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"
           >
             {[0, 1, 2, 3].map((item) => (
               <div
                 key={item}
-                className="h-[132px] animate-pulse rounded-3xl border border-white/40 bg-slate-100/60 motion-reduce:animate-none dark:border-white/[0.06] dark:bg-white/[0.035]"
+                className="h-[166px] animate-pulse rounded-2xl border border-white/50 bg-white/30 motion-reduce:animate-none dark:border-white/[0.07] dark:bg-white/[0.04]"
               />
             ))}
           </div>
         ) : null}
-        <div className="app-glass rounded-3xl p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <StatLabel>
-                <ListTodo className="h-3 w-3" strokeWidth={1.9} />
-                Pendientes
-              </StatLabel>
-              <p className="mt-2 text-[28px] font-light leading-none tracking-[-0.04em] text-slate-800 dark:text-white/90">
-                {tasks.length}
-              </p>
-              <p className="mt-1.5 text-[10.5px] text-slate-500 dark:text-white/35">
-                {tasks.length === 0
-                  ? "Todo al día"
-                  : `${urgentCount} urgente${urgentCount === 1 ? "" : "s"}`}
-              </p>
-            </div>
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-900/[0.04] text-slate-500 ring-1 ring-slate-900/[0.05] dark:bg-white/[0.055] dark:text-white/45 dark:ring-white/[0.05]">
-              <ListTodo className="h-4 w-4" strokeWidth={1.8} />
-            </span>
-          </div>
-          <div className="mt-4 flex h-1 overflow-hidden rounded-full bg-slate-900/[0.06] dark:bg-white/[0.08]">
-            {tasks.length > 0 && (
-              <>
-                <span
-                  className="h-full bg-[#ff453a]"
-                  style={{ width: `${(urgentCount / taskTotal) * 100}%` }}
-                />
-                <span
-                  className="h-full bg-[#bf5af2]"
-                  style={{ width: `${(projectCount / taskTotal) * 100}%` }}
-                />
-                <span
-                  className="h-full bg-[#0a84ff]"
-                  style={{ width: `${(shortCount / taskTotal) * 100}%` }}
-                />
-              </>
-            )}
-          </div>
-        </div>
+        <StatsCard
+          title="Pendientes"
+          value={tasks.length}
+          change={
+            tasks.length === 0
+              ? "Todo al día"
+              : `${urgentCount} urgente${urgentCount === 1 ? "" : "s"}`
+          }
+          icon={ListTodo}
+          gradient="from-rose-500 to-orange-500"
+          tone={urgentCount > 0 ? "warning" : "positive"}
+        />
 
-        <div className="app-glass flex items-center gap-3 rounded-3xl p-4">
-          <ProgressRing value={planProgress} color="#30d158">
-            <span className="text-[11px] font-semibold tabular-nums text-slate-700 dark:text-white/80">
-              {planProgress}%
-            </span>
-          </ProgressRing>
-          <div className="min-w-0">
-            <StatLabel>
-              <Timer className="h-3 w-3" strokeWidth={1.9} />
-              Plan de hoy
-            </StatLabel>
-            <p className="mt-1.5 text-[20px] font-light leading-none tracking-[-0.03em] text-slate-800 dark:text-white/90">
-              {formatMinutes(completedMinutes)}
-            </p>
-            <p className="mt-1.5 truncate text-[10.5px] text-slate-500 dark:text-white/35">
-              de {formatMinutes(totalMinutes)}
-            </p>
-          </div>
-        </div>
+        <StatsCard
+          title="Plan de hoy"
+          value={`${planProgress}%`}
+          change={`${formatMinutes(completedMinutes)} de ${formatMinutes(totalMinutes)}`}
+          icon={Timer}
+          gradient="from-emerald-400 to-teal-600"
+        />
 
-        <div className="app-glass flex items-center gap-3 rounded-3xl p-4">
-          <ProgressRing value={blockProgress} color="#bf5af2">
-            <span className="text-[10px] font-semibold tabular-nums text-slate-700 dark:text-white/80">
-              {completedBlocks}/{totalBlocks}
-            </span>
-          </ProgressRing>
-          <div className="min-w-0">
-            <StatLabel>
-              <CalendarClock className="h-3 w-3" strokeWidth={1.9} />
-              Bloques
-            </StatLabel>
-            <p className="mt-1.5 text-[20px] font-light leading-none tracking-[-0.03em] text-slate-800 dark:text-white/90">
-              {totalBlocks} <span className="text-[11px] text-slate-400 dark:text-white/30">hoy</span>
-            </p>
-            <p className="mt-1.5 truncate text-[10.5px] text-slate-500 dark:text-white/35">
-              {completedBlocks} completado{completedBlocks === 1 ? "" : "s"}
-            </p>
-          </div>
-        </div>
+        <StatsCard
+          title="Bloques"
+          value={completedBlocks}
+          change={`de ${totalBlocks} bloque${totalBlocks === 1 ? "" : "s"} · ${Math.round(blockProgress)}%`}
+          icon={Layers}
+          gradient="from-violet-500 to-indigo-600"
+        />
 
-        <div className="app-glass flex items-center gap-3 rounded-3xl p-4">
-          <ProgressRing value={readingProgress} color="#ff9f0a">
-            <span className="text-[10px] font-semibold tabular-nums text-slate-700 dark:text-white/80">
-              {Math.round(readingProgress)}%
-            </span>
-          </ProgressRing>
-          <div className="min-w-0">
-            <StatLabel>
-              <BookOpen className="h-3 w-3" strokeWidth={1.9} />
-              Lectura
-            </StatLabel>
-            <p className="mt-1.5 text-[20px] font-light leading-none tracking-[-0.03em] text-slate-800 dark:text-white/90">
-              {readingBooks.length}{" "}
-              <span className="text-[11px] text-slate-400 dark:text-white/30">en curso</span>
-            </p>
-            <p className="mt-1.5 truncate text-[10.5px] text-slate-500 dark:text-white/35">
-              {continueBook ? continueBook.title : "Elige tu próximo libro"}
-            </p>
-          </div>
-        </div>
-      </section>
+        <StatsCard
+          title="Lectura"
+          value={readingBooks.length}
+          change={readingBooks.length ? `${Math.round(readingProgress)}% de media` : "Sin lecturas activas"}
+          icon={BookOpen}
+          gradient="from-sky-400 to-blue-600"
+          tone={readingBooks.length > 0 ? "positive" : "neutral"}
+        />
+      </motion.section>
 
       {/* ---- Registro obligatorio de exámenes pasados sin nota ---- */}
       {gradeNotice && (
@@ -847,7 +902,10 @@ export default function DashboardPage() {
       )}
 
       {/* ---- Línea de tiempo + columna lateral ---- */}
-      <section className="mt-4 grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      <motion.section
+        variants={DASHBOARD_ITEM}
+        className="mt-4 grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]"
+      >
         <section className="app-glass flex flex-col rounded-3xl p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -1072,7 +1130,7 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        <div className="min-w-0 space-y-4">
+        <motion.div variants={DASHBOARD_ITEM} className="min-w-0 space-y-4">
           {/* ---- Tareas pendientes: activas + historial de vencidas ---- */}
           <TaskList
             tasks={tasks}
@@ -1152,11 +1210,11 @@ export default function DashboardPage() {
           )}
 
           <SyncStatus onSynced={load} />
-        </div>
-      </section>
+        </motion.div>
+      </motion.section>
 
       {/* ---- Quick Dock ---- */}
-      <section aria-labelledby="quick-dock-title" className="mt-6">
+      <motion.section variants={DASHBOARD_ITEM} aria-labelledby="quick-dock-title" className="mt-6">
         <h2 id="quick-dock-title" className="sr-only">
           Acceso rápido
         </h2>
@@ -1182,7 +1240,7 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {editingExam ? (
         <ExamDialog
@@ -1202,6 +1260,6 @@ export default function DashboardPage() {
           }}
         />
       ) : null}
-    </div>
+    </motion.div>
   );
 }

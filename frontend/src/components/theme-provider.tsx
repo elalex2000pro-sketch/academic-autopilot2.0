@@ -5,10 +5,11 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 export type Theme = "light" | "dark" | "system";
 export type ResolvedTheme = "light" | "dark";
 
-const STORAGE_KEY = "academic-autopilot-theme";
+const STORAGE_KEY = "academic-autopilot-theme-v18";
+const DEFAULT_THEME: Theme = "light";
 const THEME_COLORS: Record<ResolvedTheme, string> = {
-  light: "#e4e8ec",
-  dark: "#10131a",
+  light: "#f3f3f6",
+  dark: "#0a0a0a",
 };
 
 interface ThemeContextValue {
@@ -37,13 +38,13 @@ function applyTheme(theme: Theme): ResolvedTheme {
 }
 
 function storedTheme(): Theme {
-  if (typeof window === "undefined") return "system";
+  if (typeof window === "undefined") return DEFAULT_THEME;
   const value = window.localStorage.getItem(STORAGE_KEY);
-  return value === "light" || value === "dark" || value === "system" ? value : "system";
+  return value === "light" || value === "dark" || value === "system" ? value : DEFAULT_THEME;
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("system");
+  const [theme, setThemeState] = useState<Theme>(DEFAULT_THEME);
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("light");
 
   // Recupera la preferencia guardada y aplica el tema al montar.

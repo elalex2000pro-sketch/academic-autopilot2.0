@@ -1,14 +1,10 @@
 "use client";
 
 import { lazy, Suspense, useState } from "react";
-import {
-  CalendarCheck,
-  Check,
-  KeyRound,
-  Loader2,
-} from "lucide-react";
+import { Check, KeyRound, Loader2 } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
+import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -102,8 +98,8 @@ export default function LoginPage() {
           {/* Presentación */}
           <div className="hidden flex-col justify-between border-r border-slate-300/40 bg-slate-200/40 p-9 dark:border-white/[0.06] dark:bg-white/[0.03] lg:flex">
             <div>
-              <span className="flex h-14 w-14 items-center justify-center rounded-[14px] bg-gradient-to-b from-[#4da3ff] to-[#0066d6] text-white shadow-[0_2px_6px_rgba(0,80,200,0.28),inset_0_1px_0_rgba(255,255,255,0.4)]">
-                <CalendarCheck className="h-7 w-7" strokeWidth={2} />
+              <span className="flex h-14 w-14 items-center justify-center rounded-[18px] bg-[#1b1b1f] text-white shadow-[0_14px_30px_-18px_rgba(20,20,28,0.8),inset_0_1px_0_rgba(255,255,255,0.12)]">
+                <Logo className="h-9 w-9" />
               </span>
 
               <h1 className="mt-6 text-[26px] font-semibold leading-[1.15] tracking-[-0.025em]">
@@ -136,8 +132,8 @@ export default function LoginPage() {
           {/* Formulario */}
           <div className="p-6 sm:p-9">
             <div className="mb-7 flex items-center gap-2.5 lg:hidden">
-              <span className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-gradient-to-b from-[#4da3ff] to-[#0066d6] text-white shadow-sm">
-                <CalendarCheck className="h-4 w-4" strokeWidth={2.2} />
+              <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#1b1b1f] text-white shadow-sm">
+                <Logo className="h-6 w-6" />
               </span>
               <span className="text-[13px] font-semibold">Academic Autopilot</span>
             </div>

@@ -1,0 +1,130 @@
+/* --------------------------------------------------------------------------
+   Dashboard V18
+   Material compartido de cristal, acentos índigo/cian y fondo ambiental.
+   Se carga después de globals.css para unificar todas las tarjetas de la app.
+   -------------------------------------------------------------------------- */
+:root {
+  --background: 240 20% 97%;
+  --v18-card-border: rgb(255 255 255 / 0.82);
+  --v18-card-border-hover: rgb(255 255 255 / 0.98);
+  --v18-card-bg:
+    radial-gradient(120% 130% at 0% 0%, rgb(255 255 255 / 0.9), transparent 54%),
+    linear-gradient(145deg, rgb(255 255 255 / 0.8), rgb(247 247 250 / 0.7));
+  --v18-card-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.92),
+    0 22px 54px -38px rgb(28 27 38 / 0.28);
+  --v18-card-hover-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 1),
+    0 30px 70px -38px rgb(73 67 112 / 0.22);
+  --v18-soft-border: rgb(255 255 255 / 0.66);
+  --v18-soft-bg: rgb(255 255 255 / 0.54);
+}
+
+.dark {
+  --background: 0 0% 4%;
+  --v18-card-border: rgb(255 255 255 / 0.085);
+  --v18-card-border-hover: rgb(129 140 248 / 0.32);
+  --v18-card-bg:
+    radial-gradient(130% 120% at 0% 0%, rgb(255 255 255 / 0.065), transparent 52%),
+    linear-gradient(145deg, rgb(24 24 27 / 0.9), rgb(10 10 10 / 0.94));
+  --v18-card-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.07),
+    0 28px 76px -42px rgb(0 0 0 / 0.96);
+  --v18-card-hover-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.1),
+    0 32px 80px -38px rgb(0 0 0 / 1),
+    0 0 0 1px rgb(99 102 241 / 0.08);
+  --v18-soft-border: rgb(255 255 255 / 0.07);
+  --v18-soft-bg: rgb(255 255 255 / 0.045);
+}
+
+.glass-card,
+.glass-strong,
+.app-glass,
+.app-glass-strong {
+  border: 1px solid var(--v18-card-border);
+  background: var(--v18-card-bg);
+  box-shadow: var(--v18-card-shadow);
+  backdrop-filter: blur(28px) saturate(150%);
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
+  transition:
+    border-color 0.3s ease,
+    box-shadow 0.3s ease,
+    background-color 0.3s ease;
+}
+
+.app-glass-soft {
+  border: 1px solid var(--v18-soft-border);
+  background: var(--v18-soft-bg);
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .glass-card:hover,
+  .glass-strong:hover,
+  .app-glass:hover,
+  .app-glass-strong:hover {
+    border-color: var(--v18-card-border-hover);
+    box-shadow: var(--v18-card-hover-shadow);
+  }
+}
+
+/* Lienzo claro de la referencia: gris cálido con lavanda y rosa muy suaves. */
+.wallpaper-swatch {
+  background-color: #f3f3f6;
+  background-image:
+    radial-gradient(70% 55% at 12% 0%, rgb(201 198 235 / 0.26) 0%, transparent 70%),
+    radial-gradient(45% 40% at 92% 2%, rgb(245 218 231 / 0.22) 0%, transparent 72%),
+    radial-gradient(65% 50% at 50% 100%, rgb(221 220 240 / 0.2) 0%, transparent 78%),
+    linear-gradient(180deg, #f7f7f9 0%, #f1f1f5 58%, #f4f4f7 100%);
+}
+
+.dark .wallpaper-swatch {
+  background-color: #0a0a0a;
+  background-image:
+    radial-gradient(70% 52% at 18% 0%, rgb(99 102 241 / 0.14) 0%, transparent 72%),
+    radial-gradient(48% 46% at 88% 12%, rgb(34 211 238 / 0.08) 0%, transparent 74%),
+    radial-gradient(58% 52% at 50% 100%, rgb(168 85 247 / 0.055) 0%, transparent 78%),
+    linear-gradient(180deg, #0a0a0a 0%, #09090b 58%, #0a0a0a 100%);
+}
+
+.wallpaper-veil {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0));
+}
+
+.dark .wallpaper-veil {
+  background: rgb(10 10 10 / 0.52);
+}
+
+html:not(.dark) {
+  background-color: #f3f3f6 !important;
+}
+
+html:not(.dark) body {
+  background-color: #f3f3f6 !important;
+}
+
+html.dark {
+  background-color: #0a0a0a !important;
+}
+
+html.dark body {
+  background-color: #0a0a0a !important;
+}
+
+/* El rail es intencionadamente oscuro en ambos temas, como en V18. */
+.v18-rail {
+  background-color: #1b1b1f;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-card,
+  .glass-strong,
+  .app-glass,
+  .app-glass-strong,
+  .app-glass-soft,
+  .v18-rail {
+    transition-duration: 0.01ms !important;
+  }
+}

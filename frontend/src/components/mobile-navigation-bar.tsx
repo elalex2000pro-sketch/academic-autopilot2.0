@@ -20,7 +20,7 @@ const MobileNavIndicator = dynamic(
 );
 
 const STATIC_INDICATOR =
-  "gpu-layer absolute inset-0 rounded-full bg-[#0066FF] shadow-[0_10px_22px_-12px_rgba(0,102,255,0.95),inset_0_1px_0_rgba(255,255,255,0.28)] dark:bg-white/12 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]";
+  "gpu-layer absolute inset-0 rounded-full bg-[#e9e4f6] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.75),inset_0_1px_0_rgba(255,255,255,0.7)]";
 
 /**
  * Barra de navegación inferior móvil.
@@ -42,12 +42,12 @@ export function MobileNavigationBar() {
   return (
     <nav
       aria-label="Navegación principal"
-      className="fixed left-4 right-4 z-40 mx-auto max-w-md lg:hidden"
+      className="fixed left-4 right-4 z-40 mx-auto max-w-md md:hidden"
       style={{ bottom: "calc(1rem + env(safe-area-inset-bottom, 0px))" }}
     >
       <div
         data-mobile-nav
-        className="gpu-layer flex items-center gap-0.5 rounded-[28px] border border-white/50 bg-slate-100/85 p-1.5 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.55),inset_0_1px_0_rgba(255,255,255,0.6)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#0a0e16]/85 dark:shadow-[0_20px_50px_-20px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.06)]"
+        className="gpu-layer flex items-center gap-0.5 rounded-[30px] border border-white/10 bg-[#1b1b1f]/95 p-1.5 shadow-[0_22px_55px_-24px_rgba(12,12,16,0.8),inset_0_1px_0_rgba(255,255,255,0.09)] backdrop-blur-2xl"
       >
         {PRIMARY_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = isActive(pathname, href);
@@ -56,7 +56,7 @@ export function MobileNavigationBar() {
               key={href}
               href={href}
               aria-current={active ? "page" : undefined}
-              className="group relative flex h-14 min-w-11 flex-1 touch-manipulation select-none flex-col items-center justify-center gap-0.5 rounded-[20px] px-0.5 outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[#0066FF]/55"
+              className="group relative flex h-14 min-w-11 flex-1 touch-manipulation select-none flex-col items-center justify-center gap-0.5 rounded-[22px] px-0.5 outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-white/55"
             >
               <span className="relative flex h-11 w-11 items-center justify-center">
                 {active ? (
@@ -70,8 +70,8 @@ export function MobileNavigationBar() {
                   className={cn(
                     "relative z-10 h-[21px] w-[21px] transition-colors duration-150",
                     active
-                      ? "text-white"
-                      : "text-slate-500 group-hover:text-slate-800 dark:text-white/45 dark:group-hover:text-white/80",
+                      ? "text-[#1d1d1f]"
+                      : "text-white/50 group-hover:text-white/90",
                   )}
                   strokeWidth={active ? 2.1 : 1.8}
                 />
@@ -80,8 +80,8 @@ export function MobileNavigationBar() {
                 className={cn(
                   "relative z-10 w-full truncate text-center text-[9.5px] leading-none min-[360px]:text-[10px]",
                   active
-                    ? "font-semibold text-[#0066FF] dark:text-white"
-                    : "font-medium text-slate-500 dark:text-white/45",
+                    ? "font-semibold text-white"
+                    : "font-medium text-white/45",
                 )}
               >
                 {label}

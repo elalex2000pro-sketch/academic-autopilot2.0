@@ -55,7 +55,7 @@
     --border: 222 20% 19%;
     --input: 222 20% 22%;
     --ring: 216 100% 58%;
-    --sidebar: 222 47% 7%;
+    --sidebar: 0 0% 4%;
     --separator: 222 20% 18%;
   }
 
@@ -938,22 +938,12 @@ html[data-performance="efficiency"].dark .glass-inset {
   background-color: rgb(255 255 255 / 0.06) !important;
 }
 
-html[data-performance="efficiency"] .app-shell > aside,
 html[data-performance="efficiency"] .app-shell header[class*="backdrop-blur"] {
   background-color: hsl(var(--sidebar) / 0.96) !important;
 }
 
-html[data-performance="efficiency"] .app-shell [data-mobile-nav] {
-  background-color: hsl(var(--sidebar) / 0.97) !important;
-}
-
-html[data-performance="efficiency"].dark .app-shell > aside,
 html[data-performance="efficiency"].dark .app-shell header[class*="backdrop-blur"] {
-  background-color: rgb(8 11 17 / 0.96) !important;
-}
-
-html[data-performance="efficiency"].dark .app-shell [data-mobile-nav] {
-  background-color: rgb(8 11 17 / 0.97) !important;
+  background-color: rgb(10 10 10 / 0.96) !important;
 }
 
 html[data-performance="efficiency"][data-animations="ultra"] .glass-card,

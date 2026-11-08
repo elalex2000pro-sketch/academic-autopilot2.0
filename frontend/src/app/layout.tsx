@@ -11,6 +11,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { WallpaperBackdrop } from "@/components/wallpaper-backdrop";
 
 import "./globals.css";
+import "./v18-theme.css";
 
 export const metadata: Metadata = {
   title: {
@@ -28,12 +29,9 @@ export const metadata: Metadata = {
   },
   formatDetection: { telephone: false },
   icons: {
-    icon: [
-      { url: "/icons/favicon-64.png", sizes: "64x64", type: "image/png" },
-      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-    ],
-    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
-    shortcut: "/icons/favicon-64.png",
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    shortcut: "/icon.svg",
   },
 };
 
@@ -46,7 +44,7 @@ export const viewport: Viewport = {
 };
 
 // Se ejecuta antes de pintar para evitar el destello del tema claro.
-const THEME_SCRIPT = `(function(){try{var k="academic-autopilot-theme";var s=localStorage.getItem(k);var d=s==="dark"||((!s||s==="system")&&window.matchMedia("(prefers-color-scheme: dark)").matches);var r=document.documentElement;r.classList.toggle("dark",d);r.dataset.theme=d?"dark":"light";r.style.colorScheme=d?"dark":"light";var m=document.querySelector('meta[name="theme-color"]');if(m){m.setAttribute("content",d?"#10131a":"#e4e8ec");}}catch(e){}})();`;
+const THEME_SCRIPT = `(function(){try{var k="academic-autopilot-theme-v18";var s=localStorage.getItem(k);var d=s==="dark"?true:s==="system"?window.matchMedia("(prefers-color-scheme: dark)").matches:false;var r=document.documentElement;r.classList.toggle("dark",d);r.dataset.theme=d?"dark":"light";r.style.colorScheme=d?"dark":"light";var m=document.querySelector('meta[name="theme-color"]');if(m){m.setAttribute("content",d?"#0a0a0a":"#f3f3f6");}}catch(e){}})();`;
 
 // Aplica animaciones y perfil de rendimiento antes del primer pintado para que
 // el modo ahorro no muestre un destello de cristal pesado al cargar.
@@ -61,7 +59,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
-        <meta name="theme-color" content="#e4e8ec" />
+        <meta name="theme-color" content="#f3f3f6" />
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: INTERFACE_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: INSTALL_SCRIPT }} />

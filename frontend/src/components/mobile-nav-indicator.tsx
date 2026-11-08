@@ -22,7 +22,7 @@ export function MobileNavIndicator({ forceReduced = false }: { forceReduced?: bo
     <motion.span
       layoutId="activeNavIndicator"
       aria-hidden="true"
-      className="gpu-layer absolute inset-0 rounded-full bg-[#0066FF] shadow-[0_10px_22px_-12px_rgba(0,102,255,0.95),inset_0_1px_0_rgba(255,255,255,0.28)] dark:bg-white/12 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
+      className="gpu-layer absolute inset-0 rounded-full bg-[#e9e4f6] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.75),inset_0_1px_0_rgba(255,255,255,0.7)]"
       transition={
         prefersReducedMotion || forceReduced ? { duration: 0 } : INDICATOR_SPRING
       }
