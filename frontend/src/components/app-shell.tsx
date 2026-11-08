@@ -24,13 +24,8 @@ import {
 import { hasCompletedOnboarding, markOnboardingCompleted } from "@/lib/onboarding";
 import { cn } from "@/lib/utils";
 
-// El tutorial y el instalador no participan en el primer pintado: se cargan
-// como chunks aparte y aparecen cuando están listos.
-const HelpWidget = lazy(() =>
-  import("@/components/help-widget").then((module) => ({
-    default: module.HelpWidget,
-  })),
-);
+// El instalador no participa en el primer pintado: se carga como chunk aparte
+// y aparece cuando está listo.
 const InstallAppButton = lazy(() =>
   import("@/components/install-app-button").then((module) => ({
     default: module.InstallAppButton,
@@ -135,14 +130,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   if (isPublic) {
-    return (
-      <>
-        <PageTransition>{children}</PageTransition>
-        <Suspense fallback={null}>
-          <HelpWidget />
-        </Suspense>
-      </>
-    );
+    return <PageTransition>{children}</PageTransition>;
   }
 
   if (loading || !user) {
@@ -339,11 +327,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
           >
             <PageTransition>{children}</PageTransition>
-            {!isOffice ? (
-              <Suspense fallback={null}>
-                <HelpWidget />
-              </Suspense>
-            ) : null}
           </main>
         </div>
 
