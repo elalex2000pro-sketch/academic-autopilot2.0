@@ -5,6 +5,7 @@
 // El editor corre en el navegador: Tiptap/ProseMirror para texto y un motor de
 // formulas propio para la hoja. No necesita servidores externos ni claves, asi
 // que funciona igual en local, en Vercel y en la app de escritorio.
+import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Check,
@@ -14,11 +15,9 @@ import {
   FileText,
   FolderOpen,
   Loader2,
-  Printer,
   Save,
 } from "lucide-react";
 
-import { DocumentEditor } from "@/components/office/document-editor";
 import { SheetEditor } from "@/components/office/sheet-editor";
 import {
   exportDocumentAsDoc,
@@ -43,7 +42,23 @@ type OfficeModule = "document" | "sheet";
 const DOC_KEY = "academic-office-document-v1";
 const SHEET_KEY = "academic-office-sheet-v1";
 
-const DEFAULT_DOC = `<h1>Documento sin titulo</h1><p>Empieza a escribir aqui. Puedes dar formato con la barra superior y exportar a Word, HTML o PDF.</p><p></p>`;
+// CKEditor 5 necesita el DOM: se carga solo en cliente y en su propio chunk.
+const WriterEditor = dynamic(
+  () =>
+    import("@/components/office/writer-editor").then((module) => ({
+      default: module.WriterEditor,
+    })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" /> Cargando motor ofimatico...
+      </div>
+    ),
+  },
+);
+
+const DEFAULT_DOC = `<h1>Documento sin título</h1><p>Empieza a escribir aquí. Puedes dar formato con la barra superior y exportar a Word, HTML o PDF.</p><p></p>`;
 
 interface StoredDocument {
   name?: string;
@@ -114,9 +129,9 @@ function GlassButton({
 
 export function AcademicOfficeView() {
   const [module, setModule] = useState<OfficeModule>("document");
-  const [docName, setDocName] = useState("Documento sin titulo");
+  const [docName, setDocName] = useState("Documento sin título");
   const [docHtml, setDocHtml] = useState(DEFAULT_DOC);
-  const [sheetName, setSheetName] = useState("Hoja sin titulo");
+  const [sheetName, setSheetName] = useState("Hoja sin título");
   const [cells, setCells] = useState<CellMap>({});
   const [hydrated, setHydrated] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -173,6 +188,24 @@ export function AcademicOfficeView() {
     return () => clearTimeout(timer);
   }, [cells, docHtml, docName, hydrated, sheetName]);
 
+  function saveNow(nameOverride?: string) {
+    const name = nameOverride ?? docName;
+    try {
+      window.localStorage.setItem(
+        DOC_KEY,
+        JSON.stringify({ name, html: docHtml } satisfies StoredDocument),
+      );
+      window.localStorage.setItem(
+        SHEET_KEY,
+        JSON.stringify({ name: sheetName, cells } satisfies StoredSheet),
+      );
+      if (nameOverride) setDocName(nameOverride);
+      setSavedAt(Date.now());
+    } catch {
+      // Sin espacio o modo privado: el trabajo sigue en memoria.
+    }
+  }
+
   const computed = evaluateSheet(cells);
   const filledCells = Object.keys(cells).length;
 
@@ -191,10 +224,10 @@ export function AcademicOfficeView() {
     }
     if (module === "document") {
       setDocHtml(DEFAULT_DOC);
-      setDocName("Documento sin titulo");
+      setDocName("Documento sin título");
     } else {
       setCells({});
-      setSheetName("Hoja sin titulo");
+      setSheetName("Hoja sin título");
     }
   }
 
@@ -292,19 +325,19 @@ export function AcademicOfficeView() {
             aria-label="Nombre del archivo"
             className="hidden h-9 w-44 rounded-xl border border-white/50 bg-white/50 px-3 text-xs font-medium outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20 sm:block dark:border-white/10 dark:bg-white/5"
           />
-          <GlassButton label="Nuevo" onClick={newDocument}>
-            <FilePlus2 className="h-4 w-4" />
-          </GlassButton>
-          <GlassButton label="Abrir" onClick={() => openRef.current?.click()}>
-            <FolderOpen className="h-4 w-4" />
-          </GlassButton>
-          <GlassButton
-            label="Guardar"
-            onClick={() => setSavedAt(Date.now())}
-            primary
-          >
-            <Save className="h-4 w-4" />
-          </GlassButton>
+          {module === "sheet" && (
+            <>
+              <GlassButton label="Nuevo" onClick={newDocument}>
+                <FilePlus2 className="h-4 w-4" />
+              </GlassButton>
+              <GlassButton label="Abrir" onClick={() => openRef.current?.click()}>
+                <FolderOpen className="h-4 w-4" />
+              </GlassButton>
+              <GlassButton label="Guardar" onClick={() => saveNow()} primary>
+                <Save className="h-4 w-4" />
+              </GlassButton>
+            </>
+          )}
         </div>
 
         <input
@@ -322,33 +355,19 @@ export function AcademicOfficeView() {
         />
       </header>
 
-      {/* Barra de exportacion */}
+      {/* Barra de exportacion (la hoja conserva sus botones; el documento
+          usa el menu Archivo del escritor). */}
+      {module === "sheet" && (
       <div className="relative z-10 flex flex-wrap items-center gap-1.5 border-b border-white/40 px-3 py-2 dark:border-white/10 sm:px-4">
         <span className="mr-1 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
           <Download className="h-3.5 w-3.5" /> Exportar
         </span>
-        {module === "document" ? (
-          <>
-            <GlassButton label="Word (.doc)" onClick={() => exportDocument("doc")}>
-              <FileText className="h-3.5 w-3.5" />
-            </GlassButton>
-            <GlassButton label="HTML" onClick={() => exportDocument("html")}>
-              <Download className="h-3.5 w-3.5" />
-            </GlassButton>
-            <GlassButton label="PDF" onClick={() => exportDocument("pdf")}>
-              <Printer className="h-3.5 w-3.5" />
-            </GlassButton>
-          </>
-        ) : (
-          <>
-            <GlassButton label="CSV" onClick={() => exportSheet("csv")}>
-              <Download className="h-3.5 w-3.5" />
-            </GlassButton>
-            <GlassButton label="Excel (.xls)" onClick={() => exportSheet("xls")}>
-              <FileSpreadsheet className="h-3.5 w-3.5" />
-            </GlassButton>
-          </>
-        )}
+        <GlassButton label="CSV" onClick={() => exportSheet("csv")}>
+          <Download className="h-3.5 w-3.5" />
+        </GlassButton>
+        <GlassButton label="Excel (.xls)" onClick={() => exportSheet("xls")}>
+          <FileSpreadsheet className="h-3.5 w-3.5" />
+        </GlassButton>
         <span className="ml-auto flex items-center gap-1 text-[11px] text-muted-foreground">
           {saving ? (
             <>
@@ -364,24 +383,34 @@ export function AcademicOfficeView() {
           )}
         </span>
       </div>
+      )}
 
       {/* Area de trabajo */}
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         {module === "document" ? (
-          <DocumentEditor html={docHtml} onChange={setDocHtml} />
+          <WriterEditor
+            html={docHtml}
+            documentName={docName}
+            saving={saving}
+            savedAt={savedAt}
+            onChange={setDocHtml}
+            onNew={newDocument}
+            onOpen={() => openRef.current?.click()}
+            onSave={() => saveNow()}
+            onSaveAs={(name) => saveNow(name)}
+            onExport={exportDocument}
+          />
         ) : (
           <SheetEditor cells={cells} onChange={setCells} />
         )}
       </div>
 
-      <footer className="relative z-10 flex flex-wrap items-center gap-x-4 border-t border-white/40 px-4 py-1.5 text-[10px] text-muted-foreground dark:border-white/10">
-        <span>Academic-Office · editor local sin servidores externos</span>
-        <span className="ml-auto">
-          {module === "document"
-            ? "Word, HTML y PDF"
-            : `${filledCells} celdas · CSV y Excel`}
-        </span>
-      </footer>
+      {module === "sheet" && (
+        <footer className="relative z-10 flex flex-wrap items-center gap-x-4 border-t border-white/40 px-4 py-1.5 text-[10px] text-muted-foreground dark:border-white/10">
+          <span>Academic-Office · editor local sin servidores externos</span>
+          <span className="ml-auto">{filledCells} celdas · CSV y Excel</span>
+        </footer>
+      )}
     </div>
   );
 }
