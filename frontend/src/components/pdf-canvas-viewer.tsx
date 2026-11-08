@@ -279,8 +279,8 @@ export function PdfCanvasViewer({
         className="space-y-2 rounded-2xl border border-white/40 bg-white/45 px-3 py-2 shadow-[0_10px_30px_-20px_rgba(15,23,42,0.55)] backdrop-blur-2xl dark:border-white/10 dark:bg-black/25"
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2 text-xs font-medium text-slate-500 dark:text-white/55">
-            <span className="rounded-full bg-[#0066FF]/10 px-2.5 py-1 text-[11px] font-semibold text-[#0066FF] dark:bg-[#0066FF]/20 dark:text-[#7eb2ff]">
+          <div className="flex min-w-0 items-center gap-2 text-xs font-medium text-black/50 dark:text-white/55">
+            <span className="rounded-full bg-black/[0.06] px-2.5 py-1 text-[11px] font-semibold text-black/70 dark:bg-white/10 dark:text-white/80">
               PDF original
             </span>
             <span className="truncate">{title || "Documento escaneado"}</span>
@@ -294,7 +294,7 @@ export function PdfCanvasViewer({
             >
               <Minus className="h-4 w-4" />
             </Button>
-            <span className="w-12 text-center text-[11px] tabular-nums text-slate-500 dark:text-white/55">
+            <span className="w-12 text-center text-[11px] tabular-nums text-black/50 dark:text-white/55">
               {Math.round(zoom * 100)}%
             </span>
             <Button
@@ -305,7 +305,7 @@ export function PdfCanvasViewer({
             >
               <Plus className="h-4 w-4" />
             </Button>
-            <span className="mx-1 h-5 w-px bg-slate-200 dark:bg-white/10" />
+            <span className="mx-1 h-5 w-px bg-black/10 dark:bg-white/10" />
             <Button
               variant="ghost"
               size="sm"
@@ -316,7 +316,7 @@ export function PdfCanvasViewer({
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <span
-              className="min-w-16 text-center text-[11px] font-medium tabular-nums text-slate-600 dark:text-white/65"
+              className="min-w-16 text-center text-[11px] font-medium tabular-nums text-black/60 dark:text-white/65"
               aria-live="polite"
               aria-atomic="true"
             >
@@ -335,7 +335,7 @@ export function PdfCanvasViewer({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 border-t border-white/30 pt-2 dark:border-white/10">
-          <span className="text-[10px] font-medium tabular-nums text-slate-500 dark:text-white/50">
+          <span className="text-[10px] font-medium tabular-nums text-black/50 dark:text-white/50">
             {total ? sliderPage : page}
           </span>
           <input
@@ -359,12 +359,12 @@ export function PdfCanvasViewer({
             onBlur={(event) => goTo(Number(event.currentTarget.value))}
             aria-label="Progreso de lectura"
             aria-valuetext={total ? `Página ${sliderPage} de ${total}` : "Cargando documento"}
-            className="h-2 min-w-[120px] flex-1 cursor-pointer accent-[#0066FF] disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-2 min-w-[120px] flex-1 cursor-pointer accent-black dark:accent-white disabled:cursor-not-allowed disabled:opacity-50"
           />
-          <span className="text-[10px] font-medium tabular-nums text-slate-500 dark:text-white/50">
+          <span className="text-[10px] font-medium tabular-nums text-black/50 dark:text-white/50">
             {total || "—"}
           </span>
-          <span className="hidden text-[10px] tabular-nums text-slate-400 dark:text-white/40 sm:inline">
+          <span className="hidden text-[10px] tabular-nums text-black/40 dark:text-white/40 sm:inline">
             {percent}%
           </span>
           <form className="flex items-center gap-1" onSubmit={submitPage}>
@@ -387,7 +387,7 @@ export function PdfCanvasViewer({
                 const parsed = Number.parseInt(pageDraft, 10);
                 if (!Number.isFinite(parsed)) setPageDraft(String(page));
               }}
-              className="h-7 w-16 rounded-lg border border-white/50 bg-white/60 px-1 text-center text-[11px] font-medium tabular-nums text-slate-700 outline-none transition-colors focus:border-[#0066FF] disabled:opacity-50 dark:border-white/10 dark:bg-black/25 dark:text-white/80"
+              className="h-7 w-16 rounded-lg border border-white/50 bg-white/60 px-1 text-center text-[11px] font-medium tabular-nums text-black/70 outline-none transition-colors focus:border-black/25 dark:focus:border-white/30 disabled:opacity-50 dark:border-white/10 dark:bg-black/25 dark:text-white/80"
             />
             <Button
               type="submit"
@@ -399,7 +399,7 @@ export function PdfCanvasViewer({
               Ir
             </Button>
           </form>
-          <span className="hidden text-[10px] text-slate-400 dark:text-white/35 lg:inline">
+          <span className="hidden text-[10px] text-black/40 dark:text-white/35 lg:inline">
             ← → cambian de página
           </span>
         </div>
@@ -407,20 +407,20 @@ export function PdfCanvasViewer({
 
       <div
         ref={containerRef}
-        className="relative min-h-[420px] max-h-[calc(100dvh-16rem)] overflow-auto overscroll-contain rounded-3xl border border-white/35 bg-slate-200/45 p-3 shadow-inner backdrop-blur-2xl dark:border-white/10 dark:bg-black/35"
+        className="relative min-h-[420px] max-h-[calc(100dvh-16rem)] overflow-auto overscroll-contain rounded-3xl border border-white/35 bg-black/[0.06] p-3 shadow-inner backdrop-blur-2xl dark:border-white/10 dark:bg-black/35"
       >
         {(loading || rendering) && (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-white/30 backdrop-blur-[2px] dark:bg-black/20">
-            <span className="flex items-center gap-2 rounded-full bg-white/75 px-4 py-2 text-xs font-medium text-slate-600 shadow-lg dark:bg-black/55 dark:text-white/70">
-              <Loader2 className="h-4 w-4 animate-spin text-[#0066FF]" />
+            <span className="flex items-center gap-2 rounded-full bg-white/75 px-4 py-2 text-xs font-medium text-black/60 shadow-lg dark:bg-black/55 dark:text-white/70">
+              <Loader2 className="h-4 w-4 animate-spin text-black/50 dark:text-white/70" />
               {loading ? "Abriendo PDF…" : "Dibujando página…"}
             </span>
           </div>
         )}
         {error ? (
           <div className="flex min-h-[380px] flex-col items-center justify-center gap-2 px-6 text-center">
-            <Maximize2 className="h-7 w-7 text-slate-400 dark:text-white/35" />
-            <p className="max-w-sm text-sm text-slate-600 dark:text-white/60">{error}</p>
+            <Maximize2 className="h-7 w-7 text-black/40 dark:text-white/35" />
+            <p className="max-w-sm text-sm text-black/60 dark:text-white/60">{error}</p>
           </div>
         ) : (
           <div className="flex justify-center">

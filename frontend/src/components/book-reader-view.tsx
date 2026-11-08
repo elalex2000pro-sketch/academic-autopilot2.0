@@ -334,7 +334,7 @@ function ReaderState({
   error?: boolean;
 }) {
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-[#0d1117] p-5 text-white">
+    <div className="flex min-h-dvh items-center justify-center bg-[#0c0c0f] p-5 text-white">
       <div
         className={cn(
           "w-full max-w-md rounded-3xl border p-6 text-center",
@@ -739,7 +739,7 @@ export default function BookReaderView() {
   if (loadingBook) {
     return (
       <ReaderState>
-        <Loader2 className="mx-auto h-8 w-8 animate-spin text-indigo-400" />
+        <Loader2 className="mx-auto h-8 w-8 animate-spin text-white/60" />
         <p className="mt-3 text-sm text-white/60">Abriendo tu PDF local…</p>
       </ReaderState>
     );
@@ -757,7 +757,7 @@ export default function BookReaderView() {
         </p>
         <Link
           href="/library"
-          className="mt-5 inline-flex h-10 items-center gap-2 rounded-xl bg-white px-4 text-xs font-semibold text-slate-900 hover:bg-indigo-50"
+          className="mt-5 inline-flex h-10 items-center gap-2 rounded-xl bg-white px-4 text-xs font-semibold text-[#17171b] transition-colors hover:bg-white/90"
         >
           <ArrowLeft className="h-4 w-4" /> Volver a la biblioteca
         </Link>
@@ -782,7 +782,7 @@ export default function BookReaderView() {
   ];
 
   return (
-    <div className="pdf-reader flex min-h-dvh bg-[#0d1117] text-white">
+    <div className="pdf-reader flex min-h-dvh bg-[#0c0c0f] text-white">
       {sidebarOpen && (
         <>
           <button
@@ -791,10 +791,10 @@ export default function BookReaderView() {
             className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
-          <aside className="fixed inset-y-0 left-0 z-50 flex w-[86vw] max-w-[340px] flex-col border-r border-white/10 bg-[#151a22] shadow-2xl lg:sticky lg:top-0 lg:z-20 lg:h-dvh lg:w-[320px] lg:shrink-0 lg:shadow-none">
+          <aside className="fixed inset-y-0 left-0 z-50 flex w-[86vw] max-w-[340px] flex-col border-r border-white/10 bg-[#0a0a0a]/60 shadow-2xl backdrop-blur-2xl lg:sticky lg:top-0 lg:z-20 lg:h-dvh lg:w-[320px] lg:shrink-0 lg:shadow-none">
             <div className="flex items-center justify-between border-b border-white/10 px-3 py-3">
               <div className="flex items-center gap-2">
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-300">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/10 text-white/80">
                   <BookOpen className="h-4 w-4" />
                 </span>
                 <div className="min-w-0">
@@ -826,8 +826,8 @@ export default function BookReaderView() {
                     className={cn(
                       "flex flex-col items-center gap-1 rounded-xl px-1 py-2 text-[9px] font-medium transition",
                       sidebarTab === tab.id
-                        ? "bg-indigo-500/20 text-indigo-200"
-                        : "text-white/35 hover:bg-white/[0.06] hover:text-white/75",
+                        ? "bg-white/10 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                        : "text-white/50 hover:bg-white/[0.06] hover:text-white/80",
                     )}
                   >
                     <Icon className="h-4 w-4" />
@@ -845,7 +845,7 @@ export default function BookReaderView() {
                       Índice del documento
                     </p>
                     {outlineLoading && (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-300" />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-white/50" />
                     )}
                   </div>
                   {outline.length > 0 ? (
@@ -881,7 +881,7 @@ export default function BookReaderView() {
                             onClick={() => goFromSidebar(page)}
                             className="flex min-w-0 flex-1 items-center gap-2 px-2 py-2 text-left text-[12px] text-white/70"
                           >
-                            <BookmarkCheck className="h-3.5 w-3.5 shrink-0 text-indigo-300" />
+                            <BookmarkCheck className="h-3.5 w-3.5 shrink-0 text-white/60" />
                             <span className="flex-1">Página {page}</span>
                             <ChevronRight className="h-3.5 w-3.5 text-white/25" />
                           </button>
@@ -919,7 +919,7 @@ export default function BookReaderView() {
                       persist({ notes: event.target.value });
                     }}
                     placeholder="Escribe aquí tus apuntes, citas o ideas sobre este PDF…"
-                    className="min-h-[220px] flex-1 resize-none rounded-xl border border-white/10 bg-black/20 p-3 text-[12px] leading-5 text-white/75 outline-none placeholder:text-white/20 focus:border-indigo-400/50"
+                    className="min-h-[220px] flex-1 resize-none rounded-xl border border-white/10 bg-white/[0.04] p-3 text-[12px] leading-5 text-white/80 outline-none placeholder:text-white/25 transition-colors focus:border-white/25 focus:bg-white/[0.06]"
                   />
                   <button
                     type="button"
@@ -941,14 +941,14 @@ export default function BookReaderView() {
                         onChange={(event) => setSearchInput(event.target.value)}
                         placeholder="Buscar en el PDF…"
                         aria-label="Buscar texto en el PDF"
-                        className="h-9 w-full rounded-xl border border-white/10 bg-black/20 pl-8 pr-2 text-[12px] text-white/80 outline-none placeholder:text-white/25 focus:border-indigo-400/50"
+                        className="h-9 w-full rounded-xl border border-white/10 bg-white/[0.04] pl-8 pr-2 text-[12px] text-white/80 outline-none placeholder:text-white/25 transition-colors focus:border-white/25 focus:bg-white/[0.06]"
                       />
                     </label>
                     <div className="flex gap-1.5">
                       <button
                         type="submit"
                         disabled={searching || !searchInput.trim()}
-                        className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg bg-indigo-500 px-2 text-[11px] font-semibold text-white disabled:opacity-40"
+                        className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/10 px-2 text-[11px] font-semibold text-white transition-colors hover:bg-white/15 disabled:opacity-40"
                       >
                         {searching ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -992,10 +992,10 @@ export default function BookReaderView() {
                           key={hit.page}
                           type="button"
                           onClick={() => goFromSidebar(hit.page)}
-                          className="w-full rounded-xl border border-white/5 bg-white/[0.03] p-2.5 text-left transition hover:border-indigo-400/30 hover:bg-white/[0.06]"
+                          className="w-full rounded-xl border border-white/5 bg-white/[0.03] p-2.5 text-left transition hover:border-white/20 hover:bg-white/[0.06]"
                         >
                           <span className="flex items-center justify-between gap-2">
-                            <span className="text-[10px] font-semibold text-indigo-200">
+                            <span className="text-[10px] font-semibold text-white/80">
                               Página {hit.page}
                             </span>
                             <span className="text-[9px] text-white/25">
@@ -1021,7 +1021,7 @@ export default function BookReaderView() {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 border-b border-white/10 bg-[#11151c]/95 backdrop-blur-xl">
+        <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0a0a0a]/60 backdrop-blur-2xl">
           <div className="flex flex-wrap items-center gap-2 px-2.5 py-2 sm:px-4">
             <Link
               href="/library"
@@ -1084,7 +1084,7 @@ export default function BookReaderView() {
               className={cn(
                 "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition",
                 isBookmarked
-                  ? "bg-indigo-500/20 text-indigo-300"
+                  ? "bg-white/10 text-white"
                   : "text-white/45 hover:bg-white/10 hover:text-white",
               )}
             >
@@ -1124,7 +1124,7 @@ export default function BookReaderView() {
               className={cn(
                 "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
                 fitMode === "width"
-                  ? "bg-indigo-500/20 text-indigo-300"
+                  ? "bg-white/10 text-white"
                   : "text-white/40 hover:bg-white/10 hover:text-white",
               )}
             >
@@ -1138,7 +1138,7 @@ export default function BookReaderView() {
               className={cn(
                 "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
                 fitMode === "height"
-                  ? "bg-indigo-500/20 text-indigo-300"
+                  ? "bg-white/10 text-white"
                   : "text-white/40 hover:bg-white/10 hover:text-white",
               )}
             >
@@ -1147,7 +1147,7 @@ export default function BookReaderView() {
           </div>
           <div className="h-0.5 bg-white/5">
             <div
-              className="h-full bg-indigo-400/80 transition-[width]"
+              className="h-full bg-white/30 transition-[width]"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -1167,7 +1167,7 @@ export default function BookReaderView() {
               }}
               loading={
                 <div className="flex min-h-[60vh] flex-col items-center justify-center gap-2 text-white/40">
-                  <Loader2 className="h-6 w-6 animate-spin text-indigo-400" />
+                  <Loader2 className="h-6 w-6 animate-spin text-white/60" />
                   <span className="text-[11px]">Preparando el documento…</span>
                 </div>
               }
