@@ -1319,7 +1319,7 @@ export default function ClassDetailView() {
             )}
 
             {assignments.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border p-8 text-center">
+              <div className="rounded-2xl border border-dashed border-border p-4 text-center md:p-8">
                 <ClipboardCheck className="mx-auto h-8 w-8 text-muted-foreground/60" />
                 <p className="mt-2 text-sm font-semibold">Todavía no hay trabajo de clase</p>
                 <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">

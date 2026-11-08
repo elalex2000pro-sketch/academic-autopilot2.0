@@ -277,7 +277,7 @@ function TaskListComponent({
               <p className="whitespace-pre-wrap text-[11.5px] leading-5 text-slate-600 dark:text-white/55">
                 {task.description?.trim() || "Sin notas añadidas. Abre «Editar» para escribir detalles."}
               </p>
-              <dl className="mt-3 grid gap-x-4 gap-y-2 text-[10.5px] sm:grid-cols-2">
+              <dl className="mt-3 grid gap-x-4 gap-y-2 text-[10.5px] md:grid-cols-2">
                 <div className="flex items-start gap-1.5">
                   <CalendarDays className="mt-px h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-white/30" />
                   <div className="min-w-0">

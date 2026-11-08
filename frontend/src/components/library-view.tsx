@@ -349,7 +349,7 @@ export default function LibraryView() {
         </div>
       ) : books.length === 0 ? (
         <div className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="rounded-3xl border border-dashed border-indigo-200 bg-gradient-to-br from-slate-100/80 via-indigo-50/40 to-violet-50/60 p-8 sm:p-12 dark:border-indigo-900/60 dark:from-[#0b0f18] dark:via-[#0b0f18]/70 dark:to-[#0b0f18]">
+          <div className="rounded-3xl border border-dashed border-indigo-200 bg-gradient-to-br from-slate-100/80 via-indigo-50/40 to-violet-50/60 p-5 md:p-10 dark:border-indigo-900/60 dark:from-[#0b0f18] dark:via-[#0b0f18]/70 dark:to-[#0b0f18]">
             <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100/80 text-indigo-600 shadow-md shadow-indigo-500/10">
               <BookOpen className="h-7 w-7" />
             </span>

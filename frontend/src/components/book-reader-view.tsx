@@ -313,7 +313,7 @@ export default function BookReaderView() {
 
   if (!book) {
     return (
-      <div className="mx-auto max-w-xl p-8 text-center">
+      <div className="mx-auto max-w-xl p-4 text-center md:p-8">
         <BookOpen className="mx-auto h-10 w-10 text-slate-300" />
         <h1 className="mt-3 text-lg font-bold">No encontramos este libro</h1>
         <p className="mt-1 text-sm text-muted-foreground">{error || "Puede que se haya borrado."}</p>
@@ -326,7 +326,7 @@ export default function BookReaderView() {
 
   if (book.status === "processing") {
     return (
-      <div className="mx-auto max-w-xl p-8 text-center">
+      <div className="mx-auto max-w-xl p-4 text-center md:p-8">
         <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-indigo-50 text-indigo-600">
           <Loader2 className="h-7 w-7 animate-spin" />
         </span>
@@ -426,7 +426,7 @@ export default function BookReaderView() {
 
   if (book.status === "error") {
     return (
-      <div className="mx-auto max-w-xl p-8 text-center">
+      <div className="mx-auto max-w-xl p-4 text-center md:p-8">
         <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-rose-50 text-rose-600">
           <BookOpen className="h-7 w-7" />
         </span>

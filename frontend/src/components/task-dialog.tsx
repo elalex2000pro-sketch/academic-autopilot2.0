@@ -192,7 +192,7 @@ export function TaskDialog({
         </div>
 
         <div className="p-5">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="task-title">Nombre de la tarea</Label>
               <Input

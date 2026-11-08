@@ -465,7 +465,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="relative mx-auto max-w-[1500px] px-5 pb-12 pt-6 sm:px-7 lg:pt-8">
+    <div className="relative mx-auto max-w-[1500px] px-4 pb-12 pt-5 sm:px-7 lg:pt-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-white/35">
@@ -494,14 +494,14 @@ export default function DashboardPage() {
         <div className="flex shrink-0 items-center gap-2">
           <Link
             href="/planner"
-            className="app-glass-soft flex h-9 items-center gap-1.5 rounded-xl px-3 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-100/65 hover:text-slate-900 dark:text-white/65 dark:hover:bg-white/[0.08] dark:hover:text-white"
+            className="app-glass-soft flex h-11 items-center gap-1.5 rounded-xl px-3 text-[12px] md:h-9 font-medium text-slate-600 transition-colors hover:bg-slate-100/65 hover:text-slate-900 dark:text-white/65 dark:hover:bg-white/[0.08] dark:hover:text-white"
           >
             <CalendarRange className="h-3.5 w-3.5" strokeWidth={1.8} />
             Planificador
           </Link>
           <Link
             href="/studio"
-            className="flex h-9 items-center gap-1.5 rounded-xl bg-slate-900/[0.06] px-3 text-[12px] font-medium text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] transition-colors hover:bg-slate-900/[0.09] dark:bg-white/[0.10] dark:text-white/85 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] dark:hover:bg-white/[0.15]"
+            className="flex h-11 items-center gap-1.5 rounded-xl bg-slate-900/[0.06] px-3 text-[12px] md:h-9 font-medium text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] transition-colors hover:bg-slate-900/[0.09] dark:bg-white/[0.10] dark:text-white/85 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] dark:hover:bg-white/[0.15]"
           >
             <Sparkles className="h-3.5 w-3.5" strokeWidth={1.8} />
             Crear con IA
@@ -863,7 +863,7 @@ export default function DashboardPage() {
                 </p>
                 <Link
                   href="/planner"
-                  className="app-glass-soft mt-4 flex h-8 items-center gap-1.5 rounded-xl px-3 text-[11.5px] font-medium text-slate-600 transition-colors hover:bg-slate-100/65 hover:text-slate-900 dark:text-white/65 dark:hover:bg-white/[0.08] dark:hover:text-white"
+                  className="app-glass-soft mt-4 flex h-11 items-center gap-1.5 rounded-xl px-3 md:h-8 text-[11.5px] font-medium text-slate-600 transition-colors hover:bg-slate-100/65 hover:text-slate-900 dark:text-white/65 dark:hover:bg-white/[0.08] dark:hover:text-white"
                 >
                   Abrir planificador
                   <ArrowUpRight className="h-3.5 w-3.5" />

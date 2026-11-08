@@ -546,7 +546,7 @@ function DecksView({
         </section>
 
         {queue.length === 0 ? (
-          <section className="app-glass rounded-3xl p-8 text-center">
+          <section className="app-glass rounded-3xl p-4 text-center md:p-8">
             <CheckCircle2 className="mx-auto h-10 w-10 text-[#34C759]" />
             <h3 className="mt-3 text-[18px] font-semibold text-slate-800 dark:text-white/90">
               {dueOnly ? "No quedan tarjetas pendientes" : "Este mazo está vacío"}
@@ -561,7 +561,7 @@ function DecksView({
             </Button>
           </section>
         ) : index >= queue.length ? (
-          <section className="app-glass rounded-3xl p-8 text-center">
+          <section className="app-glass rounded-3xl p-4 text-center md:p-8">
             <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#34C759]/12 text-[#34C759]">
               <CheckCircle2 className="h-7 w-7" />
             </span>

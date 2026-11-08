@@ -428,7 +428,7 @@
 /* El shell reserva el alto de la barra inferior. En /login no existe barra,
    así que el offset se queda en 0 y los elementos fijos no se elevan de más. */
 .app-shell {
-  --mobile-nav-offset: calc(var(--mobile-nav-height) + 1px + env(safe-area-inset-bottom, 0px));
+  --mobile-nav-offset: calc(var(--mobile-nav-height) + 1rem + env(safe-area-inset-bottom, 0px));
   --mobile-header-height: calc(113px + env(safe-area-inset-top, 0px));
 }
 
@@ -1603,4 +1603,13 @@ html.dark .tt-tone-break {
     radial-gradient(120% 90% at 50% 50%, transparent 52%, rgba(2, 4, 10, 0.55) 100%),
     linear-gradient(180deg, rgba(3, 6, 14, 0.45) 0%, transparent 20%, transparent 80%, rgba(2, 4, 10, 0.5) 100%);
   opacity: 1;
+}
+
+/* Aceleración por hardware para los elementos que anima Framer Motion.
+   Se aplica solo a la burbuja del indicador y a la píldora, no a todo el
+   árbol: `will-change` permanente en cientos de nodos cuesta memoria. */
+.gpu-layer {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
