@@ -34,6 +34,13 @@ contextBridge.exposeInMainWorld("autopilotDesktop", {
     spotifyAuthListener = null;
   },
 
+  // Archivos del chat: diálogo nativo «Guardar como…» y apertura con la app
+  // predeterminada del sistema operativo.
+  files: {
+    save: (payload) => ipcRenderer.invoke("files:save", payload),
+    open: (payload) => ipcRenderer.invoke("files:open", payload),
+  },
+
   // Avisos nativos: el renderer envia titulo y cuerpo, el proceso principal
   // crea la notificacion del sistema operativo.
   notify: (payload) => ipcRenderer.invoke("notifications:show", payload),

@@ -3,6 +3,7 @@
 const {
   app,
   BrowserWindow,
+  dialog,
   Menu,
   Notification,
   ipcMain,
@@ -72,6 +73,7 @@ if (!gotTheLock) {
   app.whenReady().then(() => {
     configureSession(session.fromPartition(PARTITION));
     registerWindowControls();
+    registerFileControls();
     registerSpotifyAuth();
     registerUpdaterControls();
     configureAutoUpdater();
@@ -302,6 +304,102 @@ function registerWindowControls() {
     });
     notification.show();
     return { ok: true };
+  });
+}
+
+// --- Archivos del chat: Guardar como... y abrir con el sistema -------------
+const MAX_FILE_PAYLOAD_BYTES = 120 * 1024 * 1024;
+
+function filePayload(payload) {
+  const raw = payload?.data;
+  let buffer = null;
+  if (Buffer.isBuffer(raw)) buffer = raw;
+  else if (raw instanceof ArrayBuffer) buffer = Buffer.from(raw);
+  else if (ArrayBuffer.isView(raw)) {
+    buffer = Buffer.from(raw.buffer, raw.byteOffset, raw.byteLength);
+  }
+  if (!buffer || buffer.byteLength === 0) {
+    throw new Error("El archivo está vacío o no se recibió completo.");
+  }
+  if (buffer.byteLength > MAX_FILE_PAYLOAD_BYTES) {
+    throw new Error("El archivo supera el límite de 120 MB.");
+  }
+  const name = safeFilename(payload?.name || "adjunto");
+  return {
+    buffer,
+    name,
+    extension: path.extname(name).toLowerCase(),
+  };
+}
+
+function registerFileControls() {
+  // Guardar como...: el diálogo nativo del sistema elige la carpeta destino.
+  ipcMain.handle("files:save", async (event, payload) => {
+    if (!isTrustedRenderer(event)) {
+      return { ok: false, error: "Origen no autorizado." };
+    }
+    const win = BrowserWindow.fromWebContents(event.sender);
+    try {
+      const { buffer, name, extension } = filePayload(payload);
+      const filters = extension
+        ? [
+            { name: `${extension.slice(1).toUpperCase()} (*${extension})`, extensions: [extension.slice(1)] },
+            { name: "Todos los archivos", extensions: ["*"] },
+          ]
+        : [];
+      const options = {
+        title: "Guardar archivo",
+        defaultPath: path.join(app.getPath("downloads"), name),
+        ...(filters.length > 0 ? { filters } : {}),
+      };
+      const result =
+        win && !win.isDestroyed()
+          ? await dialog.showSaveDialog(win, options)
+          : await dialog.showSaveDialog(options);
+      if (result.canceled || !result.filePath) {
+        return { ok: false, canceled: true };
+      }
+      let targetPath = result.filePath;
+      if (extension && !path.extname(targetPath)) targetPath += extension;
+      await fs.promises.writeFile(targetPath, buffer);
+      return { ok: true, path: targetPath };
+    } catch (error) {
+      console.error("No se pudo guardar el archivo del chat:", error);
+      return {
+        ok: false,
+        error: error?.message || "No se pudo guardar el archivo.",
+      };
+    }
+  });
+
+  // Abrir directamente: se escribe una copia temporal y se lanza con el
+  // programa predeterminado de Windows/macOS (visor de fotos, lector de PDF...).
+  ipcMain.handle("files:open", async (event, payload) => {
+    if (!isTrustedRenderer(event)) {
+      return { ok: false, error: "Origen no autorizado." };
+    }
+    try {
+      const { buffer, name } = filePayload(payload);
+      const directory = path.join(
+        app.getPath("temp"),
+        "academic-autopilot",
+        `abrir-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      );
+      await fs.promises.mkdir(directory, { recursive: true });
+      const targetPath = path.join(directory, name);
+      await fs.promises.writeFile(targetPath, buffer);
+      const openError = await shell.openPath(targetPath);
+      if (openError) {
+        return { ok: false, error: openError };
+      }
+      return { ok: true, path: targetPath };
+    } catch (error) {
+      console.error("No se pudo abrir el archivo del chat:", error);
+      return {
+        ok: false,
+        error: error?.message || "No se pudo abrir el archivo.",
+      };
+    }
   });
 }
 

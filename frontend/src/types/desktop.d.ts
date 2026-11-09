@@ -37,6 +37,28 @@ declare global {
         callback: (payload: DesktopSpotifyAuthCallback) => void,
       ) => void;
       offSpotifyAuth?: () => void;
+      /** Guardar como… y abrir adjuntos con las APIs nativas del sistema. */
+      files?: {
+        save: (payload: {
+          name: string;
+          data: ArrayBuffer;
+          mimeType?: string;
+        }) => Promise<{
+          ok: boolean;
+          canceled?: boolean;
+          path?: string;
+          error?: string;
+        }>;
+        open: (payload: {
+          name: string;
+          data: ArrayBuffer;
+          mimeType?: string;
+        }) => Promise<{
+          ok: boolean;
+          path?: string;
+          error?: string;
+        }>;
+      };
       /** Avisos nativos del sistema operativo (los usa lib/notifications.ts). */
       notify?: (payload: {
         title: string;

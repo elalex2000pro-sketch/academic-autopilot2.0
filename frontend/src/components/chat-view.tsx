@@ -11,13 +11,16 @@ import {
   ArrowLeft,
   AtSign,
   Check,
-  Download,
   FileText,
+  FolderOpen,
+  Forward,
   ImageIcon,
   Loader2,
   MessageSquarePlus,
+  Palette,
   Paperclip,
   Plus,
+  Save,
   Search,
   Send,
   SmilePlus,
@@ -27,10 +30,22 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
+import { ChatBackgroundPicker } from "@/components/chat-background-picker";
 import { ChatExtrasPicker } from "@/components/chat-extras-picker";
+import {
+  ChatForwardModal,
+  type ForwardTarget,
+} from "@/components/chat-forward-modal";
 import { useRealtime } from "@/components/realtime-provider";
 import { Button } from "@/components/ui/button";
 import { chatApi } from "@/lib/api";
+import {
+  DEFAULT_CHAT_BACKGROUND,
+  backgroundStyle,
+  loadChatBackground,
+  saveChatBackground,
+  type ChatBackground,
+} from "@/lib/chat-background";
 import {
   XP_EVENT,
   getGamification,
@@ -39,6 +54,7 @@ import {
   stickerMessage,
   type ChatSticker,
 } from "@/lib/gamification";
+import { openFileWithSystem, saveFileAs } from "@/lib/native-files";
 import type { ChatConversation, ChatMessage, ChatUser } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -203,12 +219,14 @@ function MessageText({ text }: { text: string }) {
   );
 }
 
-/** Adjunto: imagen en linea, PDF con boton de descarga, resto como archivo. */
+/** Adjunto: imagen en linea o archivo, con Abrir y Guardar nativos. */
 function AttachmentCard({ message }: { message: ChatMessage }) {
   const attachment = message.attachment;
   const [preview, setPreview] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
-  const [downloading, setDownloading] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const image = attachment
     ? isImage(attachment.content_type, attachment.name)
@@ -243,7 +261,7 @@ function AttachmentCard({ message }: { message: ChatMessage }) {
           <Paperclip className="h-4 w-4" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium">
+          <span className="block truncate text-sm font-medium text-slate-900 dark:text-white/90">
             {attachment.name}
           </span>
           <span className="text-xs text-muted-foreground">
@@ -255,27 +273,69 @@ function AttachmentCard({ message }: { message: ChatMessage }) {
     );
   }
 
-  async function download() {
-    if (downloading || message.pending) return;
-    setDownloading(true);
+  async function handleFileAction(action: "open" | "save") {
+    if (opening || saving || message.pending) return;
+    const setBusy = action === "open" ? setOpening : setSaving;
+    setBusy(true);
+    setActionError(null);
     try {
       const blob = await chatApi.downloadAttachment(message.id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = attachment?.name ?? "adjunto";
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 4000);
-    } catch {
-      setFailed(true);
+      if (action === "open") {
+        await openFileWithSystem(blob, attachment?.name ?? "adjunto");
+      } else {
+        await saveFileAs(blob, attachment?.name ?? "adjunto");
+      }
+    } catch (caught) {
+      setActionError(
+        caught instanceof Error
+          ? caught.message
+          : "No se pudo completar la acción.",
+      );
     } finally {
-      setDownloading(false);
+      setBusy(false);
     }
   }
 
+  const actionButtons = (
+    <span className="flex items-center gap-1.5">
+      <button
+        type="button"
+        onClick={() => void handleFileAction("open")}
+        disabled={opening || saving}
+        className="inline-flex h-7 items-center gap-1 rounded-full border border-white/60 bg-white/85 px-2.5 text-[10px] font-semibold text-slate-700 shadow-sm transition hover:bg-white disabled:opacity-50 dark:border-white/15 dark:bg-white/10 dark:text-white/80 dark:hover:bg-white/20"
+      >
+        {opening ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : (
+          <FolderOpen className="h-3 w-3" />
+        )}
+        Abrir
+      </button>
+      <button
+        type="button"
+        onClick={() => void handleFileAction("save")}
+        disabled={opening || saving}
+        className="inline-flex h-7 items-center gap-1 rounded-full border border-white/60 bg-white/85 px-2.5 text-[10px] font-semibold text-slate-700 shadow-sm transition hover:bg-white disabled:opacity-50 dark:border-white/15 dark:bg-white/10 dark:text-white/80 dark:hover:bg-white/20"
+      >
+        {saving ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : (
+          <Save className="h-3 w-3" />
+        )}
+        Guardar
+      </button>
+    </span>
+  );
+
+  const actionErrorText = actionError ? (
+    <p className="bg-destructive/10 px-2 py-1 text-[10px] font-medium text-destructive">
+      {actionError}
+    </p>
+  ) : null;
+
   if (image) {
     return (
-      <div className="mt-2 overflow-hidden rounded-lg border border-black/10">
+      <div className="mt-2 overflow-hidden rounded-xl border border-white/45 bg-white/55 shadow-sm backdrop-blur-md dark:border-white/15 dark:bg-slate-950/30">
         {preview ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -288,45 +348,41 @@ function AttachmentCard({ message }: { message: ChatMessage }) {
             {failed ? "No se pudo cargar la imagen" : "Cargando imagen..."}
           </div>
         )}
-        <button
-          type="button"
-          onClick={download}
-          className="flex w-full items-center gap-2 border-t border-black/10 px-2 py-1.5 text-xs hover:bg-black/5"
-        >
-          <Download className="h-3.5 w-3.5" />
-          {attachment.name}
-        </button>
+        <div className="flex flex-wrap items-center gap-2 border-t border-white/45 px-2 py-1.5 dark:border-white/10">
+          <span className="min-w-0 flex-1 truncate text-[10px] font-medium text-slate-700 dark:text-white/75">
+            {attachment.name}
+          </span>
+          {actionButtons}
+        </div>
+        {actionErrorText}
       </div>
     );
   }
 
   return (
-    <button
-      type="button"
-      onClick={download}
-      className="mt-2 flex w-full max-w-xs items-center gap-3 rounded-lg border border-black/10 bg-background/60 px-3 py-2 text-left transition hover:bg-background"
-    >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-        {isPdf(attachment.content_type, attachment.name) ? (
-          <FileText className="h-4 w-4" />
-        ) : (
-          <ImageIcon className="h-4 w-4" />
-        )}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium">
-          {attachment.name}
+    <div className="mt-2 w-full max-w-xs overflow-hidden rounded-xl border border-white/45 bg-white/60 shadow-sm backdrop-blur-md dark:border-white/15 dark:bg-slate-950/30">
+      <div className="flex items-center gap-3 px-3 py-2">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+          {isPdf(attachment.content_type, attachment.name) ? (
+            <FileText className="h-4 w-4" />
+          ) : (
+            <ImageIcon className="h-4 w-4" />
+          )}
         </span>
-        <span className="text-xs text-muted-foreground">
-          {formatSize(attachment.size_bytes)} · descargar
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium text-slate-900 dark:text-white/90">
+            {attachment.name}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {formatSize(attachment.size_bytes)}
+          </span>
         </span>
-      </span>
-      {downloading ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : (
-        <Download className="h-4 w-4" />
-      )}
-    </button>
+      </div>
+      <div className="flex items-center justify-end border-t border-white/45 px-2 py-1.5 dark:border-white/10">
+        {actionButtons}
+      </div>
+      {actionErrorText}
+    </div>
   );
 }
 
@@ -342,6 +398,12 @@ export function ChatView() {
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState("");
   const [extrasOpen, setExtrasOpen] = useState(false);
+  const [background, setBackground] = useState<ChatBackground>(
+    DEFAULT_CHAT_BACKGROUND,
+  );
+  const [backgroundOpen, setBackgroundOpen] = useState(false);
+  const [forwarding, setForwarding] = useState<ChatMessage | null>(null);
+  const [forwardNotice, setForwardNotice] = useState<string | null>(null);
   const [level, setLevel] = useState(1);
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -365,6 +427,19 @@ export function ChatView() {
     [activeId, conversations],
   );
 
+  const forwardTargets = useMemo<ForwardTarget[]>(
+    () =>
+      conversations
+        .filter((conversation) => conversation.id !== activeId)
+        .map((conversation) => ({
+          id: conversation.id,
+          title: conversationTitle(conversation, meId),
+          subtitle: conversationSubtitle(conversation),
+          kind: conversation.kind,
+        })),
+    [activeId, conversations, meId],
+  );
+
   useEffect(() => {
     if (!meId) {
       setLevel(1);
@@ -382,7 +457,19 @@ export function ChatView() {
 
   useEffect(() => {
     setExtrasOpen(false);
+    setBackgroundOpen(false);
+    setForwarding(null);
+    setForwardNotice(null);
+    setBackground(
+      activeId ? loadChatBackground(activeId) : DEFAULT_CHAT_BACKGROUND,
+    );
   }, [activeId]);
+
+  useEffect(() => {
+    if (!forwardNotice) return;
+    const timer = window.setTimeout(() => setForwardNotice(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [forwardNotice]);
 
   const refreshList = useCallback(async () => {
     try {
@@ -496,6 +583,13 @@ export function ChatView() {
   function sendSticker(sticker: ChatSticker) {
     setExtrasOpen(false);
     void handleSend(stickerMessage(sticker.id));
+  }
+
+  function applyBackground(next: ChatBackground) {
+    if (!activeId) return;
+    saveChatBackground(activeId, next);
+    setBackground(next);
+    setBackgroundOpen(false);
   }
 
   async function claimUsername() {
@@ -727,6 +821,16 @@ export function ChatView() {
                     .join(" · ")}
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={() => setBackgroundOpen(true)}
+                className="flex items-center gap-1 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition hover:bg-muted"
+                aria-label="Cambiar fondo del chat"
+                title="Cambiar fondo"
+              >
+                <Palette className="h-4 w-4" />
+                <span className="hidden sm:inline">Fondo</span>
+              </button>
               {active.members.find((member) => member.user.id === meId)
                 ?.role === "owner" ? (
                 <InviteButton
@@ -736,15 +840,20 @@ export function ChatView() {
               ) : null}
             </header>
 
-            <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+            <div
+              className="flex-1 space-y-3 overflow-y-auto px-4 py-4 transition-[background-image]"
+              style={backgroundStyle(background)}
+            >
               {loadingThread ? (
                 <div className="flex items-center justify-center py-10 text-muted-foreground">
                   <Loader2 className="h-5 w-5 animate-spin" />
                 </div>
               ) : messages.length === 0 ? (
-                <p className="py-10 text-center text-sm text-muted-foreground">
-                  Todavia no hay mensajes. Escribe el primero.
-                </p>
+                <div className="flex justify-center py-10">
+                  <p className="rounded-2xl border border-white/50 bg-white/70 px-4 py-2.5 text-center text-sm text-slate-600 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-slate-900/60 dark:text-white/60">
+                    Todavia no hay mensajes. Escribe el primero.
+                  </p>
+                </div>
               ) : (
                 messages.map((message, index) => {
                   const mine = message.sender_id === meId;
@@ -756,13 +865,15 @@ export function ChatView() {
                   return (
                     <div key={message.id}>
                       {newDay ? (
-                        <p className="my-3 text-center text-[11px] uppercase tracking-wide text-muted-foreground">
-                          {formatDay(message.created_at)}
+                        <p className="my-3 text-center">
+                          <span className="rounded-full border border-white/50 bg-white/70 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-slate-900/60 dark:text-white/60">
+                            {formatDay(message.created_at)}
+                          </span>
                         </p>
                       ) : null}
                       <div
                         className={cn(
-                          "flex gap-2",
+                          "group flex gap-2",
                           mine ? "justify-end" : "justify-start",
                         )}
                       >
@@ -773,10 +884,10 @@ export function ChatView() {
                         ) : null}
                         <div
                           className={cn(
-                            "max-w-[78%] rounded-2xl px-3 py-2 text-sm",
+                            "max-w-[78%] rounded-2xl border px-3 py-2 text-sm shadow-sm backdrop-blur-md",
                             mine
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-foreground",
+                              ? "border-primary/25 bg-primary/90 text-primary-foreground"
+                              : "border-white/55 bg-white/80 text-slate-900 dark:border-white/10 dark:bg-slate-900/75 dark:text-white",
                           )}
                         >
                           {!mine && active.kind === "group" ? (
@@ -817,6 +928,17 @@ export function ChatView() {
                             </span>
                           </p>
                         </div>
+                        {!message.pending ? (
+                          <button
+                            type="button"
+                            onClick={() => setForwarding(message)}
+                            aria-label="Reenviar mensaje"
+                            title="Reenviar"
+                            className="mt-1 shrink-0 self-start rounded-full p-1.5 text-muted-foreground/80 transition hover:bg-white/70 hover:text-foreground md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100 dark:hover:bg-white/10"
+                          >
+                            <Forward className="h-3.5 w-3.5" />
+                          </button>
+                        ) : null}
                       </div>
                     </div>
                   );
@@ -828,6 +950,12 @@ export function ChatView() {
             {error ? (
               <p className="border-t border-destructive/30 bg-destructive/10 px-4 py-2 text-xs text-destructive">
                 {error}
+              </p>
+            ) : null}
+
+            {forwardNotice ? (
+              <p className="flex items-center gap-1.5 border-t border-emerald-500/20 bg-emerald-500/10 px-4 py-1.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
+                <Check className="h-3 w-3" /> Reenviado a {forwardNotice}
               </p>
             ) : null}
 
@@ -942,6 +1070,32 @@ export function ChatView() {
             setDialogOpen(false);
             void refreshList();
             void openConversation(conversation.id);
+          }}
+        />
+      ) : null}
+
+      {backgroundOpen && active ? (
+        <ChatBackgroundPicker
+          conversationTitle={conversationTitle(active, meId)}
+          current={background}
+          onSelect={applyBackground}
+          onClose={() => setBackgroundOpen(false)}
+        />
+      ) : null}
+
+      {forwarding && active ? (
+        <ChatForwardModal
+          message={forwarding}
+          preview={
+            forwarding.attachment && !forwarding.content
+              ? `Adjunto: ${forwarding.attachment.name}`
+              : messagePreview(forwarding)
+          }
+          targets={forwardTargets}
+          onClose={() => setForwarding(null)}
+          onForwarded={(title) => {
+            setForwardNotice(title);
+            void refreshList();
           }}
         />
       ) : null}
