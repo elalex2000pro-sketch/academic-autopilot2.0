@@ -15,12 +15,15 @@ import {
   Pause,
   Play,
   RefreshCw,
+  Search,
   ShieldCheck,
   SkipBack,
   SkipForward,
   TriangleAlert,
   UserRound,
+  X,
 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 
 import { SpotifyLogo } from "@/components/icons/spotify-logo";
 import { Button } from "@/components/ui/button";
@@ -36,6 +39,7 @@ import {
   getValidAccessToken,
   hasSpotifyTutorialSeen,
   markSpotifyTutorialSeen,
+  searchSpotifyTracks,
   spotifyApi,
   SpotifyError,
   type SpotifyPlaylist,
@@ -344,6 +348,10 @@ export function SpotifyView() {
   const [playback, setPlayback] = useState<PlaybackState | null>(null);
   const [progress, setProgress] = useState(0);
   const [activePlaylist, setActivePlaylist] = useState<SpotifyPlaylist | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SpotifyTrack[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setLoadingData(true);
@@ -510,6 +518,45 @@ export function SpotifyView() {
     return () => window.clearInterval(interval);
   }, [playback]);
 
+  useEffect(() => {
+    if (phase !== "app") {
+      setSearchResults([]);
+      setSearching(false);
+      setSearchError(null);
+      return;
+    }
+
+    const term = searchQuery.trim();
+    if (term.length < 2) {
+      setSearchResults([]);
+      setSearching(false);
+      setSearchError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setSearching(true);
+    setSearchError(null);
+    setSearchResults([]);
+    const timer = window.setTimeout(() => {
+      void searchSpotifyTracks(term)
+        .then((tracks) => {
+          if (!cancelled) setSearchResults(tracks);
+        })
+        .catch((cause) => {
+          if (!cancelled) setSearchError(message(cause));
+        })
+        .finally(() => {
+          if (!cancelled) setSearching(false);
+        });
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [phase, searchQuery]);
+
   async function copyRedirect() {
     try {
       await navigator.clipboard.writeText(redirectUri);
@@ -525,9 +572,14 @@ export function SpotifyView() {
     setConnecting(true);
     try {
       markSpotifyTutorialSeen();
-      await beginSpotifyAuth(clientIdDraft);
+      const result = await beginSpotifyAuth(clientIdDraft);
+      if (result === "connected") {
+        setPhase("app");
+        await loadData();
+      }
     } catch (cause) {
       setError(message(cause));
+    } finally {
       setConnecting(false);
     }
   }
@@ -545,6 +597,10 @@ export function SpotifyView() {
     setActivePlaylist(null);
     setPlayerError(null);
     setPremiumRequired(false);
+    setSearchQuery("");
+    setSearchResults([]);
+    setSearchError(null);
+    setSearching(false);
     setPhase("connect");
   }
 
@@ -572,6 +628,41 @@ export function SpotifyView() {
           });
           await play();
           setActivePlaylist(playlist);
+          return;
+        } catch (retryCause) {
+          setPlayerError(message(retryCause));
+          return;
+        }
+      }
+      setPlayerError(message(cause));
+    }
+  }
+
+  async function playTrack(track: SpotifyTrack) {
+    if (!track.uri) return;
+    if (!deviceId) {
+      setPlayerError("El reproductor todavía se está conectando. Prueba en unos segundos.");
+      return;
+    }
+    setPlayerError(null);
+    const play = () =>
+      spotifyApi(`/me/player/play?device_id=${encodeURIComponent(deviceId)}`, {
+        method: "PUT",
+        body: JSON.stringify({ uris: [track.uri] }),
+      });
+
+    try {
+      await play();
+      setActivePlaylist(null);
+    } catch (cause) {
+      if (cause instanceof SpotifyError && cause.status === 404) {
+        try {
+          await spotifyApi("/me/player", {
+            method: "PUT",
+            body: JSON.stringify({ device_ids: [deviceId] }),
+          });
+          await play();
+          setActivePlaylist(null);
           return;
         } catch (retryCause) {
           setPlayerError(message(retryCause));
@@ -924,6 +1015,107 @@ export function SpotifyView() {
       {playerError ? (
         <Notice onClose={() => setPlayerError(null)}>{playerError}</Notice>
       ) : null}
+
+      <section
+        aria-label="Buscar canciones en Spotify"
+        className="app-glass overflow-hidden rounded-[26px] border border-white/40 p-3 shadow-[0_18px_50px_-38px_rgba(15,23,42,0.65)] dark:border-white/10 sm:p-4"
+      >
+        <form onSubmit={(event) => event.preventDefault()} className="relative">
+          <Search
+            className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-white/30"
+            strokeWidth={1.9}
+          />
+          <Input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Busca una canción, artista o álbum…"
+            aria-label="Buscar canciones en Spotify"
+            autoComplete="off"
+            spellCheck={false}
+            className="h-11 rounded-2xl border-white/45 bg-white/45 pl-10 pr-10 text-[12px] shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.06] dark:text-white/85 dark:placeholder:text-white/30"
+          />
+          {searching ? (
+            <Loader2 className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-[#1DB954]" />
+          ) : searchQuery.trim() ? (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              aria-label="Limpiar búsqueda"
+              className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-black/[0.05] hover:text-slate-700 dark:text-white/30 dark:hover:bg-white/10 dark:hover:text-white/75"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
+        </form>
+
+        {searchError ? (
+          <div className="mt-2">
+            <Notice onClose={() => setSearchError(null)}>{searchError}</Notice>
+          </div>
+        ) : null}
+
+        <AnimatePresence initial={false}>
+          {searchResults.length > 0 ? (
+            <motion.div
+              key="spotify-search-results"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="mt-3 max-h-[320px] space-y-0.5 overflow-y-auto rounded-2xl border border-white/35 bg-white/25 p-1.5 dark:border-white/10 dark:bg-white/[0.03]"
+            >
+              {searchResults.map((track) => (
+                <button
+                  key={track.id ?? track.uri}
+                  type="button"
+                  onClick={() => void playTrack(track)}
+                  className="group flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-white/55 dark:hover:bg-white/[0.07]"
+                  title={`Reproducir ${track.name}`}
+                >
+                  <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-black/[0.05] dark:bg-white/[0.06]">
+                    {track.album?.images?.[0]?.url ? (
+                      <img
+                        src={track.album?.images?.[0]?.url}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="flex h-full w-full items-center justify-center text-slate-400 dark:text-white/25">
+                        <Music2 className="h-4 w-4" />
+                      </span>
+                    )}
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition-opacity group-hover:opacity-100">
+                      <Play className="h-4 w-4 fill-white text-white" />
+                    </span>
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[12px] font-semibold text-slate-800 dark:text-white/85">
+                      {track.name}
+                    </span>
+                    <span className="mt-0.5 block truncate text-[10.5px] text-slate-500 dark:text-white/35">
+                      {trackArtistLine(track)}
+                    </span>
+                  </span>
+                  <span className="shrink-0 rounded-full bg-[#1DB954]/10 p-1.5 text-[#138a3f] dark:bg-[#1DB954]/15 dark:text-[#5ee08b]">
+                    <Play className="h-3 w-3 fill-current" />
+                  </span>
+                </button>
+              ))}
+            </motion.div>
+          ) : searchQuery.trim().length >= 2 && !searching && !searchError ? (
+            <motion.p
+              key="spotify-search-empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="mt-3 px-2 text-[11px] text-slate-500 dark:text-white/35"
+            >
+              No encontramos canciones con ese nombre.
+            </motion.p>
+          ) : null}
+        </AnimatePresence>
+      </section>
 
       <section className="space-y-3">
         <div className="flex items-end justify-between gap-3">

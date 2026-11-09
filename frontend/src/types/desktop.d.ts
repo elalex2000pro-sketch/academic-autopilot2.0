@@ -2,6 +2,14 @@ import type { DesktopUpdaterBridge } from "@/lib/desktop-updater";
 
 export {};
 
+interface DesktopSpotifyAuthCallback {
+  code?: string;
+  state?: string;
+  error?: string;
+  error_description?: string;
+  cancelled?: boolean;
+}
+
 declare global {
   interface Window {
     /** Puente mínimo que expone la ventana de Electron al renderer. */
@@ -19,6 +27,16 @@ declare global {
       ) => Promise<{ ok: boolean; useCustomTitlebar: boolean }>;
       /** Preferencia que el proceso principal aplicó al crear la ventana. */
       getWindowPreferences?: () => Promise<{ useCustomTitlebar: boolean }>;
+      /** Abre el OAuth de Spotify en una ventana hija de Electron. */
+      startSpotifyAuth?: (
+        url: string,
+        redirectUri: string,
+      ) => Promise<{ ok: boolean; error?: string }>;
+      /** Escucha el código o la cancelación que devuelve la ventana de OAuth. */
+      onSpotifyAuth?: (
+        callback: (payload: DesktopSpotifyAuthCallback) => void,
+      ) => void;
+      offSpotifyAuth?: () => void;
       /** Avisos nativos del sistema operativo (los usa lib/notifications.ts). */
       notify?: (payload: {
         title: string;

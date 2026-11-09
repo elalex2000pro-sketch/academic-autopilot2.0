@@ -201,8 +201,13 @@ async function pkceChallenge(verifier: string): Promise<string> {
   return base64Url(digest);
 }
 
-/** Guarda el Client ID y redirige a la pantalla de autorización de Spotify. */
-export async function beginSpotifyAuth(clientId: string): Promise<void> {
+/**
+ * Guarda el Client ID y abre la autorización. En Electron usa una ventana
+ * hija y espera el `code` por IPC; en web conserva la redirección normal.
+ */
+export async function beginSpotifyAuth(
+  clientId: string,
+): Promise<"connected" | "redirect"> {
   const id = clientId.trim();
   if (!/^[a-f0-9]{32}$/i.test(id)) {
     throw new SpotifyError("El Client ID debe tener 32 caracteres hexadecimales.");
@@ -219,17 +224,83 @@ export async function beginSpotifyAuth(clientId: string): Promise<void> {
   write(VERIFIER_KEY, verifier);
   write(STATE_KEY, state);
 
+  const redirectUri = getSpotifyRedirectUri();
   const params = new URLSearchParams({
     response_type: "code",
     client_id: id,
-    redirect_uri: getSpotifyRedirectUri(),
+    redirect_uri: redirectUri,
     scope: SPOTIFY_SCOPES.join(" "),
     code_challenge_method: "S256",
     code_challenge: challenge,
     state,
   });
+  const authorizeUrl = `${AUTHORIZE_URL}?${params.toString()}`;
 
-  window.location.assign(`${AUTHORIZE_URL}?${params.toString()}`);
+  const bridge = window.autopilotDesktop;
+  const startAuth = bridge?.startSpotifyAuth;
+  const listenAuth = bridge?.onSpotifyAuth;
+  if (typeof startAuth === "function" && typeof listenAuth === "function") {
+    await new Promise<void>((resolve, reject) => {
+      let settled = false;
+      const cleanup = () => {
+        bridge?.offSpotifyAuth?.();
+      };
+      const fail = (cause: unknown) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(
+          cause instanceof Error
+            ? cause
+            : new SpotifyError("No se pudo completar la conexión con Spotify."),
+        );
+      };
+
+      listenAuth((payload) => {
+        if (settled) return;
+        if (payload.cancelled) {
+          fail(new SpotifyError("Conexión cancelada."));
+          return;
+        }
+        if (payload.error) {
+          fail(
+            new SpotifyError(
+              payload.error_description || "Spotify canceló la conexión.",
+            ),
+          );
+          return;
+        }
+        if (!payload.code) {
+          fail(new SpotifyError("Spotify no devolvió el código de autorización."));
+          return;
+        }
+        void completeSpotifyAuth(payload.code, payload.state ?? null)
+          .then(() => {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            resolve();
+          })
+          .catch(fail);
+      });
+
+      void startAuth(authorizeUrl, redirectUri)
+        .then((result) => {
+          if (result && result.ok === false) {
+            fail(
+              new SpotifyError(
+                result.error || "No se pudo abrir el inicio de sesión de Spotify.",
+              ),
+            );
+          }
+        })
+        .catch(fail);
+    });
+    return "connected";
+  }
+
+  window.location.assign(authorizeUrl);
+  return "redirect";
 }
 
 /** Canjea el código de la URL por tokens y marca el tutorial como visto. */
@@ -367,4 +438,24 @@ export async function fetchSpotifyPlaylists(): Promise<SpotifyPlaylist[]> {
   );
   const items = Array.isArray(page?.items) ? page.items : [];
   return items.filter((item): item is SpotifyPlaylist => Boolean(item && item.id));
+}
+
+export async function searchSpotifyTracks(
+  query: string,
+  limit = 8,
+): Promise<SpotifyTrack[]> {
+  const term = query.trim();
+  if (!term) return [];
+
+  const safeLimit = Math.min(50, Math.max(1, Math.floor(limit)));
+  const params = new URLSearchParams({
+    q: term,
+    type: "track",
+    limit: String(safeLimit),
+  });
+  const data = await spotifyApi<{
+    tracks?: { items?: (SpotifyTrack | null)[] };
+  }>(`/search?${params.toString()}`);
+  const items = Array.isArray(data.tracks?.items) ? data.tracks.items : [];
+  return items.filter((track): track is SpotifyTrack => Boolean(track?.uri));
 }
