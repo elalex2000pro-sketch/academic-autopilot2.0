@@ -106,6 +106,8 @@ import {
   ListChecks,
   ListOrdered,
   Loader2,
+  Maximize2,
+  Minimize2,
   Minus,
   Palette,
   PanelRight,
@@ -487,6 +489,9 @@ export function WriterEditor({
   const [paintActive, setPaintActive] = useState(false);
   const [lang, setLang] = useState("es-ES");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [nativeFullscreen, setNativeFullscreen] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
+  const immersive = nativeFullscreen || focusMode;
 
   latestHtmlRef.current = html;
   marginsRef.current = margins;
@@ -638,17 +643,48 @@ export function WriterEditor({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, []);
 
+  // La API nativa puede salir con ESC o con el gesto del sistema: el estado
+  // del boton debe seguir siempre al elemento que esta realmente a pantalla
+  // completa.
+  useEffect(() => {
+    const syncFullscreen = () => {
+      const active = document.fullscreenElement === rootRef.current;
+      setNativeFullscreen(active);
+      if (active) setFocusMode(false);
+    };
+    syncFullscreen();
+    document.addEventListener("fullscreenchange", syncFullscreen);
+    return () => document.removeEventListener("fullscreenchange", syncFullscreen);
+  }, []);
+
+  // Fallback para navegadores que no permiten Fullscreen API en un div
+  // (Safari/iOS, permisos del navegador o Electron embebido).
+  useEffect(() => {
+    if (!focusMode) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.body.classList.add("office-editor-focus");
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.classList.remove("office-editor-focus");
+    };
+  }, [focusMode]);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setOpenMenu(null);
         setFindOpen(false);
         setSpecialOpen(false);
+        if (focusMode) setFocusMode(false);
+        if (document.fullscreenElement === rootRef.current) {
+          void document.exitFullscreen().catch(() => {});
+        }
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [focusMode]);
 
   useEffect(() => {
     return () => {
@@ -852,9 +888,38 @@ export function WriterEditor({
     setStatusMessage(found ? `Coincidencia encontrada: ${findQuery}` : "No se encontro el texto.");
   }
 
-  function toggleFullscreen() {
-    if (document.fullscreenElement) void document.exitFullscreen();
-    else void rootRef.current?.requestFullscreen?.();
+  async function toggleFullscreen() {
+    setOpenMenu(null);
+
+    if (focusMode) {
+      setFocusMode(false);
+      setStatusMessage("Pantalla completa desactivada.");
+      return;
+    }
+
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen();
+      } catch {
+        setNativeFullscreen(false);
+      }
+      return;
+    }
+
+    const root = rootRef.current;
+    if (root?.requestFullscreen) {
+      try {
+        await root.requestFullscreen();
+        setNativeFullscreen(true);
+        setStatusMessage("Pantalla completa. Pulsa ESC para salir.");
+        return;
+      } catch {
+        // Sin permiso o API restringida: se usa el modo enfocado de la UI.
+      }
+    }
+
+    setFocusMode(true);
+    setStatusMessage("Modo enfocado. Pulsa ESC para salir.");
   }
 
   function goToHeading(index: number) {
@@ -966,7 +1031,10 @@ export function WriterEditor({
         separator,
         { label: "Barra lateral", action: () => setSidebarOpen((value) => !value) },
         { label: "Regla", action: () => setShowRuler((value) => !value) },
-        { label: "Pantalla completa", action: toggleFullscreen },
+        {
+          label: immersive ? "Salir de pantalla completa" : "Pantalla completa",
+          action: toggleFullscreen,
+        },
         { label: "Codigo fuente HTML", action: () => exec("sourceEditing") },
       ],
     },
@@ -1100,7 +1168,10 @@ export function WriterEditor({
         { label: "Galeria", action: () => { setSidebarOpen(true); setSidebarTab("gallery"); } },
         { label: "Navegador", action: () => { setSidebarOpen(true); setSidebarTab("navigator"); } },
         separator,
-        { label: "Pantalla completa", action: toggleFullscreen },
+        {
+          label: immersive ? "Salir de pantalla completa" : "Pantalla completa",
+          action: toggleFullscreen,
+        },
         { label: "Nueva ventana", action: () => window.open(window.location.href, "_blank") },
       ],
     },
@@ -1195,7 +1266,10 @@ export function WriterEditor({
   } as CSSProperties;
 
   return (
-    <div ref={rootRef} className="office-writer">
+    <div
+      ref={rootRef}
+      className={cn("office-writer", focusMode && "is-focus-mode")}
+    >
       <div ref={menuBarRef} className="office-menu-bar" role="menubar" aria-label="Menu principal">
         {menus.map((menu) => (
           <div
@@ -1253,6 +1327,23 @@ export function WriterEditor({
             )}
           </div>
         ))}
+        <button
+          type="button"
+          className={cn("office-fullscreen-toggle", immersive && "is-active")}
+          onClick={() => void toggleFullscreen()}
+          aria-label={immersive ? "Salir de pantalla completa" : "Pantalla completa"}
+          aria-pressed={immersive}
+          title={immersive ? "Salir de pantalla completa (ESC)" : "Pantalla completa"}
+        >
+          {immersive ? (
+            <Minimize2 className="h-3.5 w-3.5" />
+          ) : (
+            <Maximize2 className="h-3.5 w-3.5" />
+          )}
+          <span className="office-fullscreen-label">
+            {immersive ? "Salir de pantalla completa" : "Pantalla completa"}
+          </span>
+        </button>
       </div>
 
       <div className="office-toolbar" role="toolbar" aria-label="Barra estandar">

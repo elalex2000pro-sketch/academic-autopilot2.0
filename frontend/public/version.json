@@ -1,11 +1,11 @@
 {
-  "version": "1.3.10",
-  "publishedAt": "2026-11-09T10:32:25.438Z",
+  "version": "1.3.11",
+  "publishedAt": "2026-11-09T10:40:19.280Z",
   "sizeBytes": 8388608,
   "notes": [
-    "Corrige el icono del acceso directo de Windows con un ejecutable y una identidad de instalación nuevos.",
-    "El instalador fuerza la recreación del acceso directo y refresca la caché de iconos del sistema.",
-    "Mantiene el rediseño del Planificador y las mejoras sociales de la 1.3.9."
+    "Añade pantalla completa al editor de Academic Office con un botón en la cabecera y salida con ESC.",
+    "El folio se amplía al máximo y oculta el chrome de la aplicación; incluye un modo enfocado de respaldo si el navegador bloquea la API nativa.",
+    "Mantiene las mejoras sociales, de estudio y el rediseño del Planificador de las versiones anteriores."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases"
 }
