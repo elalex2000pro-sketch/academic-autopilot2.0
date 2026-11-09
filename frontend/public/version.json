@@ -1,12 +1,13 @@
 {
-  "version": "1.3.7",
-  "publishedAt": "2026-11-09T09:51:30.313Z",
+  "version": "1.3.8",
+  "publishedAt": "2026-11-09T10:10:12.703Z",
   "sizeBytes": 8388608,
   "notes": [
-    "El lector PDF estrena la pestaña Páginas, con miniaturas navegables de todo el documento.",
-    "Nivel, EXP y las estadísticas principales se animan con Framer Motion al cargar.",
-    "Nuevo estilo Pure Glass, con superficies casi transparentes y desenfoque intenso.",
-    "Mantiene las mejoras de accesibilidad, Spotify y estabilidad de la 1.3.6."
+    "El chat privado y de grupo estrena selector de emotes y stickers desbloqueables por nivel.",
+    "Las recompensas de nivel incluyen insignias de perfil, el tema Aurora y packs de stickers para el chat.",
+    "Nuevos minijuegos de estudio generados desde tus flashcards: quiz rápido, unir conceptos y rellenar huecos.",
+    "Cada ronda completada de los minijuegos concede EXP y el chat ya está accesible desde la navegación.",
+    "Mantiene las mejoras de PDF, contadores, Pure Glass y estabilidad de la 1.3.7."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases"
 }

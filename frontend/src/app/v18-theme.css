@@ -193,3 +193,33 @@ html[data-glass="pure"] .wallpaper-veil {
 html.dark[data-glass="pure"] .wallpaper-veil {
   background: rgb(10 10 10 / 0.3);
 }
+
+/* Tema cosmético Aurora: recompensa desbloqueable ligada al progreso. */
+html[data-cosmetic-theme="aurora"] {
+  --v18-card-border: rgb(175 82 222 / 0.42);
+  --v18-card-border-hover: rgb(175 82 222 / 0.68);
+  --v18-card-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.7),
+    0 24px 64px -38px rgb(124 58 237 / 0.22);
+}
+
+html.dark[data-cosmetic-theme="aurora"] {
+  --v18-card-border: rgb(192 132 252 / 0.24);
+  --v18-card-border-hover: rgb(192 132 252 / 0.48);
+  --v18-card-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.1),
+    0 28px 76px -42px rgb(76 29 149 / 0.5);
+}
+
+html[data-cosmetic-theme="aurora"] .app-shell {
+  background-image:
+    radial-gradient(70% 50% at 100% 0%, rgb(192 132 252 / 0.12), transparent 65%),
+    radial-gradient(60% 45% at 0% 100%, rgb(0 102 255 / 0.07), transparent 70%);
+}
+
+html[data-cosmetic-theme="aurora"] .glass-card,
+html[data-cosmetic-theme="aurora"] .glass-strong,
+html[data-cosmetic-theme="aurora"] .app-glass,
+html[data-cosmetic-theme="aurora"] .app-glass-strong {
+  border-color: var(--v18-card-border);
+}

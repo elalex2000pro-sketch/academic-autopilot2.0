@@ -6,6 +6,7 @@ import {
   Brain,
   CheckCircle2,
   ChevronRight,
+  Gamepad2,
   GraduationCap,
   Layers,
   Loader2,
@@ -17,6 +18,7 @@ import {
   XCircle,
 } from "lucide-react";
 
+import { StudyGames } from "@/components/review/study-games";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +26,7 @@ import { api, ApiError } from "@/lib/api";
 import type { Flashcard, FlashcardStats, Notebook, Quiz, QuizResult } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-type Tab = "decks" | "exams";
+type Tab = "decks" | "games" | "exams";
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
@@ -164,6 +166,19 @@ export default function ReviewPage() {
             </button>
             <button
               type="button"
+              onClick={() => setTab("games")}
+              aria-pressed={tab === "games"}
+              className={cn(
+                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors",
+                tab === "games"
+                  ? "bg-slate-100/90 text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
+                  : "text-slate-500 hover:text-slate-800 dark:text-white/45 dark:hover:text-white/80",
+              )}
+            >
+              <Gamepad2 className="h-3.5 w-3.5" /> Minijuegos
+            </button>
+            <button
+              type="button"
               onClick={() => setTab("exams")}
               aria-pressed={tab === "exams"}
               className={cn(
@@ -199,6 +214,8 @@ export default function ReviewPage() {
           notify={setNotice}
           reload={load}
         />
+      ) : tab === "games" ? (
+        <StudyGames cards={cards} />
       ) : (
         <ExamsTab
           notebooks={notebooks}

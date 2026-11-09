@@ -20,15 +20,25 @@ import {
   Plus,
   Search,
   Send,
+  SmilePlus,
   UserPlus,
   Users,
   X,
 } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
+import { ChatExtrasPicker } from "@/components/chat-extras-picker";
 import { useRealtime } from "@/components/realtime-provider";
 import { Button } from "@/components/ui/button";
 import { chatApi } from "@/lib/api";
+import {
+  XP_EVENT,
+  getGamification,
+  getLevelInfo,
+  parseStickerMessage,
+  stickerMessage,
+  type ChatSticker,
+} from "@/lib/gamification";
 import type { ChatConversation, ChatMessage, ChatUser } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -66,6 +76,11 @@ function formatClock(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function messagePreview(message: ChatMessage): string {
+  const sticker = parseStickerMessage(message.content);
+  return sticker ? `${sticker.emoji} ${sticker.name}` : message.content;
 }
 
 function formatDay(iso: string): string {
@@ -143,6 +158,17 @@ function formatSize(bytes: number): string {
 
 /** Texto con enlaces clickeables (y vista previa si el enlace es una imagen). */
 function MessageText({ text }: { text: string }) {
+  const sticker = parseStickerMessage(text);
+  if (sticker) {
+    return (
+      <span className="flex min-w-[88px] flex-col items-center gap-1 py-1">
+        <span className="text-[42px] leading-none drop-shadow-sm">{sticker.emoji}</span>
+        <span className="text-[9px] font-semibold uppercase tracking-[0.1em] opacity-65">
+          {sticker.name}
+        </span>
+      </span>
+    );
+  }
   const parts = text.split(URL_PATTERN);
   return (
     <span className="whitespace-pre-wrap break-words">
@@ -315,6 +341,8 @@ export function ChatView() {
   const [loadingThread, setLoadingThread] = useState(false);
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState("");
+  const [extrasOpen, setExtrasOpen] = useState(false);
+  const [level, setLevel] = useState(1);
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mobileThread, setMobileThread] = useState(false);
@@ -336,6 +364,25 @@ export function ChatView() {
     () => conversations.find((conversation) => conversation.id === activeId) ?? null,
     [activeId, conversations],
   );
+
+  useEffect(() => {
+    if (!meId) {
+      setLevel(1);
+      return;
+    }
+    const sync = () => setLevel(getLevelInfo(getGamification(meId).xp).level);
+    sync();
+    window.addEventListener(XP_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(XP_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, [meId]);
+
+  useEffect(() => {
+    setExtrasOpen(false);
+  }, [activeId]);
 
   const refreshList = useCallback(async () => {
     try {
@@ -446,6 +493,11 @@ export function ChatView() {
     }
   });
 
+  function sendSticker(sticker: ChatSticker) {
+    setExtrasOpen(false);
+    void handleSend(stickerMessage(sticker.id));
+  }
+
   async function claimUsername() {
     const clean = usernameDraft.trim().replace(/^@/, "").toLowerCase();
     if (!clean || savingName) return;
@@ -467,11 +519,11 @@ export function ChatView() {
     }
   }
 
-  async function handleSend() {
+  async function handleSend(overrideText?: string) {
     if (!activeId || sending) return;
     const targetId = activeId;
-    const text = draft.trim();
-    const pendingFile = file;
+    const text = (overrideText ?? draft).trim();
+    const pendingFile = overrideText === undefined ? file : null;
     if (!text && !pendingFile) return;
     const tempId = `pending-${
       typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -498,7 +550,7 @@ export function ChatView() {
 
     setSending(true);
     setError(null);
-    setDraft("");
+    if (overrideText === undefined) setDraft("");
     setFile(null);
     if (fileRef.current) fileRef.current.value = "";
     setMessages((current) => sortByCreatedAt([...current, optimistic]));
@@ -511,7 +563,9 @@ export function ChatView() {
       setMessages((current) =>
         current.filter((message) => message.id !== tempId),
       );
-      setDraft((current) => (current.trim() ? current : text));
+      if (overrideText === undefined) {
+        setDraft((current) => (current.trim() ? current : text));
+      }
       setFile(pendingFile);
       setError(readError(sendError));
     } finally {
@@ -627,8 +681,9 @@ export function ChatView() {
                     </span>
                     <span className="flex items-center justify-between gap-2">
                       <span className="truncate text-xs text-muted-foreground">
-                        {conversation.last_message?.content ||
-                          conversationSubtitle(conversation)}
+                        {conversation.last_message
+                          ? messagePreview(conversation.last_message)
+                          : conversationSubtitle(conversation)}
                       </span>
                       {conversation.unread_count > 0 ? (
                         <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
@@ -776,7 +831,7 @@ export function ChatView() {
               </p>
             ) : null}
 
-            <div className="border-t border-border p-3">
+            <div className="relative border-t border-border p-3">
               {file ? (
                 <div className="mb-2 flex items-center gap-2 rounded-md bg-muted px-2 py-1 text-xs">
                   <Paperclip className="h-3.5 w-3.5 shrink-0" />
@@ -793,6 +848,20 @@ export function ChatView() {
                   </button>
                 </div>
               ) : null}
+              {extrasOpen ? (
+                <ChatExtrasPicker
+                  level={level}
+                  onEmoji={(emoji) =>
+                    setDraft((current) =>
+                      !current || /\s$/.test(current)
+                        ? `${current}${emoji}`
+                        : `${current} ${emoji}`,
+                    )
+                  }
+                  onSticker={sendSticker}
+                  onClose={() => setExtrasOpen(false)}
+                />
+              ) : null}
               <div className="flex items-end gap-2">
                 <input
                   ref={fileRef}
@@ -801,6 +870,15 @@ export function ChatView() {
                   className="hidden"
                   onChange={(event) => setFile(event.target.files?.[0] ?? null)}
                 />
+                <button
+                  type="button"
+                  onClick={() => setExtrasOpen((value) => !value)}
+                  className="rounded-md p-2 text-muted-foreground hover:bg-muted"
+                  aria-label="Emotes y stickers"
+                  aria-expanded={extrasOpen}
+                >
+                  <SmilePlus className="h-4 w-4" />
+                </button>
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
@@ -837,8 +915,7 @@ export function ChatView() {
                 </Button>
               </div>
               <p className="mt-1.5 text-[10px] text-muted-foreground">
-                Enter envia · Mayusculas+Enter salta de linea · adjuntos hasta 25
-                MB
+                Enter envia · Mayusculas+Enter salta de linea · emotes y stickers · adjuntos hasta 25 MB
               </p>
             </div>
           </>

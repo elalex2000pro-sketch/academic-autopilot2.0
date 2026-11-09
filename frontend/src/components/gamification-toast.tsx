@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Sparkles, Trophy } from "lucide-react";
 
-import { XP_EVENT, type LevelInfo } from "@/lib/gamification";
+import {
+  XP_EVENT,
+  type CosmeticReward,
+  type LevelInfo,
+} from "@/lib/gamification";
 
 interface XpToast {
   id: number;
@@ -14,6 +18,7 @@ interface XpToast {
   title: string;
   leveledUp: boolean;
   info: LevelInfo;
+  unlocked?: CosmeticReward[];
 }
 
 /** Aviso flotante cuando se gana EXP o se sube de nivel. */
@@ -70,7 +75,11 @@ export function GamificationToast() {
                   : `+${toast.amount} EXP`}
               </p>
               <p className="truncate text-[10.5px] text-slate-500 dark:text-white/40">
-                {toast.leveledUp ? toast.reason : `${toast.reason} · ${toast.info.xp} EXP`}
+                {toast.leveledUp
+                  ? toast.unlocked?.length
+                    ? `Desbloqueado: ${toast.unlocked.map((reward) => reward.name).join(", ")}`
+                    : toast.reason
+                  : `${toast.reason} · ${toast.info.xp} EXP`}
               </p>
             </div>
             {!toast.leveledUp ? (

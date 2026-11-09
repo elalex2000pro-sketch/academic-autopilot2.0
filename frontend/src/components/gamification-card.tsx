@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Flame, Sparkles, Zap } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
+import { RewardShelf } from "@/components/reward-shelf";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { DASHBOARD_ITEM } from "@/lib/dashboard";
 import {
@@ -143,6 +144,8 @@ export function GamificationCard() {
           </span>
         </div>
       </div>
+
+      <RewardShelf level={info.level} />
     </motion.section>
   );
 }

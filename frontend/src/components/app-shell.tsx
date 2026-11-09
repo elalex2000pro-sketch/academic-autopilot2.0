@@ -9,6 +9,7 @@ import { Loader2, LogOut, Settings, Sparkles } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { ContextPanel } from "@/components/context-panel";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { GamificationThemeSync } from "@/components/gamification-theme-sync";
 import { GamificationToast } from "@/components/gamification-toast";
 import { Logo } from "@/components/logo";
 import { MobileNavigationBar } from "@/components/mobile-navigation-bar";
@@ -382,6 +383,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <GamificationToast />
+      <GamificationThemeSync />
 
       {/* Acceso global al panel de IA, encima de la barra móvil. */}
       <button

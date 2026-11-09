@@ -6,6 +6,7 @@ import {
   GraduationCap,
   Home,
   LayoutDashboard,
+  MessageCircle,
   Settings,
   Target,
   Users,
@@ -50,7 +51,10 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Comparte",
-    items: [{ href: "/classes", label: "Aulas", icon: Users }],
+    items: [
+      { href: "/classes", label: "Aulas", icon: Users },
+      { href: "/chat", label: "Chat", icon: MessageCircle },
+    ],
   },
   {
     label: "Escucha",
@@ -103,11 +107,7 @@ export function isActive(pathname: string, href: string): boolean {
     );
   }
   if (href === "/classes") {
-    return (
-      pathname.startsWith("/classes") ||
-      pathname.startsWith("/chat") ||
-      pathname.startsWith("/files")
-    );
+    return pathname.startsWith("/classes") || pathname.startsWith("/files");
   }
   return pathname.startsWith(href);
 }
