@@ -12,6 +12,8 @@ interface TrafficLightProps {
   color: string;
   icon: LucideIcon;
   onClick?: () => void;
+  /** Área de clic reducida para caber en la barra lateral estrecha. */
+  compact?: boolean;
 }
 
 /**
@@ -19,7 +21,14 @@ interface TrafficLightProps {
  * grande hace que el control sea fácil de pulsar sin agrandar el semáforo.
  * Los íconos solo aparecen al pasar el cursor o al enfocar con el teclado.
  */
-function TrafficLight({ label, title, color, icon: Icon, onClick }: TrafficLightProps) {
+function TrafficLight({
+  label,
+  title,
+  color,
+  icon: Icon,
+  onClick,
+  compact = false,
+}: TrafficLightProps) {
   const sphere = (
     <span
       className={cn(
@@ -38,7 +47,13 @@ function TrafficLight({ label, title, color, icon: Icon, onClick }: TrafficLight
   // En el navegador los semáforos son decorativos: misma vista, sin acción.
   if (!onClick) {
     return (
-      <span className="group flex h-7 w-7 cursor-default items-center justify-center" aria-hidden>
+      <span
+        className={cn(
+          "group flex cursor-default items-center justify-center",
+          compact ? "h-5 w-5" : "h-7 w-7",
+        )}
+        aria-hidden
+      >
         {sphere}
       </span>
     );
@@ -50,7 +65,10 @@ function TrafficLight({ label, title, color, icon: Icon, onClick }: TrafficLight
       aria-label={label}
       title={title}
       onClick={onClick}
-      className="group flex h-7 w-7 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500/40 dark:focus-visible:ring-white/40"
+      className={cn(
+        "group flex shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500/40 dark:focus-visible:ring-white/40",
+        compact ? "h-5 w-5" : "h-7 w-7",
+      )}
     >
       {sphere}
     </button>
@@ -64,7 +82,7 @@ function TrafficLight({ label, title, color, icon: Icon, onClick }: TrafficLight
  * Si el usuario desactiva «Modo Marco Transparente» se ocultan por completo:
  * la ventana vuelve a usar la barra de título nativa del sistema.
  */
-export function WindowControls() {
+export function WindowControls({ compact = false }: { compact?: boolean }) {
   const { useCustomTitlebar } = usePreferences();
   const [desktop, setDesktop] = useState(false);
 
@@ -109,7 +127,12 @@ export function WindowControls() {
       aria-hidden={desktop ? undefined : true}
     >
       {lights.map(({ key, ...light }) => (
-        <TrafficLight key={key} {...light} onClick={desktop ? light.onClick : undefined} />
+        <TrafficLight
+          key={key}
+          {...light}
+          compact={compact}
+          onClick={desktop ? light.onClick : undefined}
+        />
       ))}
     </span>
   );
