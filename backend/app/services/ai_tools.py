@@ -17,6 +17,7 @@ from app.core.logging import get_logger
 from app.models.course import Course
 from app.models.enums import SourcePlatform, TaskPriority, TaskStatus
 from app.models.grade import Grade
+from app.models.important_date import ImportantDate
 from app.models.schedule_block import ScheduleBlock
 from app.models.task import Task
 from app.models.timetable_entry import TimetableEntry
@@ -86,6 +87,47 @@ def tool_schemas() -> list[dict[str, Any]]:
                         },
                         "course_name": {"type": "string"},
                     },
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "add_event_to_calendar",
+                "description": (
+                    "Crea un evento real en el calendario del Planificador. "
+                    "Usala siempre que el usuario mencione un examen, una entrega/tarea o una "
+                    "fecha importante. No pidas confirmacion: ejecuta la herramienta y confirma "
+                    "despues el resultado. Interpreta fechas relativas usando la fecha actual "
+                    "del contexto y devuelve la fecha en formato YYYY-MM-DD."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "title": {
+                            "type": "string",
+                            "description": "Titulo limpio del evento, sin la fecha. Ej: 'Examen de Redes'.",
+                        },
+                        "date": {
+                            "type": "string",
+                            "description": "Fecha del evento en formato YYYY-MM-DD.",
+                        },
+                        "type": {
+                            "type": "string",
+                            "enum": ["exam", "task", "important_date"],
+                            "description": "exam = examen; task = tarea/entrega; important_date = fecha importante.",
+                        },
+                        "time": {
+                            "type": "string",
+                            "description": "Hora opcional HH:MM. Si se omite, la tarea vence a las 23:59.",
+                        },
+                        "course_name": {
+                            "type": "string",
+                            "description": "Asignatura relacionada, si se menciona (ej. Redes).",
+                        },
+                        "notes": {"type": "string"},
+                    },
+                    "required": ["title", "date", "type"],
                 },
             },
         },
@@ -522,6 +564,113 @@ async def _h_create_task(db, user, args) -> tuple[dict, list[str]]:
     )
 
 
+def _normalize_calendar_type(value: Any) -> str | None:
+    raw = str(value or "").strip().lower().replace(" ", "_")
+    aliases = {
+        "exam": "exam",
+        "examen": "exam",
+        "examenes": "exam",
+        "exams": "exam",
+        "task": "task",
+        "tarea": "task",
+        "tareas": "task",
+        "important": "important_date",
+        "important_date": "important_date",
+        "fecha_importante": "important_date",
+        "fecha": "important_date",
+    }
+    return aliases.get(raw)
+
+
+async def _h_add_event_to_calendar(db, user, args) -> tuple[dict, list[str]]:
+    title = str(args.get("title", "")).strip()
+    event_type = _normalize_calendar_type(args.get("type"))
+    event_date = _parse_date(args.get("date"))
+    if not title:
+        return {"ok": False, "error": "Falta el titulo del evento"}, []
+    if event_type is None:
+        return {"ok": False, "error": "Tipo invalido: usa exam, task o important_date"}, []
+    if event_date is None:
+        return {"ok": False, "error": "La fecha no es valida; usa YYYY-MM-DD"}, []
+
+    notes = str(args.get("notes") or "").strip() or None
+    course = await _resolve_course(db, user, args.get("course_name"))
+
+    if event_type == "exam":
+        exam = Grade(
+            user_id=user.id,
+            course_id=course.id if course else None,
+            title=title[:300],
+            max_score=10.0,
+            graded_at=event_date,
+            notes=notes,
+            is_exam=True,
+        )
+        db.add(exam)
+        await db.commit()
+        await db.refresh(exam)
+        return (
+            {
+                "ok": True,
+                "type": "exam",
+                "created": exam.title,
+                "date": event_date.isoformat(),
+                "id": str(exam.id),
+            },
+            ["grades", "courses"],
+        )
+
+    if event_type == "task":
+        event_time = _parse_time(args.get("time")) or time(23, 59)
+        due_at = datetime.combine(event_date, event_time, tzinfo=timezone.utc)
+        task = Task(
+            user_id=user.id,
+            course_id=course.id if course else None,
+            source=SourcePlatform.manual,
+            external_id=f"manual-{uuid.uuid4()}",
+            title=title[:500],
+            description=notes,
+            due_at=due_at,
+            estimated_minutes=60,
+            priority=_guess_priority(due_at),
+            status=TaskStatus.pending,
+        )
+        db.add(task)
+        await db.commit()
+        await db.refresh(task)
+        return (
+            {
+                "ok": True,
+                "type": "task",
+                "created": task.title,
+                "date": event_date.isoformat(),
+                "due_at": due_at.isoformat(),
+                "id": str(task.id),
+            },
+            ["tasks", "courses"],
+        )
+
+    important = ImportantDate(
+        user_id=user.id,
+        title=title[:300],
+        date=event_date,
+        notes=notes,
+    )
+    db.add(important)
+    await db.commit()
+    await db.refresh(important)
+    return (
+        {
+            "ok": True,
+            "type": "important_date",
+            "created": important.title,
+            "date": event_date.isoformat(),
+            "id": str(important.id),
+        },
+        ["important_dates"],
+    )
+
+
 async def _h_update_task(db, user, args) -> tuple[dict, list[str]]:
     title = str(args.get("task_title", "")).strip()
     task, matches = await _find_task(db, user, title)
@@ -791,6 +940,7 @@ _HANDLERS = {
     "create_course": _h_create_course,
     "delete_course": _h_delete_course,
     "list_tasks": _h_list_tasks,
+    "add_event_to_calendar": _h_add_event_to_calendar,
     "create_task": _h_create_task,
     "update_task": _h_update_task,
     "complete_task": _h_complete_task,

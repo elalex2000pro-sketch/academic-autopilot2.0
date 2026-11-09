@@ -25,6 +25,7 @@ import type {
   FocusStats,
   Grade,
   GradeSummary,
+  ImportantDate,
   Integration,
   Notebook,
   NotebookSource,
@@ -334,6 +335,16 @@ export const api = {
   ) => request<Grade>(`/api/v1/grades/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteGrade: (id: string) =>
     request<void>(`/api/v1/grades/${id}`, { method: "DELETE" }),
+
+  // --- Fechas importantes del calendario ---
+  importantDates: () => request<ImportantDate[]>("/api/v1/important-dates"),
+  createImportantDate: (body: { title: string; date: string; notes?: string | null }) =>
+    request<ImportantDate>("/api/v1/important-dates", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  deleteImportantDate: (id: string) =>
+    request<void>(`/api/v1/important-dates/${id}`, { method: "DELETE" }),
 
   // --- Horario ---
   timetable: () => request<TimetableEntry[]>("/api/v1/timetable"),

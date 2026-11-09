@@ -46,6 +46,15 @@ export interface Grade {
   updated_at: string;
 }
 
+export interface ImportantDate {
+  id: string;
+  title: string;
+  date: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CourseGradeSummary {
   course_id: string | null;
   course_name: string | null;

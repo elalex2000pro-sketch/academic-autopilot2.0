@@ -188,6 +188,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // gestionan su propia cabecera; el inset del shell les haría desbordar.
   const isBookReader = pathname.startsWith("/library/");
   const isOffice = pathname === "/office";
+  const isPlanner = pathname === "/planner";
   const isImmersive = pathname === "/studio" || isBookReader;
 
   return (
@@ -369,7 +370,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 "pb-[calc(var(--mobile-nav-offset)+1.25rem)] pt-4 md:pb-0 md:pt-2",
             )}
           >
-            <div className={cn("mx-auto w-full", !isImmersive && "max-w-7xl")}>
+            <div
+              className={cn(
+                "mx-auto w-full",
+                !isImmersive && (isPlanner ? "max-w-[1800px]" : "max-w-7xl"),
+              )}
+            >
               <ErrorBoundary resetKey={pathname}>
                 <PageTransition>{children}</PageTransition>
               </ErrorBoundary>
@@ -377,7 +383,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </main>
         </div>
 
-        {!isImmersive ? <ContextPanel /> : null}
+        {!isImmersive && !isPlanner ? <ContextPanel /> : null}
 
         {!isBookReader ? <MobileNavigationBar /> : null}
       </div>

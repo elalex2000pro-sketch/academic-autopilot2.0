@@ -24,6 +24,7 @@ from app.db.base import utcnow
 from app.models.course import Course
 from app.models.enums import TaskStatus
 from app.models.grade import Grade
+from app.models.important_date import ImportantDate
 from app.models.schedule_block import ScheduleBlock
 from app.models.task import Task
 from app.models.timetable_entry import TimetableEntry
@@ -57,7 +58,10 @@ _SYSTEM_PROMPT = (
     "solo lo imprescindible en una frase.\n\n"
     f"{_APP_KNOWLEDGE}\n\n"
     "PUEDES OPERAR LA APP: mediante herramientas creas, editas y completas asignaturas, tareas, "
-    "notas, clases del horario y disponibilidad. Para ELIMINAR algo nunca lo hagas directamente: "
+    "notas, clases del horario y disponibilidad. Para crear CUALQUIER evento del calendario "
+    "(examen, tarea/entrega o fecha importante) usa SIEMPRE add_event_to_calendar, con la fecha "
+    "en YYYY-MM-DD y el tipo exam, task o important_date. Interpreta fechas relativas usando la "
+    "fecha actual del contexto y no pidas confirmacion para crear eventos. Para ELIMINAR algo nunca lo hagas directamente: "
     "invoca la herramienta de borrado y el sistema pedira confirmacion al usuario. Si falta un dato "
     "clave (fecha de entrega, nota, asignatura), preguntalo antes de actuar. Tras crear o cambiar "
     "algo, confirma en UNA frase con los datos clave.\n"
@@ -232,6 +236,13 @@ async def build_context(db: AsyncSession, user: User) -> dict[str, Any]:
     )
     grades = list(result.scalars().all())
 
+    result = await db.execute(
+        select(ImportantDate)
+        .where(ImportantDate.user_id == user.id)
+        .order_by(ImportantDate.date.asc())
+    )
+    important_dates = list(result.scalars().all())
+
     grade_by_course: dict[uuid.UUID | None, list[float]] = {}
     for grade in grades:
         if grade.percentage is not None:
@@ -280,6 +291,19 @@ async def build_context(db: AsyncSession, user: User) -> dict[str, Any]:
             }
             for course_id, values in grade_by_course.items()
         ],
+        "exams": [
+            {
+                "title": g.title,
+                "course": courses.get(g.course_id) if g.course_id else None,
+                "date": g.graded_at.isoformat(),
+            }
+            for g in grades
+            if g.is_exam and g.graded_at is not None
+        ],
+        "important_dates": [
+            {"title": e.title, "date": e.date.isoformat(), "notes": e.notes}
+            for e in important_dates
+        ],
     }
 
 
@@ -305,6 +329,21 @@ def render_context_text(ctx: dict[str, Any]) -> str:
             )
     else:
         lines.append("\nTAREAS PENDIENTES: (ninguna)")
+
+    if ctx.get("exams"):
+        lines.append("\nEXAMENES PROGRAMADOS:")
+        for exam in ctx["exams"]:
+            lines.append(
+                f"- {exam['title']} [{exam['course'] or 'sin asignatura'}] | {exam['date']}"
+            )
+
+    if ctx.get("important_dates"):
+        lines.append("\nFECHAS IMPORTANTES:")
+        for event in ctx["important_dates"]:
+            lines.append(
+                f"- {event['title']} | {event['date']}"
+                + (f" ({event['notes']})" if event.get("notes") else "")
+            )
 
     if ctx["availability"]:
         lines.append("\nDISPONIBILIDAD SEMANAL PARA ESTUDIAR:")

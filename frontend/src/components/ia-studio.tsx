@@ -1021,7 +1021,7 @@ export function IAStudio({
                     {status?.configured
                       ? `Conectado a ${status.provider} · ${status.model}`
                       : "Sin motor externo: respuestas por reglas"}
-                    {status?.tools_enabled ? " · Puede crear y editar tus tareas" : ""}
+                    {status?.tools_enabled ? " · Puede crear tareas y eventos en tu calendario" : ""}
                   </p>
                 </div>
               ) : (

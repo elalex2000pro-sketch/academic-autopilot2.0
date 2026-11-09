@@ -18,6 +18,7 @@ from app.models.enums import (
 from app.models.flashcard import Flashcard
 from app.models.focus_session import FocusSession
 from app.models.grade import Grade
+from app.models.important_date import ImportantDate
 from app.models.integration import Integration
 from app.models.notebook import Notebook, NotebookSource
 from app.models.quiz import Quiz
@@ -55,6 +56,7 @@ __all__ = [
     "Flashcard",
     "FocusSession",
     "Grade",
+    "ImportantDate",
     "Integration",
     "Notebook",
     "NotebookSource",

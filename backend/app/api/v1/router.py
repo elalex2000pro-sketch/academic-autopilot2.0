@@ -12,6 +12,7 @@ from app.api.v1 import (
     files,
     focus,
     grades,
+    important_dates,
     integrations,
     learning,
     notebooks,
@@ -32,6 +33,7 @@ api_router.include_router(integrations.router)
 api_router.include_router(sync.router)
 api_router.include_router(courses.router)
 api_router.include_router(grades.router)
+api_router.include_router(important_dates.router)
 api_router.include_router(timetable.router)
 api_router.include_router(tasks.router)
 api_router.include_router(chat.router)
