@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Fragment, lazy, Suspense, useCallback, useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { Loader2, LogOut, Settings, type LucideIcon } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Loader2, LogOut, Settings, Sparkles, type LucideIcon } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
 import { Logo } from "@/components/logo";
@@ -17,6 +17,7 @@ import { SystemNotifications } from "@/components/system-notifications";
 import { ThemeCycleButton } from "@/components/theme-toggle";
 import { WindowControls } from "@/components/window-controls";
 import { Button } from "@/components/ui/button";
+import { AI_DRAWER_EVENT } from "@/lib/ai-drawer";
 import {
   NAV_GROUPS,
   SECONDARY_NAV_ITEMS,
@@ -39,6 +40,10 @@ const OnboardingModal = lazy(() =>
   import("@/components/onboarding-modal").then((module) => ({
     default: module.OnboardingModal,
   })),
+);
+// El drawer de IA se descarga solo cuando se abre por primera vez.
+const IAStudio = lazy(() =>
+  import("@/components/ia-studio").then((module) => ({ default: module.IAStudio })),
 );
 
 const RAIL_SPRING = {
@@ -113,6 +118,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const reduceMotion = animationLevel === "reduced";
   const isPublic = pathname === "/login";
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
 
   // Guard de rutas: sin sesión -> /login.
   useEffect(() => {
@@ -126,6 +132,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (loading || !user || isPublic) return;
     if (!hasCompletedOnboarding()) setShowOnboarding(true);
   }, [loading, user, isPublic]);
+
+  // El drawer de IA se abre desde cualquier pantalla mediante un evento.
+  useEffect(() => {
+    const open = () => setAiOpen(true);
+    window.addEventListener(AI_DRAWER_EVENT, open);
+    return () => window.removeEventListener(AI_DRAWER_EVENT, open);
+  }, []);
+
+  useEffect(() => {
+    if (!aiOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setAiOpen(false);
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [aiOpen]);
 
   const finishOnboarding = useCallback(() => {
     markOnboardingCompleted();
@@ -339,6 +366,52 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {!isBookReader ? <MobileNavigationBar /> : null}
       </div>
+
+      {/* Acceso global al panel de IA, encima de la barra móvil. */}
+      <button
+        type="button"
+        onClick={() => setAiOpen(true)}
+        aria-label="Abrir IA Studio"
+        title="Preguntar a la IA"
+        className="fixed bottom-[calc(var(--mobile-nav-offset,5.5rem)+0.75rem)] right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-[#1b1b1f]/85 text-white shadow-[0_18px_40px_-16px_rgba(0,0,0,0.65)] backdrop-blur-2xl transition-transform hover:scale-105 md:bottom-6 md:right-6 dark:border-white/10"
+      >
+        <Sparkles className="h-5 w-5" />
+      </button>
+
+      <AnimatePresence>
+        {aiOpen ? (
+          <motion.div
+            key="ai-drawer"
+            className="fixed inset-0 z-[95] flex justify-end bg-slate-950/35 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setAiOpen(false)}
+          >
+            <motion.aside
+              role="dialog"
+              aria-modal="true"
+              aria-label="IA Studio"
+              className="flex h-dvh w-full max-w-[480px] flex-col overflow-hidden border-l border-white/15 bg-[#f4f4f7]/92 shadow-[-30px_0_80px_-40px_rgba(15,23,42,0.65)] backdrop-blur-3xl dark:border-white/10 dark:bg-[#0b0f18]/94"
+              initial={{ x: 64, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 64, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 320, damping: 34 }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <Suspense
+                fallback={
+                  <div className="flex h-full items-center justify-center gap-2 text-[12px] text-slate-500 dark:text-white/45">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Abriendo IA…
+                  </div>
+                }
+              >
+                <IAStudio embedded onClose={() => setAiOpen(false)} />
+              </Suspense>
+            </motion.aside>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       {showOnboarding ? (
         <Suspense fallback={null}>

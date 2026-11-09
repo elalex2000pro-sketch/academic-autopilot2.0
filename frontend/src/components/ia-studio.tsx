@@ -68,7 +68,16 @@ import {
   type StudioMode,
 } from "@/lib/studio";
 
-export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode }) {
+export function IAStudio({
+  initialMode = "chat",
+  embedded = false,
+  onClose,
+}: {
+  initialMode?: StudioMode;
+  /** Dentro del drawer: ocupa el alto del panel en vez de la ventana entera. */
+  embedded?: boolean;
+  onClose?: () => void;
+}) {
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const docScrollRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
@@ -830,7 +839,14 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
         : "idle";
 
   return (
-    <div className="relative flex h-[calc(100dvh-var(--mobile-header-height))] min-h-[620px] flex-col overflow-hidden lg:h-dvh">
+    <div
+      className={cn(
+        "relative flex flex-col overflow-hidden",
+        embedded
+          ? "h-full min-h-0"
+          : "h-[calc(100dvh-var(--mobile-header-height))] min-h-[620px] lg:h-dvh",
+      )}
+    >
       <div className="studio-canvas" data-ai-state={aiState} aria-hidden="true">
         <div className="studio-base" />
         <div className="studio-aurora" />
@@ -920,6 +936,18 @@ export function IAStudio({ initialMode = "chat" }: { initialMode?: StudioMode })
                 <span className="hidden sm:inline">Limpiar</span>
               </Button>
             </>
+          )}
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              aria-label="Cerrar IA Studio"
+              title="Cerrar"
+              className="h-8 w-8 rounded-full"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           )}
         </div>
       </header>

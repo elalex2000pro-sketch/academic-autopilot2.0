@@ -2,17 +2,13 @@ import {
   BookOpen,
   Brain,
   CalendarRange,
-  FileSpreadsheet,
-  FolderOpen,
+  Files,
   GraduationCap,
   Home,
   LayoutDashboard,
-  MessagesSquare,
-  NotebookPen,
   Settings,
   Target,
   Users,
-  Wand2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -42,24 +38,13 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/library", label: "Biblioteca", icon: BookOpen },
       { href: "/academics", label: "Académico", icon: GraduationCap },
-      { href: "/notebooks", label: "Cuadernos", icon: NotebookPen },
+      { href: "/documents", label: "Documentos", icon: Files },
       { href: "/review", label: "Repaso", icon: Brain },
     ],
   },
   {
-    label: "Crea",
-    items: [
-      { href: "/studio", label: "IA Studio", icon: Wand2 },
-      { href: "/office", label: "Academic-Office", icon: FileSpreadsheet },
-    ],
-  },
-  {
     label: "Comparte",
-    items: [
-      { href: "/classes", label: "Clases", icon: Users },
-      { href: "/chat", label: "Chat", icon: MessagesSquare },
-      { href: "/files", label: "Archivos", icon: FolderOpen },
-    ],
+    items: [{ href: "/classes", label: "Aulas", icon: Users }],
   },
 ];
 
@@ -74,8 +59,8 @@ export const ALL_ITEMS: NavItem[] = [
 export const PRIMARY_NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Inicio", icon: Home },
   { href: "/planner", label: "Planificador", icon: CalendarRange },
-  { href: "/studio", label: "IA Studio", icon: Wand2 },
-  { href: "/academics", label: "Académico", icon: GraduationCap },
+  { href: "/documents", label: "Documentos", icon: Files },
+  { href: "/classes", label: "Aulas", icon: Users },
   { href: "/settings", label: "Ajustes", icon: Settings },
 ];
 
@@ -98,6 +83,20 @@ export function isActive(pathname: string, href: string): boolean {
       pathname.startsWith("/academics") ||
       pathname.startsWith("/subjects") ||
       pathname.startsWith("/exams")
+    );
+  }
+  if (href === "/documents") {
+    return (
+      pathname.startsWith("/documents") ||
+      pathname.startsWith("/notebooks") ||
+      pathname.startsWith("/office")
+    );
+  }
+  if (href === "/classes") {
+    return (
+      pathname.startsWith("/classes") ||
+      pathname.startsWith("/chat") ||
+      pathname.startsWith("/files")
     );
   }
   return pathname.startsWith(href);

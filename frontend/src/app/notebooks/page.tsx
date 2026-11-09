@@ -29,6 +29,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
 import { api, ApiError } from "@/lib/api";
+import { NEW_NOTEBOOK_EVENT } from "@/lib/documents";
 import {
   deleteNotebookDraft,
   getNotebookDraft,
@@ -149,6 +150,13 @@ export default function NotebooksPage() {
   draftRef.current = draft;
   const selectedIdRef = useRef<string | null>(selectedId);
   selectedIdRef.current = selectedId;
+
+  // Documentos puede pedir un apunte nuevo sin salir de la sección.
+  useEffect(() => {
+    const onNew = () => setShowTemplates(true);
+    window.addEventListener(NEW_NOTEBOOK_EVENT, onNew);
+    return () => window.removeEventListener(NEW_NOTEBOOK_EVENT, onNew);
+  }, []);
 
   const selected = useMemo(
     () => notebooks.find((notebook) => notebook.id === selectedId) ?? null,

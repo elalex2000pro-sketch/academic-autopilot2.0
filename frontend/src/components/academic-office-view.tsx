@@ -127,7 +127,7 @@ function GlassButton({
   );
 }
 
-export function AcademicOfficeView() {
+export function AcademicOfficeView({ newSignal = 0 }: { newSignal?: number }) {
   const [module, setModule] = useState<OfficeModule>("document");
   const [docName, setDocName] = useState("Documento sin título");
   const [docHtml, setDocHtml] = useState(DEFAULT_DOC);
@@ -163,6 +163,12 @@ export function AcademicOfficeView() {
       setHydrated(true);
     }
   }, []);
+
+  // Documentos puede pedir un documento formal nuevo desde fuera.
+  useEffect(() => {
+    if (newSignal > 0) newDocument(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newSignal]);
 
   // Autoguardado con retardo para no escribir en cada tecla.
   useEffect(() => {
@@ -209,8 +215,9 @@ export function AcademicOfficeView() {
   const computed = evaluateSheet(cells);
   const filledCells = Object.keys(cells).length;
 
-  function newDocument() {
+  function newDocument(force = false) {
     if (
+      !force &&
       module === "document" &&
       !window.confirm("¿Descartar el documento actual y crear uno nuevo?")
     ) {

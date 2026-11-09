@@ -4,6 +4,8 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowUpRight, Sparkles } from "lucide-react";
 
+import { openAiDrawer } from "@/lib/ai-drawer";
+
 import { DASHBOARD_ITEM } from "@/lib/dashboard";
 
 export function DashboardHero({
@@ -77,13 +79,14 @@ export function DashboardHero({
             Abrir planificador
             <ArrowUpRight className="h-3.5 w-3.5" />
           </Link>
-          <Link
-            href="/studio"
+          <button
+            type="button"
+            onClick={openAiDrawer}
             className="inline-flex h-11 touch-manipulation items-center gap-1.5 rounded-full border border-white/60 bg-white/45 px-4 text-[11.5px] font-semibold text-[#3f3852] shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] backdrop-blur-xl transition-colors hover:bg-white/65"
           >
             <Sparkles className="h-3.5 w-3.5" />
             Crear con IA
-          </Link>
+          </button>
           {urgentCount > 0 ? (
             <span className="ml-auto hidden rounded-full bg-[#ff3b30]/10 px-2.5 py-1 text-[10px] font-semibold text-[#a52b24] md:block">
               {urgentCount} urgente{urgentCount === 1 ? "" : "s"}

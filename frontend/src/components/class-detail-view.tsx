@@ -50,15 +50,14 @@ import type {
   Notebook,
 } from "@/lib/types";
 
-type Tab = "chat" | "work" | "calendar" | "notebooks" | "files" | "members";
+type Tab = "work" | "calendar" | "notebooks";
 
+// El chat, los archivos y los miembros viven siempre en la vista de 3 columnas;
+// estas pestañas añaden el resto de secciones de la clase.
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: "chat", label: "Tablón", icon: MessageSquare },
   { id: "work", label: "Trabajo", icon: ClipboardCheck },
   { id: "calendar", label: "Calendario", icon: CalendarDays },
   { id: "notebooks", label: "Cuadernos", icon: NotebookPen },
-  { id: "files", label: "Archivos", icon: FolderOpen },
-  { id: "members", label: "Miembros", icon: Users },
 ];
 
 const WEEKDAYS = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"];
@@ -225,7 +224,7 @@ export default function ClassDetailView() {
   const [assignments, setAssignments] = useState<ClassAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("chat");
+  const [tab, setTab] = useState<Tab | null>(null);
   const [copied, setCopied] = useState(false);
 
   const isOwner = detail?.my_role === "owner";
@@ -462,10 +461,9 @@ export default function ClassDetailView() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (tab === "chat") {
-      messagesEndRef.current?.scrollIntoView({ block: "end" });
-    }
-  }, [messages.length, tab]);
+    // El tablón está siempre visible: al llegar un mensaje, baja hasta el final.
+    messagesEndRef.current?.scrollIntoView({ block: "end" });
+  }, [messages.length]);
 
   const pinnedMessages = useMemo(() => messages.filter((m) => m.pinned), [messages]);
 
@@ -931,19 +929,19 @@ export default function ClassDetailView() {
           {error ?? "No se pudo cargar la clase"}
         </div>
         <Link href="/classes" className="text-sm text-primary underline-offset-4 hover:underline">
-          Volver a las clases
+          Volver a Aulas
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4 p-6">
+    <div className="mx-auto max-w-7xl space-y-4 p-4 sm:p-6">
       <Link
         href="/classes"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="h-4 w-4" /> Clases
+        <ArrowLeft className="h-4 w-4" /> Aulas
       </Link>
 
       {/* Cabecera de la clase */}
@@ -1041,7 +1039,7 @@ export default function ClassDetailView() {
           <button
             key={id}
             type="button"
-            onClick={() => setTab(id)}
+            onClick={() => setTab((current) => (current === id ? null : id))}
             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
               tab === id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent"
             }`}
@@ -1052,10 +1050,13 @@ export default function ClassDetailView() {
         ))}
       </div>
 
-      {/* ------------------------------------------------------------------ Chat */}
-      {tab === "chat" && (
-        <Card>
-          <CardContent className="space-y-3 pt-6">
+      <div className="grid gap-4 xl:grid-cols-[minmax(170px,210px)_minmax(0,1fr)_minmax(220px,290px)]">
+        {/* ---------------------------------------------------------------- Chat */}
+        <Card className="order-2 xl:col-start-2 xl:row-start-1">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Tablón de la clase</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 pt-0">
             {pinnedMessages.length > 0 && (
               <div className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3">
                 <p className="flex items-center gap-1 text-xs font-medium text-amber-500">
@@ -1173,11 +1174,10 @@ export default function ClassDetailView() {
             </form>
           </CardContent>
         </Card>
-      )}
 
       {/* ------------------------------------------------------------- Calendario */}
       {tab === "calendar" && (
-        <div className="space-y-4">
+        <div className="order-4 space-y-4 xl:col-span-full xl:row-start-2">
           <Card>
             <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
               <Button
@@ -1417,7 +1417,7 @@ export default function ClassDetailView() {
 
       {/* ----------------------------------------------------------- Trabajo */}
       {tab === "work" && (
-        <Card>
+        <Card className="order-4 xl:col-span-full xl:row-start-2">
           <CardHeader className="flex-row flex-wrap items-start justify-between gap-3 space-y-0 pb-3">
             <div>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -1687,7 +1687,7 @@ export default function ClassDetailView() {
 
       {/* -------------------------------------------------------------- Cuadernos */}
       {tab === "notebooks" && (
-        <Card>
+        <Card className="order-4 xl:col-span-full xl:row-start-2">
           <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
             <div>
               <CardTitle className="text-base">Cuadernos compartidos</CardTitle>
@@ -1735,8 +1735,7 @@ export default function ClassDetailView() {
       )}
 
       {/* -------------------------------------------------------------- Archivos */}
-      {tab === "files" && (
-        <Card>
+      <Card className="order-3 xl:col-start-3 xl:row-start-1">
           <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-base">Archivos de la clase</CardTitle>
             <div>
@@ -1786,12 +1785,10 @@ export default function ClassDetailView() {
               />
             ))}
           </CardContent>
-        </Card>
-      )}
+      </Card>
 
       {/* -------------------------------------------------------------- Miembros */}
-      {tab === "members" && (
-        <Card>
+      <Card className="order-1 xl:col-start-1 xl:row-start-1">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Miembros ({detail.members.length})</CardTitle>
           </CardHeader>
@@ -1820,8 +1817,8 @@ export default function ClassDetailView() {
               </div>
             ))}
           </CardContent>
-        </Card>
-      )}
+      </Card>
+      </div>
 
       {openNotebook && (
         <div

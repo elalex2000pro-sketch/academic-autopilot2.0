@@ -57,6 +57,7 @@ import { Switch } from "@/components/ui/switch";
 import { api, ApiError } from "@/lib/api";
 import { resetCustomTimetable } from "@/lib/custom-timetable";
 import { saveRecoveryHint } from "@/lib/recovery-hint";
+import { openAiDrawer } from "@/lib/ai-drawer";
 import { cn } from "@/lib/utils";
 import type {
   AssistantStatus,
@@ -888,7 +889,13 @@ export function SettingsView() {
                       </a>
                     </Button>
                     <Button asChild size="sm" variant="ghost" className="h-7 px-2.5 text-[11px]">
-                      <a href="/studio">Ir a IA Studio</a>
+                      <button
+                        type="button"
+                        onClick={openAiDrawer}
+                        className="font-semibold underline underline-offset-2"
+                      >
+                        Abrir IA Studio
+                      </button>
                     </Button>
                   </div>
                 </CompactIntegrationCard>
@@ -920,7 +927,13 @@ export function SettingsView() {
                       </a>
                     </Button>
                     <Button asChild size="sm" variant="ghost" className="h-7 px-2.5 text-[11px]">
-                      <a href="/studio">Ir a IA Studio</a>
+                      <button
+                        type="button"
+                        onClick={openAiDrawer}
+                        className="font-semibold underline underline-offset-2"
+                      >
+                        Abrir IA Studio
+                      </button>
                     </Button>
                   </div>
                 </CompactIntegrationCard>
@@ -966,7 +979,7 @@ export function SettingsView() {
                       Cuadernos en Excel
                     </Button>
                     <Button asChild size="sm" variant="ghost" className="h-7 px-2.5 text-[11px]">
-                      <a href="/notebooks">Ir a Cuadernos</a>
+                      <a href="/documents">Ir a Documentos</a>
                     </Button>
                   </div>
                 </CompactIntegrationCard>
