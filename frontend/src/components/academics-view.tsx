@@ -27,6 +27,7 @@ import {
 
 import { ExamDialog, type ExamDialogMode } from "@/components/exam-dialog";
 import { useRealtime } from "@/components/realtime-provider";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -167,7 +168,7 @@ function StatCard({
 }: {
   icon: React.ReactNode;
   label: string;
-  value: string;
+  value: React.ReactNode;
   hint: string;
 }) {
   return (
@@ -700,25 +701,31 @@ export function AcademicsView() {
           <StatCard
             icon={<Award className="h-3.5 w-3.5" />}
             label="Media global"
-            value={gradeOverTen(stats.average)}
+            value={
+              stats.average === null ? (
+                "—"
+              ) : (
+                <AnimatedCounter value={stats.average ?? 0} decimals={1} />
+              )
+            }
             hint="sobre 10"
           />
           <StatCard
             icon={<BookOpen className="h-3.5 w-3.5" />}
             label="Asignaturas"
-            value={String(stats.courses)}
+            value={<AnimatedCounter value={stats.courses} />}
             hint="activas"
           />
           <StatCard
             icon={<Percent className="h-3.5 w-3.5" />}
             label="Evaluaciones"
-            value={String(stats.evaluations)}
+            value={<AnimatedCounter value={stats.evaluations} />}
             hint="registradas"
           />
           <StatCard
             icon={<CheckCircle2 className="h-3.5 w-3.5" />}
             label="Aprobadas"
-            value={String(stats.approved)}
+            value={<AnimatedCounter value={stats.approved} />}
             hint="notas ≥ 5"
           />
         </div>

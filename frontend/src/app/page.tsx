@@ -23,6 +23,7 @@ import { usePreferences } from "@/components/preferences-provider";
 import { Input } from "@/components/ui/input";
 import { SyncStatus } from "@/components/sync-status";
 import { TaskList } from "@/components/task-list";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { StatsCard } from "@/components/ui/stats-card";
 import { useRealtime } from "@/components/realtime-provider";
 import { useTaskManager } from "@/hooks/use-task-manager";
@@ -415,7 +416,7 @@ export default function DashboardPage() {
         ) : null}
         <StatsCard
           title="Pendientes"
-          value={tasks.length}
+          value={<AnimatedCounter value={tasks.length} />}
           change={
             tasks.length === 0
               ? "Todo al día"
@@ -428,7 +429,7 @@ export default function DashboardPage() {
 
         <StatsCard
           title="Plan de hoy"
-          value={`${planProgress}%`}
+          value={<AnimatedCounter value={planProgress} suffix="%" />}
           change={`${formatMinutes(completedMinutes)} de ${formatMinutes(totalMinutes)}`}
           icon={Timer}
           gradient="from-emerald-400 to-teal-600"
@@ -436,7 +437,7 @@ export default function DashboardPage() {
 
         <StatsCard
           title="Bloques"
-          value={completedBlocks}
+          value={<AnimatedCounter value={completedBlocks} />}
           change={`de ${totalBlocks} bloque${totalBlocks === 1 ? "" : "s"} · ${Math.round(blockProgress)}%`}
           icon={Layers}
           gradient="from-violet-500 to-indigo-600"
@@ -444,7 +445,7 @@ export default function DashboardPage() {
 
         <StatsCard
           title="Lectura"
-          value={readingBooks.length}
+          value={<AnimatedCounter value={readingBooks.length} />}
           change={readingBooks.length ? `${Math.round(readingProgress)}% de media` : "Sin lecturas activas"}
           icon={BookOpen}
           gradient="from-sky-400 to-blue-600"

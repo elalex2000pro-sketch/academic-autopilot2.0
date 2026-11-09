@@ -17,6 +17,7 @@ import {
   BookmarkCheck,
   ChevronRight,
   Download,
+  LayoutGrid,
   ListTree,
   Loader2,
   Minus,
@@ -31,7 +32,7 @@ import {
   X,
 } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
-import type { PDFDocumentProxy } from "pdfjs-dist";
+import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 
 import {
   getBook,
@@ -44,7 +45,7 @@ import { cn } from "@/lib/utils";
 
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
-type ReaderTab = "outline" | "bookmarks" | "notes" | "search";
+type ReaderTab = "outline" | "pages" | "bookmarks" | "notes" | "search";
 type FitMode = "custom" | "width" | "height";
 
 interface OutlineNode {
@@ -210,6 +211,115 @@ async function searchDocument(
   }
 
   return hits;
+}
+
+function PdfThumbnail({
+  pdfDocument,
+  pageNumber,
+  active,
+  onSelect,
+}: {
+  pdfDocument: PDFDocumentProxy | null;
+  pageNumber: number;
+  active: boolean;
+  onSelect: (page: number) => void;
+}) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [visible, setVisible] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (visible) return;
+    const element = buttonRef.current;
+    if (!element) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) setVisible(true);
+      },
+      { rootMargin: "360px 0px" },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [visible]);
+
+  useEffect(() => {
+    if (!pdfDocument || !visible) return;
+    let cancelled = false;
+    let task: RenderTask | null = null;
+    let page: Awaited<ReturnType<PDFDocumentProxy["getPage"]>> | null = null;
+
+    const render = async () => {
+      try {
+        page = await pdfDocument.getPage(pageNumber);
+        if (cancelled) return;
+        const base = page.getViewport({ scale: 1 });
+        const viewport = page.getViewport({ scale: 112 / base.width });
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ratio = Math.min(2, window.devicePixelRatio || 1);
+        canvas.width = Math.floor(viewport.width * ratio);
+        canvas.height = Math.floor(viewport.height * ratio);
+        const context = canvas.getContext("2d");
+        if (!context) return;
+        context.setTransform(ratio, 0, 0, ratio, 0, 0);
+        task = page.render({ canvasContext: context, viewport });
+        await task.promise;
+      } catch {
+        if (!cancelled) setFailed(true);
+      }
+    };
+
+    void render();
+    return () => {
+      cancelled = true;
+      try {
+        task?.cancel();
+      } catch {
+        /* La tarea ya terminó o pdf.js la canceló. */
+      }
+      page?.cleanup();
+    };
+  }, [pageNumber, pdfDocument, visible]);
+
+  return (
+    <button
+      ref={buttonRef}
+      type="button"
+      onClick={() => onSelect(pageNumber)}
+      aria-label={`Ir a la página ${pageNumber}`}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "group min-w-0 rounded-xl border p-1.5 text-left transition-colors",
+        active
+          ? "border-[#0066FF]/60 bg-[#0066FF]/10"
+          : "border-white/10 bg-white/[0.03] hover:border-white/25 hover:bg-white/[0.06]",
+      )}
+    >
+      <span
+        className="relative block overflow-hidden rounded-lg bg-white/[0.06]"
+        style={{ aspectRatio: "1 / 1.414" }}
+      >
+        <canvas
+          ref={canvasRef}
+          aria-hidden="true"
+          className={cn(
+            "block h-full w-full object-contain transition-opacity",
+            visible ? "opacity-100" : "opacity-0",
+          )}
+        />
+        {!visible || failed ? (
+          <span className="absolute inset-0 flex items-center justify-center text-[10px] text-white/30">
+            {failed ? "—" : <Loader2 className="h-4 w-4 animate-spin" />}
+          </span>
+        ) : null}
+      </span>
+      <span className="mt-1 flex items-center justify-between gap-1 text-[9.5px]">
+        <span className="truncate text-white/60">Página {pageNumber}</span>
+        {active ? <span className="h-1.5 w-1.5 rounded-full bg-[#8ab9ff]" /> : null}
+      </span>
+    </button>
+  );
 }
 
 interface PdfPageProps {
@@ -776,6 +886,7 @@ export default function BookReaderView() {
     icon: typeof ListTree;
   }> = [
     { id: "outline", label: "Índice", icon: ListTree },
+    { id: "pages", label: "Páginas", icon: LayoutGrid },
     { id: "bookmarks", label: "Marcas", icon: Bookmark },
     { id: "notes", label: "Notas", icon: NotebookPen },
     { id: "search", label: "Buscar", icon: Search },
@@ -814,7 +925,7 @@ export default function BookReaderView() {
               </button>
             </div>
 
-            <div className="grid grid-cols-4 gap-1 border-b border-white/10 p-2">
+            <div className="grid grid-cols-5 gap-1 border-b border-white/10 p-2">
               {sidebarTabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
@@ -854,6 +965,40 @@ export default function BookReaderView() {
                     <p className="rounded-xl border border-dashed border-white/10 p-3 text-[11px] leading-5 text-white/35">
                       Este PDF no incluye un índice navegable. Puedes usar el
                       número de página de la barra superior.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {sidebarTab === "pages" && (
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">
+                      Páginas
+                    </p>
+                    <span className="text-[9px] tabular-nums text-white/25">
+                      {pdfDocument ? `${totalPages} páginas` : "Cargando…"}
+                    </span>
+                  </div>
+                  {pdfDocument ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      {Array.from({ length: totalPages }, (_, index) => {
+                        const page = index + 1;
+                        return (
+                          <PdfThumbnail
+                            key={page}
+                            pdfDocument={pdfDocument}
+                            pageNumber={page}
+                            active={page === pageNumber}
+                            onSelect={goFromSidebar}
+                          />
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="flex items-center gap-2 rounded-xl border border-dashed border-white/10 p-3 text-[11px] text-white/35">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Preparando las miniaturas del documento…
                     </p>
                   )}
                 </div>

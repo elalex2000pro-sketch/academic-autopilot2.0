@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Flame, Sparkles, Zap } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { DASHBOARD_ITEM } from "@/lib/dashboard";
 import {
   FOCUS_XP,
@@ -81,7 +82,9 @@ export function GamificationCard() {
           <span className="text-[7.5px] font-semibold uppercase tracking-[0.14em] opacity-75">
             Nivel
           </span>
-          <span className="text-[22px] font-bold leading-none">{info.level}</span>
+          <span className="text-[22px] font-bold leading-none">
+            <AnimatedCounter value={info.level} />
+          </span>
         </div>
 
         <div className="min-w-0 flex-1">
@@ -91,7 +94,7 @@ export function GamificationCard() {
               Nivel y experiencia
             </p>
             <p className="text-[10.5px] font-semibold tabular-nums text-slate-500 dark:text-white/40">
-              {info.xp} EXP
+              <AnimatedCounter value={info.xp} /> EXP
             </p>
           </div>
 
@@ -100,7 +103,7 @@ export function GamificationCard() {
               {info.title}
             </p>
             <span className="text-[10px] font-medium text-slate-400 dark:text-white/30">
-              Nivel {info.level}
+              Nivel <AnimatedCounter value={info.level} />
             </span>
           </div>
 
@@ -120,9 +123,14 @@ export function GamificationCard() {
             />
           </div>
           <p className="mt-1 text-[10px] text-slate-500 dark:text-white/35">
-            {info.toNext > 0
-              ? `Te faltan ${info.toNext} EXP para el nivel ${info.level + 1}.`
-              : "Nivel máximo alcanzado por ahora."}
+            {info.toNext > 0 ? (
+              <>
+                Te faltan <AnimatedCounter value={info.toNext} /> EXP para el nivel{" "}
+                {info.level + 1}.
+              </>
+            ) : (
+              "Nivel máximo alcanzado por ahora."
+            )}
           </p>
         </div>
 

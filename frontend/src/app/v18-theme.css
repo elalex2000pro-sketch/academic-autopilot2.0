@@ -118,3 +118,78 @@ html.dark body {
 .v18-rail {
   background-color: #1b1b1f;
 }
+
+/* Pure Glass: una capa casi transparente con desenfoque intenso. Mantiene
+   los mismos materiales y bordes, pero deja pasar mucho más el fondo. */
+html[data-glass="pure"] {
+  --v18-card-border: rgb(255 255 255 / 0.4);
+  --v18-card-border-hover: rgb(255 255 255 / 0.62);
+  --v18-card-bg:
+    radial-gradient(120% 130% at 0% 0%, rgb(255 255 255 / 0.2), transparent 56%),
+    linear-gradient(145deg, rgb(255 255 255 / 0.18), rgb(255 255 255 / 0.065));
+  --v18-card-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.38),
+    0 24px 64px -40px rgb(28 27 38 / 0.24);
+  --v18-card-hover-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.52),
+    0 30px 74px -38px rgb(73 67 112 / 0.26);
+  --v18-soft-border: rgb(255 255 255 / 0.3);
+  --v18-soft-bg: rgb(255 255 255 / 0.1);
+}
+
+html.dark[data-glass="pure"] {
+  --v18-card-border: rgb(255 255 255 / 0.13);
+  --v18-card-border-hover: rgb(129 140 248 / 0.38);
+  --v18-card-bg:
+    radial-gradient(130% 120% at 0% 0%, rgb(255 255 255 / 0.09), transparent 56%),
+    linear-gradient(145deg, rgb(22 24 32 / 0.34), rgb(8 9 14 / 0.12));
+  --v18-card-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    0 28px 76px -42px rgb(0 0 0 / 0.8);
+  --v18-card-hover-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.12),
+    0 32px 80px -38px rgb(0 0 0 / 0.95);
+  --v18-soft-border: rgb(255 255 255 / 0.08);
+  --v18-soft-bg: rgb(255 255 255 / 0.035);
+}
+
+html[data-glass="pure"] .glass-card,
+html[data-glass="pure"] .glass-strong,
+html[data-glass="pure"] .app-glass,
+html[data-glass="pure"] .app-glass-strong {
+  backdrop-filter: blur(56px) saturate(190%);
+  -webkit-backdrop-filter: blur(56px) saturate(190%);
+}
+
+html[data-glass="pure"] .app-glass-soft {
+  backdrop-filter: blur(36px) saturate(175%);
+  -webkit-backdrop-filter: blur(36px) saturate(175%);
+}
+
+html[data-glass="pure"] .app-shell header[class*="backdrop-blur"] {
+  background-color: rgb(243 243 246 / 0.34) !important;
+  backdrop-filter: blur(48px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(48px) saturate(180%) !important;
+}
+
+html.dark[data-glass="pure"] .app-shell header[class*="backdrop-blur"] {
+  background-color: rgb(10 10 10 / 0.42) !important;
+}
+
+html[data-glass="pure"] .vibrancy {
+  background-color: hsl(var(--sidebar) / 0.32);
+  backdrop-filter: blur(80px) saturate(180%);
+  -webkit-backdrop-filter: blur(80px) saturate(180%);
+}
+
+html.dark[data-glass="pure"] .vibrancy {
+  background-color: hsl(var(--sidebar) / 0.38);
+}
+
+html[data-glass="pure"] .wallpaper-veil {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.04), transparent);
+}
+
+html.dark[data-glass="pure"] .wallpaper-veil {
+  background: rgb(10 10 10 / 0.3);
+}

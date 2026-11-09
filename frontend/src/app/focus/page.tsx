@@ -18,6 +18,7 @@ import {
 import { useAuth } from "@/components/auth-provider";
 import { DailyFocus } from "@/components/daily-focus";
 import { AmbientPlayer } from "@/components/focus/ambient-player";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api";
 import { awardFocusXp, awardTaskXp } from "@/lib/gamification";
@@ -277,7 +278,14 @@ export default function FocusPage() {
           </div>
           <p className="mt-4 text-center text-xs text-muted-foreground">
             Cada sesión completada se suma a tus estadísticas y racha diaria.
-            {sessionsDone > 0 ? ` Hoy llevas ${sessionsDone} en esta sesión.` : ""}
+            {sessionsDone > 0 ? (
+              <>
+                {" "}
+                Hoy llevas <AnimatedCounter value={sessionsDone} /> en esta sesión.
+              </>
+            ) : (
+              ""
+            )}
           </p>
 
           <div className="mt-5 border-t border-slate-300/40 pt-4 dark:border-white/10">
@@ -289,25 +297,28 @@ export default function FocusPage() {
           <StatCard
             icon={<TimerReset className="h-4 w-4 text-indigo-500" />}
             label="Hoy"
-            value={`${stats?.today_minutes ?? 0} min`}
+            value={stats?.today_minutes ?? 0}
+            suffix=" min"
             tone="indigo"
           />
           <StatCard
             icon={<Flame className="h-4 w-4 text-orange-500" />}
             label="Racha"
-            value={`${stats?.streak_days ?? 0} días`}
+            value={stats?.streak_days ?? 0}
+            suffix=" días"
             tone="orange"
           />
           <StatCard
             icon={<Brain className="h-4 w-4 text-violet-500" />}
             label="Esta semana"
-            value={`${stats?.week_minutes ?? 0} min`}
+            value={stats?.week_minutes ?? 0}
+            suffix=" min"
             tone="violet"
           />
           <StatCard
             icon={<Coffee className="h-4 w-4 text-emerald-500" />}
             label="Sesiones totales"
-            value={`${stats?.total_sessions ?? 0}`}
+            value={stats?.total_sessions ?? 0}
             tone="emerald"
           />
         </div>
@@ -366,11 +377,13 @@ function StatCard({
   icon,
   label,
   value,
+  suffix = "",
   tone,
 }: {
   icon: React.ReactNode;
   label: string;
-  value: string;
+  value: number;
+  suffix?: string;
   tone: "indigo" | "orange" | "violet" | "emerald";
 }) {
   const tones: Record<string, string> = {
@@ -385,7 +398,9 @@ function StatCard({
         {icon}
         {label}
       </div>
-      <p className="mt-1 text-2xl font-bold text-slate-800">{value}</p>
+      <p className="mt-1 text-2xl font-bold text-slate-800">
+        <AnimatedCounter value={value} suffix={suffix} />
+      </p>
     </div>
   );
 }

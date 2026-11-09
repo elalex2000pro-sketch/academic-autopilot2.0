@@ -36,6 +36,7 @@ import {
 import { useAuth } from "@/components/auth-provider";
 import { InstallAppButton } from "@/components/install-app-button";
 import { usePreferences } from "@/components/preferences-provider";
+import { GlassStylePicker } from "@/components/settings/glass-style-picker";
 import { PerformanceSettings } from "@/components/settings/performance-settings";
 import {
   CompactIntegrationCard,
@@ -633,6 +634,9 @@ export function SettingsView() {
                 <p className="text-[11px] leading-4 text-slate-500 dark:text-white/35">
                   Con «Sistema» se sigue automáticamente la preferencia de tu dispositivo.
                 </p>
+                <div className="border-t border-slate-300/40 pt-4 dark:border-white/[0.06]">
+                  <GlassStylePicker />
+                </div>
                 <div className="border-t border-slate-300/40 pt-4 dark:border-white/[0.06]">
                   <WallpaperPicker />
                 </div>

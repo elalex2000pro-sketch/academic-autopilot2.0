@@ -14,6 +14,7 @@ const STORAGE_KEY = "academic-autopilot-preferences";
 
 export type AnimationLevel = "reduced" | "standard" | "ultra";
 export type PerformanceProfile = "efficiency" | "quality";
+export type GlassStyle = "standard" | "pure";
 
 export interface Preferences {
   /** Aplica tachado y tono apagado a las vencidas dentro del historial. */
@@ -28,6 +29,8 @@ export interface Preferences {
   animationLevel: AnimationLevel;
   /** Perfil de coste visual: cristal completo o interfaz plana y ligera. */
   performanceProfile: PerformanceProfile;
+  /** Nivel de transparencia del cristal: el actual o Pure Glass. */
+  glassStyle: GlassStyle;
 }
 
 const DEFAULT_PREFERENCES: Preferences = {
@@ -35,10 +38,12 @@ const DEFAULT_PREFERENCES: Preferences = {
   useCustomTitlebar: true,
   animationLevel: "standard",
   performanceProfile: "quality",
+  glassStyle: "standard",
 };
 
 const ANIMATION_LEVELS: AnimationLevel[] = ["reduced", "standard", "ultra"];
 const PERFORMANCE_PROFILES: PerformanceProfile[] = ["efficiency", "quality"];
+const GLASS_STYLES: GlassStyle[] = ["standard", "pure"];
 
 /**
  * Acepta el antiguo valor `fluid` y lo migra a `ultra`. Así las preferencias
@@ -56,6 +61,7 @@ interface PreferencesContextValue extends Preferences {
   setUseCustomTitlebar: (value: boolean) => void;
   setAnimationLevel: (value: AnimationLevel) => void;
   setPerformanceProfile: (value: PerformanceProfile) => void;
+  setGlassStyle: (value: GlassStyle) => void;
   resetPreferences: () => void;
 }
 
@@ -63,6 +69,10 @@ const PreferencesContext = createContext<PreferencesContextValue | null>(null);
 
 function isPerformanceProfile(value: unknown): value is PerformanceProfile {
   return typeof value === "string" && (PERFORMANCE_PROFILES as string[]).includes(value);
+}
+
+function isGlassStyle(value: unknown): value is GlassStyle {
+  return typeof value === "string" && (GLASS_STYLES as string[]).includes(value);
 }
 
 function readPreferences(): Preferences {
@@ -88,6 +98,9 @@ function readPreferences(): Preferences {
       performanceProfile: isPerformanceProfile(parsed.performanceProfile)
         ? parsed.performanceProfile
         : DEFAULT_PREFERENCES.performanceProfile,
+      glassStyle: isGlassStyle(parsed.glassStyle)
+        ? parsed.glassStyle
+        : DEFAULT_PREFERENCES.glassStyle,
     };
   } catch {
     return DEFAULT_PREFERENCES;
@@ -111,6 +124,7 @@ function applyInterfacePreferences(preferences: Preferences) {
   const root = document.documentElement;
   root.dataset.animations = preferences.animationLevel;
   root.dataset.performance = preferences.performanceProfile;
+  root.dataset.glass = preferences.glassStyle;
 }
 
 /**
@@ -134,7 +148,11 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   // guardados y el script de `layout.tsx` los adelanta antes del primer pintado.
   useEffect(() => {
     applyInterfacePreferences(preferences);
-  }, [preferences.animationLevel, preferences.performanceProfile]);
+  }, [
+    preferences.animationLevel,
+    preferences.performanceProfile,
+    preferences.glassStyle,
+  ]);
 
   useEffect(() => {
     const stored = readPreferences();
@@ -201,6 +219,14 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const setGlassStyle = useCallback((value: GlassStyle) => {
+    setPreferences((current) => {
+      const next = { ...current, glassStyle: value };
+      persistPreferences(next);
+      return next;
+    });
+  }, []);
+
   const resetPreferences = useCallback(() => {
     const next = { ...DEFAULT_PREFERENCES };
     setPreferences(next);
@@ -218,6 +244,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       setUseCustomTitlebar,
       setAnimationLevel,
       setPerformanceProfile,
+      setGlassStyle,
       resetPreferences,
     }),
     [
@@ -226,6 +253,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       setAnimationLevel,
       setAutoStrikeOverdue,
       setPerformanceProfile,
+      setGlassStyle,
       setUseCustomTitlebar,
     ],
   );
