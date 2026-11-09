@@ -316,7 +316,9 @@ function pickDesktopRelease(releases: GithubRelease[]): DesktopReleaseCandidate 
     if (!release || release.draft || release.prerelease) continue;
 
     const tag = release.tag_name ?? "";
-    if (!/^desktop[-/]/i.test(tag)) continue;
+    // El workflow publica instaladores con tag `vX.Y.Z`; las versiones antiguas
+    // usaban `desktop-`. Aceptamos ambas si la release trae instalador.
+    if (!/^(?:desktop[-/]|v\d)/i.test(tag)) continue;
 
     const assets = release.assets ?? [];
     const asset =
