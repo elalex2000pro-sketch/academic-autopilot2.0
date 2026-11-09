@@ -158,11 +158,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <NotificationCenter>
       <SystemNotifications />
       <div className="app-shell flex min-h-dvh flex-col bg-transparent md:flex-row">
-        <aside className="v18-rail sticky top-4 ml-4 hidden h-[calc(100dvh-2rem)] w-[78px] shrink-0 flex-col items-center overflow-hidden rounded-[32px] border border-white/10 bg-[#1b1b1f] py-4 shadow-[0_30px_70px_-30px_rgba(20,20,28,0.72),inset_0_1px_0_rgba(255,255,255,0.09)] md:flex">
-          {/* Franja de arrastre con los semáforos, como en una ventana de macOS. */}
-          <div className="app-drag flex h-9 w-full shrink-0 items-center justify-center">
-            <WindowControls compact />
-          </div>
+        {/* Semáforos sobre la barra: franja superior de la ventana, como en macOS. */}
+        <div className="app-drag fixed left-4 top-0 z-50 hidden h-10 w-[78px] items-center justify-center md:flex">
+          <WindowControls compact />
+        </div>
+        <aside className="v18-rail sticky top-10 ml-4 hidden h-[calc(100dvh-3.5rem)] w-[78px] shrink-0 flex-col items-center overflow-hidden rounded-[32px] border border-white/10 bg-[#1b1b1f] py-4 shadow-[0_30px_70px_-30px_rgba(20,20,28,0.72),inset_0_1px_0_rgba(255,255,255,0.09)] md:flex">
           <Link
             href="/"
             aria-label="Academic Autopilot · Inicio"
