@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a2a33"/>
+      <stop offset="1" stop-color="#141418"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="96" y1="400" x2="416" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4F86FF"/>
+      <stop offset="0.55" stop-color="#7B8CFF"/>
+      <stop offset="1" stop-color="#B57BFF"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.42" r="0.58">
+      <stop stop-color="#7B8CFF" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#7B8CFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="112" fill="url(#glow)"/>
+  <rect x="4" y="4" width="504" height="504" rx="108" fill="none" stroke="#ffffff" stroke-opacity="0.10" stroke-width="8"/>
+  <g fill="none" stroke="url(#mark)" stroke-width="52" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M96 400L256 112L416 400"/>
+    <path d="M184 360L256 232L328 360"/>
+  </g>
+</svg>

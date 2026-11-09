@@ -1,11 +1,11 @@
 {
-  "version": "1.3.1",
-  "publishedAt": "2026-11-09T01:25:54.029Z",
+  "version": "1.3.2",
+  "publishedAt": "2026-11-09T01:35:53.386Z",
   "sizeBytes": 8388608,
   "notes": [
-    "Corrige el fallo al conectar Spotify con pistas sin artistas (podcasts o anuncios).",
-    "Muestra el error real y permite desconectar Spotify si el reproductor no puede cargarse.",
-    "Actualiza la caché offline y recupera la app tras un despliegue con chunks antiguos."
+    "Nuevo icono de escritorio con el logo de chevrones y refresco forzado de la caché de Windows.",
+    "El instalador actualiza el acceso directo al reinstalar o actualizar la app.",
+    "Incluye las mejoras de Spotify y la recuperación de errores de la 1.3.1."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases"
 }

@@ -1,6 +1,6 @@
 {
   "name": "academic-autopilot-desktop",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "private": true,
   "description": "App de escritorio de Academic Autopilot",
   "author": "Academic Autopilot",
@@ -78,7 +78,8 @@
       "deleteAppDataOnUninstall": false,
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
-      "differentialPackage": true
+      "differentialPackage": true,
+      "include": "build/installer.nsh"
     },
     "publish": [
       {
