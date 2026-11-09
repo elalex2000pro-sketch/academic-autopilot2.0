@@ -56,7 +56,7 @@ let updateState = {
   error: null,
 };
 
-app.setAppUserModelId("com.academicautopilot.desktop");
+app.setAppUserModelId("com.academicautopilot.desktop.iconfix1");
 
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {

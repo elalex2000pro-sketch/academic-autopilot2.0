@@ -1,12 +1,11 @@
 {
-  "version": "1.3.9",
-  "publishedAt": "2026-11-09T10:24:09.594Z",
+  "version": "1.3.10",
+  "publishedAt": "2026-11-09T10:32:25.438Z",
   "sizeBytes": 8388608,
   "notes": [
-    "Rediseño del Planificador: mini-calendario lateral compacto y vista semanal mucho más amplia.",
-    "Las clases de la semana usan tarjetas de cristal, nombres con dos líneas y tooltip con el nombre completo.",
-    "El día de hoy destaca con borde, brillo y etiqueta propia; las píldoras de exámenes y tareas son translúcidas.",
-    "Mantiene el chat, las recompensas por nivel y los minijuegos de estudio de la 1.3.8."
+    "Corrige el icono del acceso directo de Windows con un ejecutable y una identidad de instalación nuevos.",
+    "El instalador fuerza la recreación del acceso directo y refresca la caché de iconos del sistema.",
+    "Mantiene el rediseño del Planificador y las mejoras sociales de la 1.3.9."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases"
 }
