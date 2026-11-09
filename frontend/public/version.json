@@ -1,11 +1,13 @@
 {
-  "version": "1.3.5",
-  "publishedAt": "2026-11-09T02:14:46.000Z",
+  "version": "1.3.6",
+  "publishedAt": "2026-11-09T09:24:00.000Z",
   "sizeBytes": 8388608,
   "notes": [
-    "El OAuth de Spotify en escritorio abre una ventana integrada y devuelve el token a la app.",
-    "Buscador de canciones con diseño Liquid Glass y reproducción inmediata.",
-    "Mantiene las mejoras del Dashboard, la nitidez y el icono de la 1.3.4."
+    "Los semáforos quedan integrados y alineados dentro del rail oscuro.",
+    "El panel de IA Studio ya no recorta burbujas ni el compositor por la derecha.",
+    "La IA recibe el historial y el mensaje actual; el modo sin conexión ya no repite el mismo plan.",
+    "Un ErrorBoundary evita la pantalla blanca y muestra un aviso amigable con reintento.",
+    "Mantiene el OAuth integrado de Spotify, el buscador y las mejoras de la 1.3.5."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases"
 }

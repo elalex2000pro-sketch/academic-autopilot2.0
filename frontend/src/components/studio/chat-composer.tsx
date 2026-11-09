@@ -48,6 +48,7 @@ export function ChatComposer({
 
   return (
     <form
+      className="min-w-0"
       onSubmit={(event) => {
         event.preventDefault();
         onSend();
@@ -203,7 +204,7 @@ export function ChatComposer({
             }}
             rows={1}
             placeholder={placeholder}
-            className="max-h-32 min-h-9 flex-1 resize-none bg-transparent px-1 py-2 text-[13px] leading-5 text-slate-800 outline-none placeholder:text-slate-400 dark:text-white/90 dark:placeholder:text-white/25"
+            className="max-h-32 min-h-9 min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-[13px] leading-5 text-slate-800 outline-none placeholder:text-slate-400 dark:text-white/90 dark:placeholder:text-white/25"
             aria-label="Mensaje para la IA"
           />
           <Button

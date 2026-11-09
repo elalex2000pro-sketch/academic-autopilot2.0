@@ -8,6 +8,7 @@ import { Loader2, LogOut, Settings, Sparkles } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
 import { ContextPanel } from "@/components/context-panel";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { GamificationToast } from "@/components/gamification-toast";
 import { Logo } from "@/components/logo";
 import { MobileNavigationBar } from "@/components/mobile-navigation-bar";
@@ -163,7 +164,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   if (isPublic) {
-    return <PageTransition>{children}</PageTransition>;
+    return (
+      <ErrorBoundary resetKey={pathname}>
+        <PageTransition>{children}</PageTransition>
+      </ErrorBoundary>
+    );
   }
 
   if (loading || !user) {
@@ -188,16 +193,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <NotificationCenter>
       <SystemNotifications />
       <div className="app-shell flex min-h-dvh flex-col bg-transparent md:flex-row">
-        {/* Semáforos sobre la barra: franja superior de la ventana, como en macOS. */}
-        <div className="app-drag fixed left-4 top-0 z-50 hidden h-10 w-[78px] items-center justify-center md:flex">
-          <WindowControls compact />
-        </div>
-        <aside className="v18-rail sticky top-10 ml-4 hidden h-[calc(100dvh-3.5rem)] w-[78px] shrink-0 flex-col items-center overflow-hidden rounded-[32px] border border-white/10 bg-[#1b1b1f] py-4 shadow-[0_30px_70px_-30px_rgba(20,20,28,0.72),inset_0_1px_0_rgba(255,255,255,0.09)] md:flex">
+        <aside className="v18-rail sticky top-3 ml-4 hidden h-[calc(100dvh-1.5rem)] w-[78px] shrink-0 flex-col items-center overflow-hidden rounded-[32px] border border-white/10 bg-[#1b1b1f] pb-4 pt-2 shadow-[0_30px_70px_-30px_rgba(20,20,28,0.72),inset_0_1px_0_rgba(255,255,255,0.09)] md:flex">
+          {/* Los semáforos viven dentro del rail oscuro, no en una franja suelta. */}
+          <div className="app-drag flex h-9 w-full shrink-0 items-center justify-center">
+            <WindowControls compact />
+          </div>
           <Link
             href="/"
             aria-label="Academic Autopilot · Inicio"
             title="Academic Autopilot"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white outline-none transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/55"
+            className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white outline-none transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/55"
           >
             <Logo className="h-10 w-10" />
           </Link>
@@ -364,7 +369,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
           >
             <div className={cn("mx-auto w-full", !isImmersive && "max-w-7xl")}>
-              <PageTransition>{children}</PageTransition>
+              <ErrorBoundary resetKey={pathname}>
+                <PageTransition>{children}</PageTransition>
+              </ErrorBoundary>
             </div>
           </main>
         </div>
@@ -401,7 +408,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               role="dialog"
               aria-modal="true"
               aria-label="IA Studio"
-              className="flex h-dvh w-full max-w-[480px] flex-col overflow-hidden border-l border-white/15 bg-[#f4f4f7]/92 shadow-[-30px_0_80px_-40px_rgba(15,23,42,0.65)] backdrop-blur-3xl dark:border-white/10 dark:bg-[#0b0f18]/94"
+              className="flex h-dvh w-full min-w-0 max-w-[480px] flex-col overflow-hidden border-l border-white/15 bg-[#f4f4f7]/92 shadow-[-30px_0_80px_-40px_rgba(15,23,42,0.65)] backdrop-blur-3xl dark:border-white/10 dark:bg-[#0b0f18]/94"
               initial={{ x: 64, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 64, opacity: 0 }}

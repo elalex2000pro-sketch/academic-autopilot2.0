@@ -7,6 +7,7 @@ recomendaciones heuristico para seguir siendo util sin conexion.
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -402,7 +403,9 @@ async def generate_reply(
             )
 
     if document_text:
-        return AiResult(heuristic_document_reply(document_name, document_text), "heuristic")
+        return AiResult(
+            heuristic_document_reply(document_name, document_text, message), "heuristic"
+        )
     if images:
         return AiResult(
             "He recibido tus imágenes, pero el modelo de visión no está disponible ahora mismo. "
@@ -738,36 +741,206 @@ async def _post_gemini(
     return candidates[0].get("content", {}) or {}
 
 
-def heuristic_document_reply(document_name: str | None, text: str) -> str:
-    """Resumen extractivo de emergencia cuando no hay motor de IA configurado."""
-    lines: list[str] = []
+_QUESTION_STOPWORDS = {
+    "para",
+    "como",
+    "cual",
+    "cuales",
+    "que",
+    "con",
+    "por",
+    "del",
+    "las",
+    "los",
+    "una",
+    "uno",
+    "unos",
+    "unas",
+    "este",
+    "esta",
+    "esto",
+    "estos",
+    "estas",
+    "sobre",
+    "tengo",
+    "quiero",
+    "puedes",
+    "puede",
+    "hola",
+    "gracias",
+    "favor",
+    "ayuda",
+    "ayudame",
+    "dime",
+    "explica",
+    "responde",
+    "resolver",
+    "hacer",
+    "hago",
+    "hoy",
+    "semana",
+}
+
+_PLANNING_MARKERS = (
+    "tarea",
+    "tareas",
+    "plan",
+    "planifica",
+    "planificar",
+    "estudiar",
+    "estudio",
+    "prioridad",
+    "prioriza",
+    "examen",
+    "examenes",
+    "exámenes",
+    "horario",
+    "tiempo",
+    "hoy",
+    "semana",
+    "organiza",
+    "organizar",
+    "entrega",
+    "entregar",
+)
+
+
+def _question_excerpt(message: str, limit: int = 180) -> str:
+    """Normaliza la pregunta para citarla en el fallback sin cortar palabras raras."""
+    clean = " ".join((message or "").split())
+    if len(clean) <= limit:
+        return clean
+    return clean[: limit - 1].rstrip() + "…"
+
+
+def _question_terms(message: str) -> list[str]:
+    """Palabras utiles para buscar una respuesta extractiva en un documento."""
+    terms: list[str] = []
+    for raw in re.findall(r"[a-záéíóúüñ]{4,}", (message or "").lower()):
+        if raw in _QUESTION_STOPWORDS or raw in terms:
+            continue
+        terms.append(raw)
+        if len(terms) >= 6:
+            break
+    return terms
+
+
+def heuristic_document_reply(
+    document_name: str | None, text: str, question: str = ""
+) -> str:
+    """Respuesta extractiva de emergencia cuando no hay motor de IA configurado.
+
+    No intenta fingir una respuesta del modelo: busca lineas relacionadas con la
+    pregunta para que el modo sin conexion siga siendo util y no repita siempre
+    el mismo resumen inicial.
+    """
+    question = _question_excerpt(question)
+    source_lines: list[str] = []
     for raw in text.splitlines():
         line = raw.strip()
         if line:
-            lines.append(line[:240])
-        if len(lines) >= 6:
+            source_lines.append(line[:240])
+        if len(source_lines) >= 80:
             break
-    preview = "\n".join(f"- {line}" for line in lines) or "- (sin texto legible)"
+
+    selected = source_lines[:6]
+    matched = False
+    terms = _question_terms(question)
+    if terms:
+        related: list[str] = []
+        for line in source_lines:
+            if any(term in line.lower() for term in terms):
+                related.append(line)
+            if len(related) >= 6:
+                break
+        if related:
+            selected = related
+            matched = True
+
+    preview = "\n".join(f"- {line}" for line in selected) or "- (sin texto legible)"
     label = document_name or "el documento"
+    if question:
+        if matched:
+            heading = f"Para «{question}», esto es lo que encuentro en «{label}»:"
+        else:
+            heading = (
+                f"He leido «{label}», pero no encuentro una coincidencia literal con "
+                f"«{question}». Esto es lo mas destacado:"
+            )
+    else:
+        heading = f"He leido «{label}». Esto es lo mas destacado que encuentro:"
+
     return (
-        f"He leido «{label}». Esto es lo mas destacado que encuentro:\n{preview}\n\n"
+        f"{heading}\n{preview}\n\n"
         "Para responder preguntas concretas sobre el documento, configura un motor de IA "
         "en Ajustes. Mientras tanto, puedo darte este resumen por reglas."
     )
 
 
 def heuristic_reply(ctx: dict[str, Any], message: str) -> str:
-    """Recomendaciones por reglas: cuando empezar y que priorizar."""
+    """Recomendaciones por reglas cuando el modelo no esta disponible.
+
+    El mensaje del usuario se usa para elegir el tipo de ayuda y para no devolver
+    siempre el mismo plan. Es un fallback honesto: si la pregunta no es de
+    organizacion, lo dice en vez de inventar una respuesta.
+    """
+    question = _question_excerpt(message)
+    lower = question.lower()
     tasks = ctx["tasks"]
-    if not tasks:
+
+    if any(token in lower for token in ("hola", "buenas", "hey")):
         return (
-            "Ahora mismo no tienes tareas pendientes. Para poder ayudarte a organizarte, "
-            "anade asignaturas y tareas (con su fecha de entrega y una estimacion de tiempo). "
-            "En cuanto las tengas, te dire por donde empezar y que dias dedicar a cada cosa."
+            "Hola. Puedo ayudarte a organizar tus tareas y a decidir por donde empezar. "
+            "Para respuestas abiertas, conecta un motor de IA en Ajustes."
+        )
+    if "gracias" in lower:
+        return "De nada. Cuando quieras, revisamos tu plan de estudio o tus proximas entregas."
+
+    is_document_question = any(
+        token in lower for token in ("documento", "apunte", "apuntes", "resumen", "pdf")
+    )
+    if is_document_question:
+        return (
+            f"Para «{question}» necesito el contenido del documento. Abre el modo Documento "
+            "de IA Studio, selecciona o sube el archivo y preguntame alli. Sin un motor de IA "
+            "conectado solo puedo hacer una busqueda extractiva, no una respuesta razonada."
+        )
+
+    wants_plan = any(token in lower for token in _PLANNING_MARKERS)
+    if not wants_plan:
+        return (
+            f"No tengo un motor de IA conectado para responder a «{question}» con precision. "
+            "Puedo ayudarte con la organizacion de tu estudio: dime una tarea, un examen o una "
+            "fecha y te propongo por donde empezar. Para respuestas abiertas, configura Gemini "
+            "u otro motor en Ajustes."
+        )
+
+    if not tasks:
+        if "examen" in lower or "examenes" in lower or "exámenes" in lower:
+            return (
+                f"Para preparar un examen («{question}») divide el temario en bloques de 30-45 "
+                "minutos y deja el ultimo dia para repasar. Ahora mismo no tienes tareas "
+                "pendientes; anade el examen o sus temas como tareas para poder repartirlos."
+            )
+        return (
+            f"Para «{question}», ahora mismo no tienes tareas pendientes. Anade asignaturas y "
+            "tareas con fecha de entrega y una estimacion de tiempo; en cuanto las tengas, "
+            "te dire por donde empezar y que dias dedicar a cada cosa."
         )
 
     now = ctx["now"]
-    lines = ["Este es mi plan recomendado basandome en tus tareas y disponibilidad:\n"]
+    if "examen" in lower or "examenes" in lower or "exámenes" in lower:
+        lines = [
+            f"Para «{question}», prepara el examen en bloques y repasa lo mas urgente primero:"
+        ]
+    elif "hoy" in lower:
+        lines = [f"Para hoy, esto es lo que priorizaria segun «{question}»:"]
+    elif "semana" in lower:
+        lines = [f"Para organizar la semana segun «{question}», este es el orden:"]
+    elif "prioridad" in lower or "prioriza" in lower:
+        lines = [f"Para decidir prioridades («{question}»), empieza por lo mas urgente:"]
+    else:
+        lines = [f"Para «{question}», este es el plan que puedo darte con tus datos:"]
 
     for t in tasks[:5]:
         course = t["course"] or "Sin asignatura"
@@ -776,7 +949,7 @@ def heuristic_reply(ctx: dict[str, Any], message: str) -> str:
         lines.append(f"- {t['title']} ({course}): empieza {when}. Bloque de ~{est} min.")
 
     if len(tasks) > 5:
-        lines.append(f"- y {len(tasks) - 5} tarea(s) mas, siguendo el mismo orden de entrega.")
+        lines.append(f"- y {len(tasks) - 5} tarea(s) mas, siguiendo el mismo orden de entrega.")
 
     if ctx["availability"]:
         slots = ", ".join(

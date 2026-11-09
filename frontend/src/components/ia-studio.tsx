@@ -841,7 +841,7 @@ export function IAStudio({
   return (
     <div
       className={cn(
-        "relative flex flex-col overflow-hidden",
+        "relative flex min-w-0 flex-col overflow-hidden",
         embedded
           ? "h-full min-h-0"
           : "h-[calc(100dvh-var(--mobile-header-height))] min-h-[620px] lg:h-dvh",
@@ -870,12 +870,13 @@ export function IAStudio({
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-0.5">
-          <NotificationBell className="hidden lg:inline-flex" />
+        <div className="flex min-w-0 shrink-0 items-center gap-0.5">
+          <NotificationBell className={cn(embedded ? "hidden" : "hidden lg:inline-flex")} />
           <Badge
             variant="secondary"
             className={cn(
               "mr-1 hidden rounded-full border text-[9.5px] font-semibold backdrop-blur-xl transition-colors duration-500 sm:flex",
+              embedded && "sm:hidden",
               aiState === "idle" &&
                 "border-slate-300/40 bg-slate-100/60 text-slate-500 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/45",
               aiState === "thinking" &&
@@ -912,7 +913,7 @@ export function IAStudio({
                 className="h-8 rounded-full px-2 text-[11px]"
               >
                 {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                <span className="hidden sm:inline">Importar</span>
+                <span className={embedded ? "hidden" : "hidden sm:inline"}>Importar</span>
               </Button>
               <Button
                 variant="ghost"
@@ -923,7 +924,7 @@ export function IAStudio({
                 className="h-8 rounded-full px-2 text-[11px]"
               >
                 {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                <span className="hidden sm:inline">Exportar</span>
+                <span className={embedded ? "hidden" : "hidden sm:inline"}>Exportar</span>
               </Button>
               <Button
                 variant="ghost"
@@ -933,7 +934,7 @@ export function IAStudio({
                 className="h-8 rounded-full px-2 text-[11px]"
               >
                 {clearing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                <span className="hidden sm:inline">Limpiar</span>
+                <span className={embedded ? "hidden" : "hidden sm:inline"}>Limpiar</span>
               </Button>
             </>
           )}
@@ -977,10 +978,13 @@ export function IAStudio({
       )}
 
       {mode === "chat" && (
-        <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+        <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col">
           <div
             ref={chatScrollRef}
-            className="min-h-0 flex-1 overflow-y-auto px-3 pb-[calc(var(--mobile-nav-offset)+9rem)] pt-2 sm:px-6 lg:pb-44"
+            className={cn(
+              "min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-3 pt-2 sm:px-6",
+              embedded ? "pb-3" : "pb-[calc(var(--mobile-nav-offset)+9rem)] lg:pb-44",
+            )}
           >
             <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-end gap-4">
               {loading ? (
@@ -1038,7 +1042,14 @@ export function IAStudio({
             </div>
           </div>
 
-          <div className="fixed bottom-[calc(var(--mobile-nav-offset)+0.75rem)] left-1/2 z-40 w-[calc(100%-1.5rem)] max-w-3xl -translate-x-1/2 lg:bottom-6 lg:left-[calc(50%+118px)]">
+          <div
+            className={cn(
+              "z-40 max-w-3xl min-w-0",
+              embedded
+                ? "mx-auto w-full shrink-0 border-t border-slate-300/35 bg-[#f4f4f7]/55 px-3 pb-3 pt-2 backdrop-blur-xl dark:border-white/10 dark:bg-[#0b0f18]/45 sm:px-5"
+                : "fixed bottom-[calc(var(--mobile-nav-offset)+0.75rem)] left-1/2 w-[calc(100%-1.5rem)] -translate-x-1/2 lg:bottom-6 lg:left-[calc(50%+118px)]",
+            )}
+          >
             {sourceFiles.length > 0 && (
               <div className="mb-1.5 flex justify-center px-3">
                 <div className="flex max-w-full items-center gap-1.5 rounded-full border border-slate-300/45 bg-slate-100/75 px-3 py-1 shadow-[0_10px_30px_-20px_rgba(32,39,48,0.35)] backdrop-blur-3xl dark:border-white/10 dark:bg-black/45">

@@ -41,7 +41,7 @@ function MessageBubbleComponent({ message }: { message: AssistantMessage }) {
         )}
         <div
           className={cn(
-            "max-w-[86%] rounded-3xl px-4 py-3 text-[13px] leading-6 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.65)] backdrop-blur-xl sm:max-w-[78%]",
+            "min-w-0 max-w-[calc(100%-2.5rem)] rounded-3xl px-4 py-3 text-[13px] leading-6 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.65)] backdrop-blur-xl sm:max-w-[78%]",
             isUser
               ? "rounded-br-lg border border-white/25 bg-[#0066FF]/85 text-white shadow-[0_18px_40px_-28px_rgba(0,102,255,0.9)]"
               : "rounded-bl-lg border border-slate-300/45 bg-slate-100/65 text-slate-800 dark:border-white/10 dark:bg-white/[0.08] dark:text-white/90",
