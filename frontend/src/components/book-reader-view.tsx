@@ -28,12 +28,15 @@ import {
   PanelLeftOpen,
   Plus,
   Search,
+  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
 import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 
+import { openAiDrawer } from "@/lib/ai-drawer";
+import { clearOpenBook, publishOpenBook } from "@/lib/book-context";
 import {
   getBook,
   getBookFile,
@@ -643,6 +646,20 @@ export default function BookReaderView() {
   const pageHeight = fitMode === "height" ? availableHeight : undefined;
   const placeholderHeight = pageHeight ?? Math.round((pageWidth ?? availableWidth) * PAGE_ASPECT);
 
+  // IA Studio consume este contexto para leer la página o el capítulo abierto.
+  useEffect(() => {
+    if (!book) return;
+    publishOpenBook({
+      bookId: book.id,
+      title: book.title,
+      author: book.author,
+      page: pageNumber,
+      pages: totalPages,
+    });
+  }, [book, pageNumber, totalPages]);
+
+  useEffect(() => () => clearOpenBook(bookId), [bookId]);
+
   const customTextRenderer = useCallback(
     (textItem: { str: string }) => highlightText(textItem.str, searchQuery),
     [searchQuery],
@@ -1238,6 +1255,16 @@ export default function BookReaderView() {
               ) : (
                 <Bookmark className="h-4 w-4" />
               )}
+            </button>
+
+            <button
+              type="button"
+              onClick={openAiDrawer}
+              aria-label="Preguntar a la IA sobre esta página"
+              title="Preguntar a la IA sobre esta página"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/45 transition hover:bg-white/10 hover:text-white"
+            >
+              <Sparkles className="h-4 w-4" />
             </button>
 
             <div className="flex items-center gap-0.5 rounded-lg border border-white/10 bg-white/[0.04] p-0.5">

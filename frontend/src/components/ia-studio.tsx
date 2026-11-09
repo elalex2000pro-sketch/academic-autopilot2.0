@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  BookOpen,
   Check,
   Copy,
+  Cpu,
   Download,
   ExternalLink,
   FileAudio,
@@ -26,7 +28,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NotificationBell } from "@/components/notification-center";
+import { GEMINI_MODEL_OPTIONS, GEMINI_RETIRED_NOTE } from "@/lib/ai-models";
 import { api } from "@/lib/api";
+import { getOpenBook, subscribeOpenBook, type OpenBookContext } from "@/lib/book-context";
 import {
   MAX_ATTACHMENTS,
   MAX_PDF_PAGES,
@@ -89,6 +93,7 @@ export function IAStudio({
   const audioChunksRef = useRef<Blob[]>([]);
   const recordStartedAtRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const bookAbortRef = useRef<AbortController | null>(null);
 
   const [mode, setMode] = useState<StudioMode>(initialMode);
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
@@ -116,6 +121,10 @@ export function IAStudio({
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [docDragging, setDocDragging] = useState(false);
   const [busyKind, setBusyKind] = useState<string | null>(null);
+  const [openBook, setOpenBook] = useState<OpenBookContext | null>(null);
+  const [useBookContext, setUseBookContext] = useState(true);
+  const [extractingBook, setExtractingBook] = useState(false);
+  const [changingModel, setChangingModel] = useState(false);
 
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioText, setAudioText] = useState("");
@@ -156,6 +165,16 @@ export function IAStudio({
   useEffect(() => {
     void load();
   }, [load]);
+
+  // El lector de la Biblioteca y este panel comparten el PDF abierto.
+  useEffect(() => {
+    setOpenBook(getOpenBook());
+    return subscribeOpenBook(setOpenBook);
+  }, []);
+
+  useEffect(() => {
+    return () => bookAbortRef.current?.abort();
+  }, []);
 
   useEffect(() => {
     const element = mode === "document" ? docScrollRef.current : chatScrollRef.current;
@@ -230,6 +249,21 @@ export function IAStudio({
     setMode(next);
     setPending(null);
     setNotice(null);
+  }
+
+  async function changeModel(model: string) {
+    if (!status || changingModel || model === status.model) return;
+    setChangingModel(true);
+    setNotice(null);
+    try {
+      const updated = await api.updateAiProfile({ provider: "gemini", model });
+      setStatus(updated);
+      setNotice(`Modelo de IA actualizado: ${updated.model}`);
+    } catch (error) {
+      setNotice(errorMessage(error));
+    } finally {
+      setChangingModel(false);
+    }
   }
 
   function toggleMicrophone(target: "chat" | "document") {
@@ -355,10 +389,11 @@ export function IAStudio({
     responsePulseTimer.current = window.setTimeout(() => setResponsePulse(false), 1800);
   }
 
-  async function sendChat() {
-    const content = chatInput.trim();
+  async function sendChat(override?: string) {
+    const content = (override ?? chatInput).trim();
     const attachments = chatAttachments;
     if ((!content && attachments.length === 0) || sendingMode !== null) return;
+
     const optimistic: AssistantMessage = {
       id: tempId("temp"),
       role: "user",
@@ -374,8 +409,54 @@ export function IAStudio({
     setSendingMode("chat");
     setPending(null);
     setNotice(null);
+
+    // Contexto invisible: el texto se extrae en el navegador y viaja al modelo
+    // en un campo aparte, así ni la burbuja ni el historial guardado lo muestran.
+    let pageContext: string | null = null;
+    let pageContextLabel: string | null = null;
+    const book = openBook;
+    const abort = book && useBookContext ? new AbortController() : null;
+    let abortTimer: ReturnType<typeof setTimeout> | null = null;
+
     try {
-      const response = await api.chat(content, chatDocumentId || null, attachments);
+      if (book && abort) {
+        bookAbortRef.current = abort;
+        abortTimer = setTimeout(() => abort.abort(), 20_000);
+        setExtractingBook(true);
+        try {
+          const { extractBookText } = await import("@/lib/book-text");
+          const extracted = await extractBookText(book, { signal: abort.signal });
+          if (extracted.hasText) {
+            pageContext = extracted.text;
+            const chapter = extracted.chapterTitle
+              ? `«${extracted.chapterTitle}» · `
+              : "";
+            pageContextLabel = `${extracted.bookTitle} · ${chapter}págs. ${extracted.startPage}-${extracted.endPage}`;
+          } else {
+            setNotice(
+              "Este PDF no tiene texto seleccionable (parece escaneado). Adjunta la página como imagen para que la IA pueda leerla.",
+            );
+          }
+        } catch (error) {
+          setNotice(
+            abort.signal.aborted
+              ? "La lectura del PDF tardó demasiado: he enviado tu pregunta sin el texto."
+              : `No se pudo leer el PDF: ${errorMessage(error)}`,
+          );
+        } finally {
+          if (abortTimer) clearTimeout(abortTimer);
+          if (bookAbortRef.current === abort) bookAbortRef.current = null;
+          setExtractingBook(false);
+        }
+      }
+
+      const response = await api.chat(
+        content,
+        chatDocumentId || null,
+        attachments,
+        pageContext,
+        pageContextLabel,
+      );
       if (response.pending_action) setPending(response.pending_action);
       setMessages(await api.assistantMessages(120));
       markResponsePulse();
@@ -387,6 +468,11 @@ export function IAStudio({
     } finally {
       setSendingMode(null);
     }
+  }
+
+  function askAboutBook(prompt: string) {
+    if (sendingMode !== null) return;
+    void sendChat(prompt);
   }
 
   async function sendDocument() {
@@ -871,6 +957,46 @@ export function IAStudio({
         </div>
 
         <div className="flex min-w-0 shrink-0 items-center gap-0.5">
+          {status?.provider === "gemini" && (
+            <label
+              title={GEMINI_RETIRED_NOTE}
+              className="mr-1 flex h-8 max-w-[128px] items-center gap-1 rounded-full border border-slate-300/45 bg-slate-100/65 pl-2 pr-1 text-slate-500 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06] dark:text-white/50"
+            >
+              {changingModel ? (
+                <Loader2 className="h-3 w-3 shrink-0 animate-spin text-[#0066FF]" />
+              ) : (
+                <Cpu className="h-3 w-3 shrink-0 text-[#0066FF] dark:text-[#8ab9ff]" />
+              )}
+              <select
+                value={status.model}
+                onChange={(event) => void changeModel(event.target.value)}
+                disabled={changingModel}
+                aria-label="Modelo de Gemini"
+                className="min-w-0 flex-1 cursor-pointer appearance-none truncate border-0 bg-transparent p-0 text-[10px] font-semibold text-slate-600 outline-none disabled:opacity-50 dark:text-white/60"
+              >
+                {GEMINI_MODEL_OPTIONS.map((option) => (
+                  <option
+                    key={option.value}
+                    value={option.value}
+                    className="bg-white text-slate-800 dark:bg-[#10151f] dark:text-white"
+                  >
+                    {option.label.split(" · ")[0].replace(/^Gemini\s+/, "")}
+                  </option>
+                ))}
+                {!GEMINI_MODEL_OPTIONS.some((option) => option.value === status.model) && (
+                  <option
+                    value={status.model}
+                    className="bg-white text-slate-800 dark:bg-[#10151f] dark:text-white"
+                  >
+                    {status.model}
+                  </option>
+                )}
+              </select>
+              <span aria-hidden className="pr-0.5 text-[8px] opacity-60">
+                ▾
+              </span>
+            </label>
+          )}
           <NotificationBell className={cn(embedded ? "hidden" : "hidden lg:inline-flex")} />
           <Badge
             variant="secondary"
@@ -1050,6 +1176,69 @@ export function IAStudio({
                 : "fixed bottom-[calc(var(--mobile-nav-offset)+0.75rem)] left-1/2 w-[calc(100%-1.5rem)] -translate-x-1/2 lg:bottom-6 lg:left-[calc(50%+118px)]",
             )}
           >
+            {openBook && (
+              <div className="mb-1.5 flex justify-center px-3">
+                <div
+                  className={cn(
+                    "flex max-w-full flex-wrap items-center justify-center gap-1 rounded-2xl border px-2.5 py-1.5 shadow-[0_10px_30px_-20px_rgba(32,39,48,0.35)] backdrop-blur-3xl transition-colors",
+                    useBookContext
+                      ? "border-[#0066FF]/35 bg-[#0066FF]/[0.08] dark:border-[#8ab9ff]/25 dark:bg-[#0066FF]/15"
+                      : "border-slate-300/45 bg-slate-100/75 dark:border-white/10 dark:bg-black/45",
+                  )}
+                >
+                  <BookOpen className="h-3 w-3 shrink-0 text-[#0066FF] dark:text-[#8ab9ff]" />
+                  <span className="max-w-[210px] truncate text-[10px] font-medium text-slate-600 dark:text-white/55">
+                    {openBook.title} · pág. {openBook.page} de {openBook.pages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setUseBookContext((value) => !value)}
+                    aria-pressed={useBookContext}
+                    title={
+                      useBookContext
+                        ? "La IA leerá la página o el capítulo abierto"
+                        : "La IA no leerá el PDF"
+                    }
+                    className={cn(
+                      "rounded-full px-1.5 py-0.5 text-[9px] font-semibold transition-colors",
+                      useBookContext
+                        ? "bg-[#0066FF] text-white"
+                        : "bg-slate-300/60 text-slate-600 dark:bg-white/10 dark:text-white/45",
+                    )}
+                  >
+                    {useBookContext ? "Contexto ON" : "Contexto OFF"}
+                  </button>
+                  {useBookContext && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          askAboutBook(
+                            "Hazme un resumen claro de esta página o capítulo del PDF.",
+                          )
+                        }
+                        disabled={sendingChat}
+                        className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-[#0066FF] transition-colors hover:bg-[#0066FF]/10 disabled:opacity-40 dark:text-[#8ab9ff] dark:hover:bg-white/10"
+                      >
+                        Resumen
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          askAboutBook(
+                            "Crea un mapa mental de este texto del PDF, con la idea central y las ramas de ideas principales.",
+                          )
+                        }
+                        disabled={sendingChat}
+                        className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-[#0066FF] transition-colors hover:bg-[#0066FF]/10 disabled:opacity-40 dark:text-[#8ab9ff] dark:hover:bg-white/10"
+                      >
+                        Mapa mental
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
             {sourceFiles.length > 0 && (
               <div className="mb-1.5 flex justify-center px-3">
                 <div className="flex max-w-full items-center gap-1.5 rounded-full border border-slate-300/45 bg-slate-100/75 px-3 py-1 shadow-[0_10px_30px_-20px_rgba(32,39,48,0.35)] backdrop-blur-3xl dark:border-white/10 dark:bg-black/45">

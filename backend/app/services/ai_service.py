@@ -372,6 +372,24 @@ def render_context_text(ctx: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _append_page_context(
+    system: str, page_context: str | None, label: str | None
+) -> str:
+    """Añade al prompt el texto del PDF abierto sin guardarlo en el historial."""
+    text = (page_context or "").strip()
+    if not text:
+        return system
+    name = (label or "PDF abierto en la Biblioteca").strip()
+    return (
+        f"{system}\n\nTEXTO DEL PDF ABIERTO ({name}):\n"
+        f"{text[: settings.ai_studio_max_chars]}\n\n"
+        "Este texto es la pagina o el capitulo que el estudiante esta leyendo en la "
+        "Biblioteca. Usalo como fuente principal si pide un resumen, un mapa mental, "
+        "un esquema o pregunta por el contenido. Responde con naturalidad y no "
+        "menciones que el texto se adjunto automaticamente."
+    )
+
+
 async def generate_reply(
     db: AsyncSession,
     user: User,
@@ -380,19 +398,24 @@ async def generate_reply(
     image_data_urls: list[str] | None = None,
     document_text: str | None = None,
     document_name: str | None = None,
+    page_context: str | None = None,
+    page_context_label: str | None = None,
 ) -> AiResult:
     """Responde al usuario. Usa el modelo (con herramientas y vision) si esta
     disponible; si no, cae al motor heuristico.
 
     `document_text` permite chatear con apuntes y examenes en PDF, Word, Excel o
-    texto. Las fotos y las paginas de PDF escaneado se envian como imagenes
-    (data URL) al modelo de vision.
+    texto. `page_context` recibe el texto extraido del PDF abierto en la
+    Biblioteca y se inyecta solo en el prompt (nunca en el historial visible).
+    Las fotos y las paginas de PDF escaneado se envian como imagenes (data URL)
+    al modelo de vision.
 
     Devuelve un AiResult con el texto, la fuente, una posible accion pendiente de
     confirmacion (borrados) y los eventos de tiempo real generados.
     """
     ctx = await build_context(db, user)
     system = f"{_SYSTEM_PROMPT}\n\nCONTEXTO DEL ESTUDIANTE:\n{render_context_text(ctx)}"
+    system = _append_page_context(system, page_context, page_context_label)
 
     if document_text:
         label = document_name or "documento adjunto"
@@ -409,6 +432,8 @@ async def generate_reply(
         prompt = _VISUAL_PROMPT
     if not prompt and document_text:
         prompt = "Analiza el documento adjunto y dime lo mas importante."
+    if not prompt and page_context:
+        prompt = "Resume el texto del PDF que estoy leyendo."
 
     profile = resolve_profile(user)
     if profile.configured:
@@ -444,6 +469,13 @@ async def generate_reply(
     if document_text:
         return AiResult(
             heuristic_document_reply(document_name, document_text, message), "heuristic"
+        )
+    if page_context:
+        return AiResult(
+            heuristic_document_reply(
+                page_context_label, page_context, message or "resumen"
+            ),
+            "heuristic",
         )
     if images:
         return AiResult(

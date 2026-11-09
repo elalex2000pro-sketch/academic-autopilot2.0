@@ -419,7 +419,13 @@ export const api = {
     }),
   assistantMessages: (limit = 50) =>
     request<AssistantMessage[]>(`/api/v1/assistant/messages?limit=${limit}`),
-  chat: (message: string, documentId?: string | null, attachments: ChatAttachment[] = []) =>
+  chat: (
+    message: string,
+    documentId?: string | null,
+    attachments: ChatAttachment[] = [],
+    pageContext?: string | null,
+    pageContextLabel?: string | null,
+  ) =>
     request<ChatResponse>("/api/v1/assistant/chat", {
       method: "POST",
       body: JSON.stringify({
@@ -433,6 +439,8 @@ export const api = {
           page: attachment.page ?? null,
           total_pages: attachment.total_pages ?? null,
         })),
+        page_context: pageContext ?? null,
+        page_context_label: pageContextLabel ?? null,
       }),
     }),
   confirmAction: (tool: string, args: Record<string, unknown>, approve: boolean) =>

@@ -30,6 +30,10 @@ class ChatRequest(BaseModel):
     document_id: uuid.UUID | None = None
     # Fotos y páginas de PDF renderizadas en el navegador (máximo 6).
     attachments: list[ChatAttachment] = Field(default_factory=list, max_length=6)
+    # Texto del PDF abierto en la Biblioteca. Se inyecta en el prompt del modelo
+    # como contexto, pero NUNCA se guarda en el historial visible.
+    page_context: str | None = Field(default=None, max_length=60_000)
+    page_context_label: str | None = Field(default=None, max_length=300)
 
 
 class PendingAction(BaseModel):

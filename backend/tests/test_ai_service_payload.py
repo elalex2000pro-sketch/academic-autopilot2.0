@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -79,6 +80,90 @@ def test_fallback_usa_la_pregunta_y_no_repite_el_mismo_plan():
     assert "fotosíntesis" in first
     assert first != second
     assert "hoy" in second.lower()
+
+
+def test_resolve_profile_usa_los_modelos_gemini_elegidos(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(ai_service.crypto, "decrypt", lambda _value: "clave")
+
+    for model in ("gemini-1.5-flash", "gemini-1.5-pro"):
+        user = SimpleNamespace(
+            ai_provider="gemini",
+            ai_model=model,
+            ai_base_url=None,
+            ai_api_key_encrypted="cifrada",
+        )
+        resolved = ai_service.resolve_profile(user)
+        assert resolved.provider == "gemini"
+        assert resolved.model == model
+        assert resolved.vision_model == model
+
+
+@pytest.mark.asyncio
+async def test_actualizar_perfil_cambia_el_modelo(monkeypatch: pytest.MonkeyPatch):
+    from app.api.v1.assistant import update_profile
+    from app.schemas.assistant import AiProfileUpdate
+
+    monkeypatch.setattr(ai_service.crypto, "decrypt", lambda _value: "clave")
+    user = SimpleNamespace(
+        ai_provider="gemini",
+        ai_model="gemini-2.5-flash",
+        ai_base_url=None,
+        ai_api_key_encrypted="cifrada",
+        email="estudiante@example.com",
+    )
+
+    class FakeDb:
+        def add(self, _obj: object) -> None:
+            return None
+
+        async def commit(self) -> None:
+            return None
+
+        async def refresh(self, _obj: object) -> None:
+            return None
+
+    updated = await update_profile(
+        AiProfileUpdate(provider="gemini", model="gemini-1.5-pro"),
+        user,  # type: ignore[arg-type]
+        FakeDb(),  # type: ignore[arg-type]
+    )
+
+    assert user.ai_model == "gemini-1.5-pro"
+    assert updated.model == "gemini-1.5-pro"
+    assert updated.provider == "gemini"
+
+
+def test_contexto_del_pdf_se_inyecta_solo_en_el_prompt():
+    system = ai_service._append_page_context(
+        "BASE",
+        "La mitocondria produce energia en forma de ATP.",
+        "Biologia · pág. 12",
+    )
+
+    assert system.startswith("BASE")
+    assert "La mitocondria produce energia" in system
+    assert "Biologia · pág. 12" in system
+    assert system.index("BASE") < system.index("La mitocondria")
+
+
+def test_contexto_de_pdf_vacio_no_altera_el_prompt():
+    assert ai_service._append_page_context("BASE", "   ", None) == "BASE"
+    assert ai_service._append_page_context("BASE", None, "Libro") == "BASE"
+
+
+def test_chat_request_acepta_el_contexto_de_la_pagina():
+    from app.schemas.assistant import ChatRequest
+
+    request = ChatRequest(
+        message="Hazme un resumen",
+        page_context="Texto del PDF",
+        page_context_label="Biologia · págs. 12-14",
+    )
+
+    assert request.page_context == "Texto del PDF"
+    assert request.page_context_label == "Biologia · págs. 12-14"
 
 
 def test_fallback_documental_busca_la_pregunta():

@@ -111,7 +111,12 @@ async def chat(
     payload: ChatRequest, current_user: CurrentUser, db: DbSession
 ) -> ChatResponse:
     prepared = _prepare_attachments(payload.attachments)
-    if not payload.message.strip() and payload.document_id is None and not prepared:
+    if (
+        not payload.message.strip()
+        and payload.document_id is None
+        and not prepared
+        and not (payload.page_context or "").strip()
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Escribe un mensaje o adjunta una imagen o un documento",
@@ -160,6 +165,8 @@ async def chat(
             image_data_urls=image_data_urls,
             document_text=document_text,
             document_name=document_name,
+            page_context=payload.page_context,
+            page_context_label=payload.page_context_label,
         )
     except Exception as exc:  # noqa: BLE001 - el usuario siempre debe recibir respuesta
         logger.error("Fallo inesperado del asistente: %s", exc)

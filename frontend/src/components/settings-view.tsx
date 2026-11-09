@@ -56,6 +56,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { api, ApiError } from "@/lib/api";
+import { GEMINI_MODEL_OPTIONS, GEMINI_RETIRED_NOTE } from "@/lib/ai-models";
 import { resetCustomTimetable } from "@/lib/custom-timetable";
 import { saveRecoveryHint } from "@/lib/recovery-hint";
 import { openAiDrawer } from "@/lib/ai-drawer";
@@ -149,12 +150,7 @@ const AI_PROVIDER_INFO: Record<string, { keyLabel: string; keyHelp: string }> = 
 // Modelos listos para elegir en Ajustes. El valor es el ID exacto que espera
 // cada API; «Otro modelo» permite escribir cualquiera más reciente.
 const AI_MODEL_PRESETS: Record<string, { value: string; label: string }[]> = {
-  gemini: [
-    { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash · rápido, con visión" },
-    { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro · razonamiento avanzado" },
-    { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite · el más ligero" },
-    { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash · generación anterior" },
-  ],
+  gemini: GEMINI_MODEL_OPTIONS.map(({ value, label }) => ({ value, label })),
   openai: [
     { value: "gpt-4o-mini", label: "GPT-4o mini · rápido y económico" },
     { value: "gpt-4o", label: "GPT-4o · el más capaz" },
@@ -1118,6 +1114,11 @@ export function SettingsView() {
                       escribir el ID exacto de uno más reciente. Para fotos y PDFs escaneados hace
                       falta un modelo con visión.
                     </p>
+                    {aiProvider === "gemini" && (
+                      <p className="text-[10px] leading-4 text-amber-600 dark:text-amber-300/80">
+                        {GEMINI_RETIRED_NOTE}
+                      </p>
+                    )}
                   </div>
                 )}
 
