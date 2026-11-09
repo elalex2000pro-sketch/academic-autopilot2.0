@@ -144,6 +144,35 @@ const AI_PROVIDER_INFO: Record<string, { keyLabel: string; keyHelp: string }> = 
   },
 };
 
+// Modelos listos para elegir en Ajustes. El valor es el ID exacto que espera
+// cada API; «Otro modelo» permite escribir cualquiera más reciente.
+const AI_MODEL_PRESETS: Record<string, { value: string; label: string }[]> = {
+  gemini: [
+    { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash · rápido, con visión" },
+    { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro · razonamiento avanzado" },
+    { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite · el más ligero" },
+    { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash · generación anterior" },
+  ],
+  openai: [
+    { value: "gpt-4o-mini", label: "GPT-4o mini · rápido y económico" },
+    { value: "gpt-4o", label: "GPT-4o · el más capaz" },
+    { value: "gpt-4.1-mini", label: "GPT-4.1 mini" },
+    { value: "gpt-4.1", label: "GPT-4.1" },
+  ],
+  claude: [
+    { value: "claude-3-5-haiku-latest", label: "Claude 3.5 Haiku · rápido" },
+    { value: "claude-sonnet-4-5", label: "Claude Sonnet 4.5 · equilibrado" },
+    { value: "claude-3-7-sonnet-latest", label: "Claude 3.7 Sonnet" },
+  ],
+  openrouter: [
+    { value: "openai/gpt-4o-mini", label: "GPT-4o mini (OpenAI)" },
+    { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash (Google)" },
+    { value: "anthropic/claude-3.5-sonnet", label: "Claude 3.5 Sonnet (Anthropic)" },
+    { value: "meta-llama/llama-3.3-70b-instruct", label: "Llama 3.3 70B (Meta)" },
+  ],
+  custom: [],
+};
+
 export function SettingsView() {
   const searchParams = useSearchParams();
   const { user, logout, refreshUser } = useAuth();
@@ -184,6 +213,7 @@ export function SettingsView() {
   const [aiProvider, setAiProvider] = useState<string>("local");
   const [aiKey, setAiKey] = useState("");
   const [aiModel, setAiModel] = useState("");
+  const [aiModelCustom, setAiModelCustom] = useState(false);
   const [aiBaseUrl, setAiBaseUrl] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
 
@@ -245,8 +275,11 @@ export function SettingsView() {
   // Sincroniza el formulario de IA cuando carga (o cambia) el perfil.
   useEffect(() => {
     if (!aiProfile) return;
+    const presets = AI_MODEL_PRESETS[aiProfile.provider] ?? [];
+    const model = aiProfile.model ?? "";
     setAiProvider(aiProfile.provider);
-    setAiModel(aiProfile.model ?? "");
+    setAiModel(model);
+    setAiModelCustom(Boolean(model) && !presets.some((option) => option.value === model));
     setAiBaseUrl(aiProfile.provider === "custom" ? (aiProfile.base_url ?? "") : "");
   }, [aiProfile]);
 
@@ -966,7 +999,10 @@ export function SettingsView() {
                           type="button"
                           onClick={() => {
                             setAiProvider(value);
-                            if (value !== aiProfile?.provider) setAiModel("");
+                            if (value !== aiProfile?.provider) {
+                              setAiModel("");
+                              setAiModelCustom(false);
+                            }
                           }}
                           className={cn(
                             "rounded-lg border px-2.5 py-1.5 text-[11.5px] font-medium transition-colors",
@@ -1023,22 +1059,47 @@ export function SettingsView() {
                 {aiProvider !== "local" && (
                   <div className="space-y-1.5">
                     <Label htmlFor="aiModel" className="text-[10.5px]">
-                      Modelo (opcional)
+                      Modelo
                     </Label>
-                    <Input
+                    <select
                       id="aiModel"
-                      placeholder={
-                        aiProfile?.provider === aiProvider
-                          ? aiProfile.model
-                          : "modelo por defecto"
-                      }
-                      value={aiModel}
-                      onChange={(event) => setAiModel(event.target.value)}
-                      className="h-8 text-[12px]"
-                    />
+                      className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-[12px]"
+                      value={aiModelCustom ? "__custom__" : aiModel}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        if (value === "__custom__") {
+                          setAiModelCustom(true);
+                          return;
+                        }
+                        setAiModelCustom(false);
+                        setAiModel(value);
+                      }}
+                    >
+                      <option value="" className="bg-background">
+                        Recomendado (el del proveedor)
+                      </option>
+                      {(AI_MODEL_PRESETS[aiProvider] ?? []).map((option) => (
+                        <option key={option.value} value={option.value} className="bg-background">
+                          {option.label}
+                        </option>
+                      ))}
+                      <option value="__custom__" className="bg-background">
+                        Otro modelo (escribir el ID)…
+                      </option>
+                    </select>
+                    {aiModelCustom && (
+                      <Input
+                        aria-label="ID del modelo"
+                        placeholder="p. ej. gemini-2.5-flash"
+                        value={aiModel}
+                        onChange={(event) => setAiModel(event.target.value)}
+                        className="h-8 text-[12px]"
+                      />
+                    )}
                     <p className="text-[10px] leading-4 text-slate-500 dark:text-white/35">
-                      Déjalo vacío para usar el modelo recomendado. Para fotos y PDFs escaneados usa
-                      un modelo con visión (Gemini 2.5 Flash, GPT-4o, Claude…).
+                      Se usa para el chat, la visión y las herramientas. Elige «Otro modelo» para
+                      escribir el ID exacto de uno más reciente. Para fotos y PDFs escaneados hace
+                      falta un modelo con visión.
                     </p>
                   </div>
                 )}
@@ -1066,7 +1127,12 @@ export function SettingsView() {
                   </div>
                 )}
 
-                <Button type="submit" size="sm" disabled={aiBusy} className="h-8 px-3 text-[11.5px]">
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={aiBusy || (aiModelCustom && !aiModel.trim())}
+                  className="h-8 px-3 text-[11.5px]"
+                >
                   {aiBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   Guardar motor IA
                 </Button>
