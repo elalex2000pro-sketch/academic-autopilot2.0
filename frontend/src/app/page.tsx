@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowUpRight,
   BookOpen,
@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
+import { GamificationCard } from "@/components/gamification-card";
 import { usePreferences } from "@/components/preferences-provider";
 import { Input } from "@/components/ui/input";
 import { SyncStatus } from "@/components/sync-status";
@@ -369,9 +370,11 @@ export default function DashboardPage() {
       variants={DASHBOARD_STAGGER}
       className="relative mx-auto max-w-[1500px] px-4 pb-12 pt-4 sm:px-6 lg:px-8 lg:pt-6"
     >
+      <GamificationCard />
+
       <motion.div
         variants={DASHBOARD_STAGGER}
-        className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.9fr)]"
+        className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.9fr)]"
       >
         <DashboardHero
           dateLabel={dateLabel}
@@ -469,11 +472,17 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {pendingExams.length > 0 && (
-        <section
-          aria-labelledby="pending-exams-title"
-          className="app-glass mt-4 overflow-hidden rounded-3xl border border-[#FF9500]/30 p-4 shadow-[0_24px_60px_-42px_rgba(255,149,0,0.65)] sm:p-5"
-        >
+      <AnimatePresence>
+        {pendingExams.length > 0 && (
+          <motion.section
+            key="pending-exams"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.28, ease: "easeOut" }}
+            aria-labelledby="pending-exams-title"
+            className="app-glass mt-4 overflow-hidden rounded-3xl border border-[#FF9500]/30 p-4 shadow-[0_24px_60px_-42px_rgba(255,149,0,0.65)] sm:p-5"
+          >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex min-w-0 items-start gap-3">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#FF9500]/12 text-[#b26a00] ring-1 ring-[#FF9500]/20 dark:bg-[#FF9500]/15 dark:text-[#ffc46b]">
@@ -510,7 +519,8 @@ export default function DashboardPage() {
           </div>
 
           <div className="mt-4 grid gap-2.5 xl:grid-cols-2">
-            {pendingExams.map((exam) => {
+            <AnimatePresence>
+              {pendingExams.map((exam, index) => {
               const course = exam.course_id ? courseById.get(exam.course_id) : undefined;
               const average = exam.course_id
                 ? (summaryByCourse.get(exam.course_id)?.average_percent ?? null)
@@ -525,11 +535,22 @@ export default function DashboardPage() {
               const color = course?.color?.trim() || "#FF9500";
 
               return (
-                <form
+                <motion.div
                   key={exam.id}
-                  onSubmit={(event) => void savePendingGrade(event, exam)}
-                  className="rounded-2xl border border-[#FF9500]/20 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.03]"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{
+                    duration: 0.24,
+                    delay: Math.min(index * 0.04, 0.2),
+                    ease: "easeOut",
+                  }}
+                  className="min-w-0"
                 >
+                  <form
+                    onSubmit={(event) => void savePendingGrade(event, exam)}
+                    className="rounded-2xl border border-[#FF9500]/20 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.03]"
+                  >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex min-w-0 items-center gap-1.5">
@@ -635,12 +656,15 @@ export default function DashboardPage() {
                       {error}
                     </p>
                   )}
-                </form>
+                  </form>
+                </motion.div>
               );
             })}
+            </AnimatePresence>
           </div>
-        </section>
-      )}
+          </motion.section>
+        )}
+      </AnimatePresence>
 
       {/* ---- Línea de tiempo + columna lateral ---- */}
       <motion.section

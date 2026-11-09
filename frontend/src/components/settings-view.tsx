@@ -34,7 +34,6 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
-import { GamificationCard } from "@/components/gamification-card";
 import { InstallAppButton } from "@/components/install-app-button";
 import { usePreferences } from "@/components/preferences-provider";
 import { PerformanceSettings } from "@/components/settings/performance-settings";
@@ -1413,8 +1412,6 @@ export function SettingsView() {
                 </div>
               </div>
             </SettingsCard>
-
-            <GamificationCard />
 
             <SettingsCard
               icon={KeyRound}

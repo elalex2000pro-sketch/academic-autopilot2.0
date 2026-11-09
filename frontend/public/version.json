@@ -1,11 +1,11 @@
 {
-  "version": "1.3.3",
-  "publishedAt": "2026-11-09T01:46:06.132Z",
+  "version": "1.3.4",
+  "publishedAt": "2026-11-09T02:02:15.359Z",
   "sizeBytes": 8388608,
   "notes": [
-    "Mantiene el texto y los iconos nítidos al pasar el ratón por tarjetas y paneles.",
-    "El cristal Liquid Glass conserva su desenfoque de fondo sin animarlo en hover.",
-    "Incluye el nuevo icono de escritorio y las mejoras de Spotify de versiones anteriores."
+    "El nivel y la experiencia ahora abren el Dashboard en una tarjeta de cristal.",
+    "Los exámenes pendientes aparecen de forma progresiva al cargar, sin pop-in.",
+    "Mantiene las mejoras de nitidez de la 1.3.3 y el nuevo icono de escritorio."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases"
 }
