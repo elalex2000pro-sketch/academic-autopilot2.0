@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useAuth } from "@/components/auth-provider";
 import { ApiError, api } from "@/lib/api";
+import { awardTaskXp } from "@/lib/gamification";
 import {
   TASK_EXCLUSIONS_EVENT,
   applyTaskExclusions,
@@ -55,6 +57,7 @@ export function useTaskManager({
   autoLoad = true,
   clockIntervalMs = 60_000,
 }: UseTaskManagerOptions = {}): TaskManager {
+  const { user } = useAuth();
   const [rawTasks, setRawTasks] = useState<Task[]>([]);
   const [exclusions, setExclusions] = useState<TaskExclusions>(() => getTaskExclusions());
   const [now, setNow] = useState(() => Date.now());
@@ -119,6 +122,7 @@ export function useTaskManager({
     setExclusions(getTaskExclusions());
     try {
       await api.completeTask(id);
+      if (!alreadyCompleted && user) awardTaskXp(user.id, id);
     } catch (cause) {
       if (!alreadyCompleted) {
         restoreTaskExclusion("completed", id);
@@ -126,7 +130,7 @@ export function useTaskManager({
       }
       throw cause;
     }
-  }, []);
+  }, [user]);
 
   const deleteTask = useCallback(async (id: string) => {
     const alreadyDeleted = getTaskExclusions().deletedTaskIds.includes(id);

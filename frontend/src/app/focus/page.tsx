@@ -15,9 +15,12 @@ import {
   TimerReset,
 } from "lucide-react";
 
+import { useAuth } from "@/components/auth-provider";
 import { DailyFocus } from "@/components/daily-focus";
+import { AmbientPlayer } from "@/components/focus/ambient-player";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api";
+import { awardFocusXp, awardTaskXp } from "@/lib/gamification";
 import {
   ensureSystemNotificationPermission,
   showSystemNotification,
@@ -40,6 +43,7 @@ function errorMessage(error: unknown): string {
  * Modo Enfoque: Pomodoro con estadísticas y rachas, más el plan del día.
  */
 export default function FocusPage() {
+  const { user } = useAuth();
   const [agenda, setAgenda] = useState<DailyAgenda | null>(null);
   const [loading, setLoading] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
@@ -88,6 +92,7 @@ export default function FocusPage() {
       await api.logFocusSession(Math.round(DURATIONS[mode] / 60), mode);
       if (mode === "focus") {
         setSessionsDone((value) => value + 1);
+        if (user) awardFocusXp(user.id);
         await loadStats();
       }
       void showSystemNotification({
@@ -103,7 +108,7 @@ export default function FocusPage() {
     } finally {
       setFinishing(false);
     }
-  }, [mode, loadStats]);
+  }, [mode, loadStats, user]);
 
   useEffect(() => {
     if (!running || secondsLeft > 0) return;
@@ -146,13 +151,14 @@ export default function FocusPage() {
       markTaskCompleted(id);
       try {
         await api.completeTask(id);
+        if (user) awardTaskXp(user.id, id);
         await load();
       } catch (error) {
         restoreTaskExclusion("completed", id);
         setNotice(errorMessage(error));
       }
     },
-    [load],
+    [load, user],
   );
 
   return (
@@ -273,6 +279,10 @@ export default function FocusPage() {
             Cada sesión completada se suma a tus estadísticas y racha diaria.
             {sessionsDone > 0 ? ` Hoy llevas ${sessionsDone} en esta sesión.` : ""}
           </p>
+
+          <div className="mt-5 border-t border-slate-300/40 pt-4 dark:border-white/10">
+            <AmbientPlayer />
+          </div>
         </div>
 
         <div className="space-y-3">

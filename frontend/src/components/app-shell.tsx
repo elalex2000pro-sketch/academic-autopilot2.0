@@ -8,6 +8,7 @@ import { Loader2, LogOut, Settings, Sparkles } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
 import { ContextPanel } from "@/components/context-panel";
+import { GamificationToast } from "@/components/gamification-toast";
 import { Logo } from "@/components/logo";
 import { MobileNavigationBar } from "@/components/mobile-navigation-bar";
 import { NotificationBell, NotificationCenter } from "@/components/notification-center";
@@ -372,6 +373,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {!isBookReader ? <MobileNavigationBar /> : null}
       </div>
+
+      <GamificationToast />
 
       {/* Acceso global al panel de IA, encima de la barra móvil. */}
       <button

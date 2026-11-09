@@ -1,15 +1,24 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import { FileText, NotebookPen, Plus, X } from "lucide-react";
+import { FileText, NotebookPen, PenTool, Plus, X } from "lucide-react";
 
 import NotebooksPage from "@/app/notebooks/page";
 import { AcademicOfficeView } from "@/components/academic-office-view";
 import { Button } from "@/components/ui/button";
-import { requestNewNotebook } from "@/lib/documents";
+import { requestNewCanvas, requestNewNotebook } from "@/lib/documents";
 import { cn } from "@/lib/utils";
 
-type DocumentKind = "notes" | "formal";
+const CanvasView = dynamic(
+  () =>
+    import("@/components/canvas/canvas-view").then((module) => ({
+      default: module.CanvasView,
+    })),
+  { ssr: false },
+);
+
+type DocumentKind = "notes" | "formal" | "canvas";
 
 const KIND_TABS: { id: DocumentKind; label: string; description: string }[] = [
   {
@@ -21,6 +30,11 @@ const KIND_TABS: { id: DocumentKind; label: string; description: string }[] = [
     id: "formal",
     label: "Documentos formales",
     description: "Documento de texto o hoja de cálculo",
+  },
+  {
+    id: "canvas",
+    label: "Pizarras",
+    description: "Mapas mentales y esquemas libres",
   },
 ];
 
@@ -37,15 +51,21 @@ export function DocumentsView() {
   // Si el apunte se crea desde la pestaña de documentos formales, primero hay
   // que montar la vista de cuadernos y avisarle después de que escuche.
   useEffect(() => {
-    if (kind !== "notes" || pendingNew !== "notes") return;
-    requestNewNotebook();
-    setPendingNew(null);
+    if (kind === "notes" && pendingNew === "notes") {
+      requestNewNotebook();
+      setPendingNew(null);
+    }
+    if (kind === "canvas" && pendingNew === "canvas") {
+      requestNewCanvas();
+      setPendingNew(null);
+    }
   }, [kind, pendingNew]);
 
   function create(next: DocumentKind) {
     setChooserOpen(false);
     setKind(next);
     if (next === "formal") setFormalSignal((value) => value + 1);
+    else if (next === "canvas") setPendingNew("canvas");
     else setPendingNew("notes");
   }
 
@@ -57,7 +77,7 @@ export function DocumentsView() {
             Documentos
           </h1>
           <p className="text-[11.5px] text-slate-500 dark:text-white/40">
-            Apuntes rápidos y documentos formales en un solo lugar.
+            Apuntes, documentos formales y pizarras en un solo lugar.
           </p>
         </div>
         <Button size="sm" onClick={() => setChooserOpen(true)}>
@@ -93,8 +113,10 @@ export function DocumentsView() {
 
       {kind === "notes" ? (
         <NotebooksPage />
-      ) : (
+      ) : kind === "formal" ? (
         <AcademicOfficeView newSignal={formalSignal} />
+      ) : (
+        <CanvasView />
       )}
 
       {chooserOpen ? (
@@ -106,7 +128,7 @@ export function DocumentsView() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="documents-new-title"
-            className="w-full max-w-lg rounded-3xl border border-slate-300/40 bg-slate-100/90 p-5 shadow-[0_28px_80px_-36px_rgba(32,39,48,0.45)] backdrop-blur-3xl dark:border-white/10 dark:bg-[#0b0f18]/92"
+            className="w-full max-w-2xl rounded-3xl border border-slate-300/40 bg-slate-100/90 p-5 shadow-[0_28px_80px_-36px_rgba(32,39,48,0.45)] backdrop-blur-3xl dark:border-white/10 dark:bg-[#0b0f18]/92"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3">
@@ -128,7 +150,7 @@ export function DocumentsView() {
               </button>
             </div>
 
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
               <button
                 type="button"
                 onClick={() => create("notes")}
@@ -158,6 +180,22 @@ export function DocumentsView() {
                 </span>
                 <span className="mt-0.5 block text-[11px] leading-4 text-slate-500 dark:text-white/40">
                   Editor de texto o hoja de cálculo con exportación a Word, PDF y Excel.
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => create("canvas")}
+                className="group rounded-2xl border border-slate-300/40 bg-white/60 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[#0066FF]/35 hover:shadow-md dark:border-white/10 dark:bg-white/[0.04] dark:hover:border-[#8ab9ff]/30 dark:hover:bg-white/[0.07]"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0066FF]/10 text-[#0066FF] dark:bg-[#8ab9ff]/10 dark:text-[#8ab9ff]">
+                  <PenTool className="h-5 w-5" />
+                </span>
+                <span className="mt-3 block text-[13px] font-semibold text-slate-800 dark:text-white/85">
+                  Pizarra infinita
+                </span>
+                <span className="mt-0.5 block text-[11px] leading-4 text-slate-500 dark:text-white/40">
+                  Lienzo libre para mapas mentales, fotos y esquemas de red.
                 </span>
               </button>
             </div>

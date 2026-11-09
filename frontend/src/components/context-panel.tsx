@@ -13,8 +13,10 @@ import {
   Timer,
 } from "lucide-react";
 
+import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { awardFocusXp } from "@/lib/gamification";
 import type { Task } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -62,6 +64,7 @@ function formatDue(value: string | null): string {
  * lenguaje Liquid Glass del resto de la interfaz.
  */
 export function ContextPanel() {
+  const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [month, setMonth] = useState(() => {
     const now = new Date();
@@ -106,10 +109,15 @@ export function ContextPanel() {
   useEffect(() => {
     if (!running || secondsLeft > 0) return;
     setRunning(false);
-    void api.logFocusSession(Math.round(total / 60), mode).catch(() => undefined);
+    void api
+      .logFocusSession(Math.round(total / 60), mode)
+      .then(() => {
+        if (mode === "focus" && user) awardFocusXp(user.id);
+      })
+      .catch(() => undefined);
     if (mode === "focus") setSessions((value) => value + 1);
     setNotice(mode === "focus" ? "Sesión completada. Descansa 5 minutos." : "Descanso terminado.");
-  }, [mode, running, secondsLeft, total]);
+  }, [mode, running, secondsLeft, total, user]);
 
   function switchMode(next: "focus" | "break") {
     setRunning(false);
