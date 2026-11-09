@@ -75,6 +75,18 @@ function formatTime(ms: number): string {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
 
+/** Los podcasts y anuncios del SDK no siempre traen `artists`. */
+function trackArtistLine(track: SpotifyTrack): string {
+  const artists = Array.isArray(track.artists)
+    ? track.artists
+        .map((artist) => artist?.name)
+        .filter((name): name is string => Boolean(name))
+    : [];
+  return artists.length > 0
+    ? artists.join(", ")
+    : track.album?.name ?? "Reproduciendo";
+}
+
 function Notice({
   tone = "error",
   children,
@@ -147,6 +159,8 @@ function PlaylistCard({
   ready: boolean;
 }) {
   const cover = playlist.images?.[0]?.url;
+  const trackCount = playlist.tracks?.total ?? 0;
+  const owner = playlist.owner?.display_name ?? "Spotify";
   return (
     <button
       type="button"
@@ -176,7 +190,7 @@ function PlaylistCard({
           {playlist.name}
         </p>
         <p className="mt-0.5 line-clamp-1 text-[10.5px] text-slate-500 dark:text-white/40">
-          {playlist.tracks.total} canciones · {playlist.owner.display_name}
+          {trackCount} canciones · {owner}
         </p>
       </div>
     </button>
@@ -204,7 +218,7 @@ function PlayerBar({
   const cover = track?.album?.images?.[0]?.url ?? activePlaylist?.images?.[0]?.url ?? null;
   const title = track?.name ?? activePlaylist?.name ?? "Elige una playlist";
   const subtitle = track
-    ? track.artists.map((artist) => artist.name).join(", ")
+    ? trackArtistLine(track)
     : activePlaylist
       ? "Lista para reproducir"
       : "Tu música de estudio";
@@ -378,7 +392,11 @@ export function SpotifyView() {
       }
 
       if (code || authError) {
-        window.history.replaceState({}, "", window.location.pathname);
+        try {
+          window.history.replaceState({}, "", window.location.pathname);
+        } catch {
+          // Algunos webviews no permiten reescribir la URL; no debe tumbar la app.
+        }
       }
       if (!alive) return;
 

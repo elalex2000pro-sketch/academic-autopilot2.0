@@ -1,12 +1,11 @@
 {
-  "version": "1.3.0",
-  "publishedAt": "2026-11-09T01:14:42.001Z",
+  "version": "1.3.1",
+  "publishedAt": "2026-11-09T01:25:54.029Z",
   "sizeBytes": 8388608,
   "notes": [
-    "Modo Enfoque con ambiente Lo-Fi, lluvia, cafetería y ruido rosa generado en la app.",
-    "Pizarras infinitas para mapas mentales, fotos de placas y esquemas de red.",
-    "Gamificación: gana EXP al completar tareas y sesiones de enfoque y sube de nivel en tu perfil.",
-    "Mejoras de estabilidad y rendimiento."
+    "Corrige el fallo al conectar Spotify con pistas sin artistas (podcasts o anuncios).",
+    "Muestra el error real y permite desconectar Spotify si el reproductor no puede cargarse.",
+    "Actualiza la caché offline y recupera la app tras un despliegue con chunks antiguos."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases"
 }

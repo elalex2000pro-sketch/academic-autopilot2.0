@@ -362,8 +362,9 @@ export async function fetchSpotifyProfile(): Promise<SpotifyProfile> {
 }
 
 export async function fetchSpotifyPlaylists(): Promise<SpotifyPlaylist[]> {
-  const page = await spotifyApi<{ items: (SpotifyPlaylist | null)[] }>(
+  const page = await spotifyApi<{ items?: (SpotifyPlaylist | null)[] }>(
     "/me/playlists?limit=50",
   );
-  return page.items.filter((item): item is SpotifyPlaylist => Boolean(item && item.id));
+  const items = Array.isArray(page?.items) ? page.items : [];
+  return items.filter((item): item is SpotifyPlaylist => Boolean(item && item.id));
 }
