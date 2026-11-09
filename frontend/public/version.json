@@ -1,12 +1,12 @@
 {
-  "version": "1.3.12",
-  "publishedAt": "2026-11-09T12:09:54.000Z",
+  "version": "1.3.13",
+  "publishedAt": "2026-11-09T12:23:25.000Z",
   "sizeBytes": 8388608,
   "notes": [
-    "Rediseña el Planificador con un calendario mensual grande, vistas de semana y día y un panel de alta rápida para exámenes, tareas y fechas importantes.",
-    "La IA crea eventos reales mediante Function Calling de Gemini: interpreta la petición, ejecuta la herramienta y publica el evento al instante.",
-    "El calendario ocupa mucho más espacio en escritorio y muestra las siete columnas en móvil; el horario y la gestión de clases se mantienen.",
-    "Incluye las mejoras de Academic Office, sociales y de estudio de las versiones anteriores."
+    "Añade arrastre fluido a las notas e imágenes de la Pizarra Infinita mediante una cabecera de agarre clara.",
+    "Guarda automáticamente la posición exacta de cada nodo al soltarlo y la recupera al volver a abrir la pizarra.",
+    "El texto sigue siendo editable y el lienzo conserva el zoom, el desplazamiento y las conexiones entre ideas.",
+    "Incluye las mejoras del Planificador, Academic Office y estudio de las versiones anteriores."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases"
 }

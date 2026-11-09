@@ -24,6 +24,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import {
   ArrowLeft,
+  GripVertical,
   ImagePlus,
   Loader2,
   Maximize2,
@@ -42,8 +43,9 @@ function NoteNode({ id, data, selected }: NodeProps<CanvasNode>) {
 
   return (
     <div
+      data-canvas-node="note"
       className={cn(
-        "min-w-[190px] max-w-[280px] rounded-2xl border bg-[#fffdf4]/95 p-3 shadow-[0_16px_36px_-22px_rgba(20,24,38,0.5)] backdrop-blur-sm dark:bg-[#161a2b]/95",
+        "min-w-[190px] max-w-[280px] cursor-grab rounded-2xl border bg-[#fffdf4]/95 p-3 shadow-[0_16px_36px_-22px_rgba(20,24,38,0.5)] backdrop-blur-sm active:cursor-grabbing dark:bg-[#161a2b]/95",
         selected
           ? "border-[#0066FF] ring-2 ring-[#0066FF]/20 dark:border-[#8ab9ff]"
           : "border-amber-200/80 dark:border-white/10",
@@ -54,12 +56,25 @@ function NoteNode({ id, data, selected }: NodeProps<CanvasNode>) {
         position={Position.Top}
         className="!h-2 !w-2 !border-0 !bg-[#0066FF] dark:!bg-[#8ab9ff]"
       />
+      <div
+        data-canvas-drag="note"
+        title="Arrastra para mover la nota"
+        className="mb-2 flex select-none items-center justify-between gap-2 border-b border-amber-900/10 pb-1.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-slate-400 dark:border-white/[0.07] dark:text-white/35"
+      >
+        <span className="flex items-center gap-1.5">
+          <GripVertical className="h-3.5 w-3.5" strokeWidth={1.8} />
+          Arrastrar
+        </span>
+        <span className="font-medium normal-case tracking-normal text-slate-400/80 dark:text-white/25">
+          Nota
+        </span>
+      </div>
       <textarea
         value={label}
         onChange={(event) => updateNodeData(id, { label: event.target.value })}
         placeholder="Escribe una idea…"
         rows={4}
-        className="nodrag nowheel w-full resize-none bg-transparent text-[11.5px] leading-5 text-slate-700 outline-none placeholder:text-slate-400 dark:text-white/75 dark:placeholder:text-white/25"
+        className="nodrag nowheel w-full cursor-text resize-none bg-transparent text-[11.5px] leading-5 text-slate-700 outline-none placeholder:text-slate-400 dark:text-white/75 dark:placeholder:text-white/25"
       />
       <Handle
         type="source"
@@ -75,8 +90,9 @@ function ImageNode({ data, selected }: NodeProps<CanvasNode>) {
 
   return (
     <div
+      data-canvas-node="image"
       className={cn(
-        "w-[220px] overflow-hidden rounded-2xl border bg-white/85 p-1.5 shadow-[0_16px_36px_-22px_rgba(20,24,38,0.5)] backdrop-blur-sm dark:bg-[#161a2b]/90",
+        "w-[220px] cursor-grab overflow-hidden rounded-2xl border bg-white/85 p-1.5 shadow-[0_16px_36px_-22px_rgba(20,24,38,0.5)] backdrop-blur-sm active:cursor-grabbing dark:bg-[#161a2b]/90",
         selected
           ? "border-[#0066FF] ring-2 ring-[#0066FF]/20 dark:border-[#8ab9ff]"
           : "border-white/60 dark:border-white/10",
@@ -87,6 +103,14 @@ function ImageNode({ data, selected }: NodeProps<CanvasNode>) {
         position={Position.Top}
         className="!h-2 !w-2 !border-0 !bg-[#0066FF] dark:!bg-[#8ab9ff]"
       />
+      <div
+        data-canvas-drag="image"
+        title="Arrastra para mover la imagen"
+        className="mb-1.5 flex select-none items-center gap-1.5 px-1 text-[9px] font-semibold uppercase tracking-[0.1em] text-slate-400 dark:text-white/35"
+      >
+        <GripVertical className="h-3.5 w-3.5" strokeWidth={1.8} />
+        Arrastrar
+      </div>
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -136,7 +160,15 @@ export function CanvasWorkspace({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const firstRun = useRef(true);
   const onChangedRef = useRef(onChanged);
+  const nodesRef = useRef(nodes);
+  const edgesRef = useRef(edges);
+  const nameRef = useRef(name);
+  const saveTimerRef = useRef<number | null>(null);
+  const immediateSaveAtRef = useRef(0);
   onChangedRef.current = onChanged;
+  nodesRef.current = nodes;
+  edgesRef.current = edges;
+  nameRef.current = name;
 
   async function persist(
     nextName: string,
@@ -159,16 +191,49 @@ export function CanvasWorkspace({
     }
   }
 
+  function clearSaveTimer() {
+    if (saveTimerRef.current !== null) {
+      window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+  }
+
+  function schedulePersist(delay = 900) {
+    clearSaveTimer();
+    setStatus("saving");
+    saveTimerRef.current = window.setTimeout(() => {
+      saveTimerRef.current = null;
+      void persist(nameRef.current, nodesRef.current, edgesRef.current);
+    }, delay);
+  }
+
+  function handleNodeDragStart() {
+    clearSaveTimer();
+    setStatus("saving");
+  }
+
+  function handleNodeDragStop(_event: unknown, node: CanvasNode) {
+    const nextNodes = nodesRef.current.map((item) =>
+      item.id === node.id ? { ...item, position: node.position } : item,
+    );
+    nodesRef.current = nextNodes;
+    setNodes(nextNodes);
+    clearSaveTimer();
+    immediateSaveAtRef.current = Date.now();
+    setStatus("saving");
+    void persist(nameRef.current, nextNodes, edgesRef.current);
+  }
+
   useEffect(() => {
     if (firstRun.current) {
       firstRun.current = false;
       return;
     }
-    setStatus("saving");
-    const timeout = window.setTimeout(() => {
-      void persist(name, nodes, edges);
-    }, 900);
-    return () => window.clearTimeout(timeout);
+    // El drag ya guarda al soltar; evita un segundo guardado inmediato por el
+    // cambio de posición que React Flow acaba de aplicar.
+    if (Date.now() - immediateSaveAtRef.current < 700) return;
+    schedulePersist();
+    return clearSaveTimer;
     // `persist` se recrea en cada render; el guardado depende de los datos.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes, edges, name]);
@@ -238,10 +303,12 @@ export function CanvasWorkspace({
   }
 
   async function saveNow() {
+    clearSaveTimer();
     await persist(name, nodes, edges);
   }
 
   async function goBack() {
+    clearSaveTimer();
     await persist(name, nodes, edges);
     onBack();
   }
@@ -371,6 +438,9 @@ export function CanvasWorkspace({
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onInit={(flow) => setInstance(flow)}
+          onNodeDragStart={handleNodeDragStart}
+          onNodeDragStop={handleNodeDragStop}
+          nodesDraggable
           nodeTypes={nodeTypes}
           fitView
           minZoom={0.2}
@@ -400,8 +470,8 @@ export function CanvasWorkspace({
       </div>
 
       <p className="text-[10.5px] text-slate-400 dark:text-white/30">
-        Arrastra las notas para moverlas · rueda para zoom · conecta los puntos para crear
-        flechas · suelta una imagen desde tu equipo. Se guarda en este dispositivo.
+        Arrastra cada recuadro desde su cabecera · rueda para zoom · conecta los puntos para
+        crear flechas · suelta una imagen desde tu equipo. Se guarda en este dispositivo.
       </p>
     </div>
   );
