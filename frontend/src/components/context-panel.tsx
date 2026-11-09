@@ -152,7 +152,7 @@ export function ContextPanel() {
   return (
     <aside
       aria-label="Panel de contexto"
-      className="sticky top-10 mr-4 hidden h-[calc(100dvh-3.5rem)] w-[280px] shrink-0 flex-col gap-3 overflow-y-auto pb-1 2xl:flex"
+      className="sticky top-10 mr-4 hidden h-[calc(100dvh-3.5rem)] w-[280px] shrink-0 flex-col gap-3 overflow-y-auto pb-1 min-[1440px]:flex"
     >
       <p className="px-2 pt-1 text-[9.5px] font-semibold uppercase tracking-[0.18em] text-black/35 dark:text-white/30">
         Contexto

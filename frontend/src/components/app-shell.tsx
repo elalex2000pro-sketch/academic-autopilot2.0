@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Fragment, lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Loader2, LogOut, Settings, Sparkles, type LucideIcon } from "lucide-react";
+import { Loader2, LogOut, Settings, Sparkles } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
 import { ContextPanel } from "@/components/context-panel";
@@ -24,6 +24,7 @@ import {
   SECONDARY_NAV_ITEMS,
   SETTINGS_ITEM,
   isActive,
+  type NavItem,
 } from "@/lib/navigation";
 import { hasCompletedOnboarding, markOnboardingCompleted } from "@/lib/onboarding";
 import { cn } from "@/lib/utils";
@@ -72,7 +73,7 @@ function RailNavLink({
 }: {
   href: string;
   label: string;
-  icon: LucideIcon;
+  icon: NavItem["icon"];
   active: boolean;
   reduceMotion: boolean;
 }) {
