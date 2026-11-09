@@ -67,6 +67,7 @@
   .app-glass-strong:hover {
     border-color: var(--v18-card-border-hover);
     box-shadow: var(--v18-card-hover-shadow);
+    will-change: transform;
   }
 }
 

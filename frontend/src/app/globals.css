@@ -423,6 +423,16 @@
     border-color: rgb(255 255 255 / 0.05);
     background-color: rgb(255 255 255 / 0.035);
   }
+
+  /* El cristal se anima con transformaciones; fijamos la capa de texto para
+     que Chrome no la rasterice borrosa durante el hover. */
+  :is(.glass-card, .glass-strong, .app-glass, .app-glass-strong) {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
 }
 
 /* El shell reserva el alto de la barra inferior. En /login no existe barra,
@@ -791,8 +801,7 @@ html[data-animations="reduced"] .stagger-in > * {
 
 /* Nivel Ultra: resortes, aceleración GPU y elevación 3D contenida.
    `translateZ(0)` promueve la capa una sola vez; `will-change` se activa
-   únicamente durante la interacción para no reservar VRAM de forma permanente. */
-html[data-animations="ultra"] .glass-card,
+   únicamente durante la interacción para no reservar VRAM de forma permanente. */  html[data-animations="ultra"] .glass-card,
 html[data-animations="ultra"] .glass-strong,
 html[data-animations="ultra"] .app-glass,
 html[data-animations="ultra"] .app-glass-strong {
@@ -801,10 +810,7 @@ html[data-animations="ultra"] .app-glass-strong {
     transform var(--duration-ultra) var(--ease-ultra),
     box-shadow var(--duration-ultra) var(--ease-ultra),
     background-color 0.4s ease,
-    border-color 0.4s ease,
-    backdrop-filter 0.4s ease,
-    -webkit-backdrop-filter 0.4s ease;
-  transform-style: preserve-3d;
+    border-color 0.4s ease;
 }
 
 html[data-animations="ultra"] .app-glass-soft {
@@ -816,7 +822,7 @@ html[data-animations="ultra"] .app-glass-soft {
 
 html[data-animations="ultra"] .glass-card:hover,
 html[data-animations="ultra"] .glass-strong:hover {
-  transform: translate3d(0, -2px, 0) scale(1.002);
+  transform: translate3d(0, -2px, 0);
   will-change: transform;
   box-shadow:
     0 22px 52px -32px rgb(32 39 48 / 0.22),
@@ -841,12 +847,8 @@ html[data-animations="ultra"].dark .app-glass-strong:hover {
     0 8px 18px -12px rgb(0 0 0 / 0.35);
 }
 
-html[data-animations="ultra"][data-performance="quality"] .glass-card:hover,
-html[data-animations="ultra"][data-performance="quality"] .app-glass:hover,
-html[data-animations="ultra"][data-performance="quality"] .app-glass-strong:hover {
-  backdrop-filter: blur(76px) saturate(150%);
-  -webkit-backdrop-filter: blur(76px) saturate(150%);
-}
+/* El desenfoque del fondo se mantiene fijo: animarlo en hover obliga al
+   navegador a rasterizar la tarjeta y el texto pierde nitidez. */
 
 html[data-animations="ultra"] .animate-fade-up {
   animation-duration: 0.5s;
