@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, LogOut, Settings, Sparkles, type LucideIcon } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
+import { ContextPanel } from "@/components/context-panel";
 import { Logo } from "@/components/logo";
 import { MobileNavigationBar } from "@/components/mobile-navigation-bar";
 import { NotificationBell, NotificationCenter } from "@/components/notification-center";
@@ -318,7 +319,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           {/* Barra superior de escritorio: controles globales fuera del rail. */}
           {!isImmersive ? (
-            <header className="hidden shrink-0 items-center justify-end gap-4 px-6 pt-6 pb-1 md:flex">
+            <header className="mx-auto hidden w-full max-w-7xl shrink-0 items-center justify-end gap-4 px-6 pt-6 pb-1 md:flex">
               <motion.div
                 whileHover={reduceMotion ? undefined : { scale: 1.05, y: -2 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -360,9 +361,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 "pb-[calc(var(--mobile-nav-offset)+1.25rem)] pt-4 md:pb-0 md:pt-2",
             )}
           >
-            <PageTransition>{children}</PageTransition>
+            <div className={cn("mx-auto w-full", !isImmersive && "max-w-7xl")}>
+              <PageTransition>{children}</PageTransition>
+            </div>
           </main>
         </div>
+
+        {!isImmersive ? <ContextPanel /> : null}
 
         {!isBookReader ? <MobileNavigationBar /> : null}
       </div>
