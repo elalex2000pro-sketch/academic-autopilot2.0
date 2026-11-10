@@ -1,10 +1,10 @@
 {
-  "version": "1.3.39",
-  "publishedAt": "2026-11-10T17:32:16.283Z",
+  "version": "1.3.40",
+  "publishedAt": "2026-11-10T21:16:39.247548+00:00",
   "sizeBytes": 8388608,
   "notes": [
-    "Chat Liquid Glass con búsqueda por @usuario, presencia real y confirmaciones de entrega y lectura.",
-    "Fotos y documentos con vista previa, apertura y guardado nativos; mejoras de reconexión y lectura."
+    "Trabajo de clase entre compañeros con temas, estados personales, progreso y comentarios.",
+    "Notas y archivos personales privados por defecto, con opción de compartir con la clase."
   ],
-  "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases/tag/v1.3.39"
+  "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases/tag/v1.3.40"
 }

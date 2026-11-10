@@ -153,7 +153,7 @@ async function request<T>(
   const method = (options.method ?? "GET").toUpperCase();
   // Los recibos y la presencia requieren datos vivos. Una respuesta guardada
   // tampoco puede confirmar que se haya enviado una mutación sin conexión.
-  const cacheable = method === "GET" && !path.startsWith("/api/v1/chat/");
+  const cacheable = method === "GET" && !path.startsWith("/api/v1/chat/") && !path.includes("/assignments");
   const headers = new Headers(options.headers);
   if (!(options.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
@@ -945,4 +945,12 @@ export const chatApi = {
       method: "PUT",
       body: JSON.stringify({ username }),
     }),
+};
+
+
+export const classworkApi = {
+  get: <T,>(path: string) => request<T>(path),
+  mutate: <T,>(path: string, method: string, data?: unknown) => request<T>(path, { method, ...(data === undefined ? {} : { body: JSON.stringify(data) }) }),
+  upload: (path: string, file: File) => { const body = new FormData(); body.append("file", file); return request(path, { method: "POST", body }); },
+  download: (path: string, name: string) => downloadAuthenticated(path, name, "No se pudo descargar el archivo"),
 };

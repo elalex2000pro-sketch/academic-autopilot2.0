@@ -4,7 +4,7 @@ from app.models.ai_output import AiOutput
 from app.models.assistant_message import AssistantMessage
 from app.models.book import Book, BookMessage, BookSection
 from app.models.chat import ChatConversation, ChatMember, ChatMessage
-from app.models.classwork import ClassAssignment, ClassAssignmentCompletion
+from app.models.classwork import ClassAssignment, ClassAssignmentCompletion, ClassTopic, ClassWorkFile, ClassAssignmentAttachment, ClassWorkComment
 from app.models.course import Course
 from app.models.document import Document
 from app.models.enums import (
@@ -46,6 +46,10 @@ __all__ = [
     "ChatConversation",
     "ChatMember",
     "ChatMessage",
+    "ClassTopic",
+    "ClassWorkFile",
+    "ClassAssignmentAttachment",
+    "ClassWorkComment",
     "ClassAssignment",
     "ClassAssignmentCompletion",
     "ClassEvent",

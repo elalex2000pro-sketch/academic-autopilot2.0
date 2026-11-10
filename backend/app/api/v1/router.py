@@ -27,6 +27,8 @@ from app.api.v1 import (
     uploads,
 )
 
+from app.api.v1 import classwork
+
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(auth.router)
 api_router.include_router(integrations.router)
@@ -38,6 +40,7 @@ api_router.include_router(timetable.router)
 api_router.include_router(tasks.router)
 api_router.include_router(chat.router)
 api_router.include_router(classes.router)
+api_router.include_router(classwork.router)
 api_router.include_router(uploads.router)
 api_router.include_router(files.router)
 api_router.include_router(assistant.router)
