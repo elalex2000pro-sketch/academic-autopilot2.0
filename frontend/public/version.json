@@ -1,10 +1,10 @@
 {
-  "version": "1.3.40",
-  "publishedAt": "2026-11-10T21:16:39.247548+00:00",
+  "version": "1.3.41",
+  "publishedAt": "2026-11-10T21:33:50.820128+00:00",
   "sizeBytes": 8388608,
   "notes": [
-    "Trabajo de clase entre compañeros con temas, estados personales, progreso y comentarios.",
-    "Notas y archivos personales privados por defecto, con opción de compartir con la clase."
+    "Clases organizadas en Novedades, Trabajo de clase, Personas, Calendario y Cuadernos y archivos.",
+    "Respuestas a publicaciones, fijadas primero y próximas entregas entre compañeros."
   ],
-  "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases/tag/v1.3.40"
+  "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases/tag/v1.3.41"
 }

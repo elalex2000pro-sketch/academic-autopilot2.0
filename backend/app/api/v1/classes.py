@@ -205,6 +205,7 @@ def _message_read(message: ClassMessage, author_name: str | None) -> MessageRead
         user_id=message.user_id,
         author_name=author_name,
         content=message.content,
+        parent_id=message.parent_id,
         kind=message.kind,
         pinned=message.pinned,
         created_at=message.created_at,
@@ -367,6 +368,7 @@ async def class_detail(
         ClassMemberRead(
             user_id=m.user_id,
             email=u.email,
+            username=u.username,
             full_name=u.full_name,
             role=m.role,
             joined_at=m.created_at,
@@ -432,13 +434,16 @@ async def delete_class(
 async def leave_class(
     class_id: uuid.UUID, current_user: CurrentUser, db: DbSession
 ) -> None:
-    """Sale de la clase (los miembros no propietarios pueden salir)."""
+    """Sale de la clase y transfiere la administración al siguiente miembro."""
+    await db.execute(select(SharedClass).where(SharedClass.id == class_id).with_for_update())
     membership = await _require_member(db, class_id, current_user.id)
     if membership.role == "owner":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El propietario no puede salir; elimina la clase si ya no la quieres",
-        )
+        others = (await db.execute(select(ClassMembership).where(ClassMembership.class_id == class_id, ClassMembership.user_id != current_user.id).order_by(ClassMembership.created_at, ClassMembership.id))).scalars().all()
+        if not others:
+            raise HTTPException(400, "Eres el último miembro: elimina la clase desde su cabecera")
+        others[0].role = "owner"
+        shared_class = await _get_class(db, class_id)
+        shared_class.owner_id = others[0].user_id
     await db.delete(membership)
     await db.commit()
     notify(current_user.id, "classes", {"class_id": str(class_id), "action": "left"})
@@ -478,6 +483,7 @@ async def list_messages(
             user_id=m.user_id,
             author_name=full_name or email,
             content=m.content,
+            parent_id=m.parent_id,
             kind=m.kind,
             pinned=m.pinned,
             created_at=m.created_at,
@@ -510,7 +516,12 @@ async def send_message(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="El mensaje no puede estar vacio",
         )
+    if payload.parent_id is not None:
+        parent = await _get_message(db, class_id, payload.parent_id)
+        if parent.parent_id is not None:
+            raise HTTPException(422, "Responde a la publicación principal")
     message = ClassMessage(
+        parent_id=payload.parent_id,
         class_id=class_id,
         user_id=current_user.id,
         content=content,

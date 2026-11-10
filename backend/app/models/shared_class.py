@@ -91,6 +91,7 @@ class ClassMessage(UUIDPkMixin, TimestampMixin, Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("class_messages.id", ondelete="CASCADE"), index=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     # "message" (chat normal) o "announcement" (anuncio del propietario).
     kind: Mapped[str] = mapped_column(String(16), default="message", nullable=False)

@@ -723,7 +723,7 @@ export const api = {
   },
   classMessages: (id: string, limit = 100) =>
     request<ClassMessage[]>(`/api/v1/classes/${id}/messages?limit=${limit}`),
-  sendClassMessage: (id: string, body: { content: string; kind?: "message" | "announcement" }) =>
+  sendClassMessage: (id: string, body: { content: string; kind?: "message" | "announcement"; parent_id?: string }) =>
     request<ClassMessage>(`/api/v1/classes/${id}/messages`, {
       method: "POST",
       body: JSON.stringify(body),

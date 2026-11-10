@@ -175,6 +175,7 @@ export interface SharedClass {
 }
 
 export interface ClassMember {
+  username?: string | null;
   user_id: string;
   email: string;
   full_name: string | null;
@@ -187,6 +188,7 @@ export interface ClassDetail extends SharedClass {
 }
 
 export interface ClassMessage {
+  parent_id?: string | null;
   id: string;
   class_id: string;
   user_id: string;

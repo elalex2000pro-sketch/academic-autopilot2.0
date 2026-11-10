@@ -1,4 +1,11 @@
 "use client";
+import {AnimatePresence,motion,useReducedMotion} from "framer-motion";
+import {ClassNewsTab} from "@/components/class/class-news-tab";
+import {ClassResourcesTab} from "@/components/class/class-resources-tab";
+import { ClassCalendarTab } from "@/components/class/class-calendar-tab";
+import { ClassNotebooksTab } from "@/components/class/class-notebooks-tab";
+import { ClassFilesTab } from "@/components/class/class-files-tab";
+import { ClassPeopleTab } from "@/components/class/class-people-tab";
 
 import { ClassworkBoard } from "@/components/class/classwork-board";
 
@@ -54,14 +61,15 @@ import type {
   Notebook,
 } from "@/lib/types";
 
-type Tab = "work" | "calendar" | "notebooks";
+type Tab = "news" | "work" | "people" | "calendar" | "notebooks";
 
-// El chat, los archivos y los miembros viven siempre en la vista de 3 columnas;
-// estas pestañas añaden el resto de secciones de la clase.
+// La vista conserva los datos y handlers compartidos; cada pestaña renderiza su sección.
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: "work", label: "Trabajo", icon: ClipboardCheck },
+  { id: "news", label: "Novedades", icon: MessageSquare },
+  { id: "work", label: "Trabajo de clase", icon: ClipboardCheck },
+  { id: "people", label: "Personas", icon: Users },
   { id: "calendar", label: "Calendario", icon: CalendarDays },
-  { id: "notebooks", label: "Cuadernos", icon: NotebookPen },
+  { id: "notebooks", label: "Cuadernos y archivos", icon: NotebookPen },
 ];
 
 const WEEKDAYS = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"];
@@ -215,6 +223,7 @@ function formatEventRange(event: ClassEvent): string {
 }
 
 export default function ClassDetailView() {
+  const reduceMotion = useReducedMotion();
   const params = useParams<{ id: string }>();
   const classId = (params?.id as string) ?? "";
   const router = useRouter();
@@ -229,7 +238,7 @@ export default function ClassDetailView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [shareDatesOpen, setShareDatesOpen] = useState(false);
-  const [tab, setTab] = useState<Tab | null>(null);
+  const [tab, setTab] = useState<Tab>("news");
   const [copied, setCopied] = useState(false);
 
   const isOwner = detail?.my_role === "owner";
@@ -971,7 +980,7 @@ export default function ClassDetailView() {
                 className="inline-flex items-center gap-1.5 rounded-md border border-border/60 px-2.5 py-1.5 font-mono text-sm tracking-widest transition-colors hover:bg-accent"
               >
                 <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
-                {detail.code}
+                {detail.code}<span className="font-sans tracking-normal">{copied?"Copiado":"Copiar"}</span>
                 {copied ? (
                   <Check className="h-3.5 w-3.5 text-emerald-500" />
                 ) : (
@@ -1039,399 +1048,28 @@ export default function ClassDetailView() {
       )}
 
       {/* Pestanas */}
-      <div className="flex flex-wrap gap-1 rounded-lg border border-border/60 bg-card p-1">
+      <div role="tablist" aria-label="Secciones de la clase" className="app-glass isolate flex gap-1 overflow-x-auto rounded-xl border border-border/60 p-1">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             type="button"
-            onClick={() => setTab((current) => (current === id ? null : id))}
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
-              tab === id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent"
+            onClick={() => setTab(id)}
+            aria-selected={tab === id} role="tab" className={`relative flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
+              tab === id ? "text-primary" : "text-muted-foreground hover:bg-accent"
             }`}
           >
+            {tab === id && <motion.span initial={false} layoutId="class-tab-indicator" className="absolute inset-0 -z-10 rounded-lg bg-primary/10" transition={{type:"spring",stiffness:400,damping:35}} />}
             <Icon className="h-4 w-4" />
             {label}
           </button>
         ))}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(170px,210px)_minmax(0,1fr)_minmax(220px,290px)]">
-        {/* ---------------------------------------------------------------- Chat */}
-        <Card className="order-2 xl:col-start-2 xl:row-start-1">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Tablón de la clase</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 pt-0">
-            {pinnedMessages.length > 0 && (
-              <div className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3">
-                <p className="flex items-center gap-1 text-xs font-medium text-amber-500">
-                  <Megaphone className="h-3.5 w-3.5" /> Anuncios fijados
-                </p>
-                {pinnedMessages.map((message) => (
-                  <div key={`pinned-${message.id}`} className="text-sm">
-                    <p className="whitespace-pre-wrap break-words">{message.content}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {message.author_name ?? "Alguien"} - {formatDateTime(message.created_at)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="max-h-[48vh] space-y-2 overflow-y-auto pr-1">
-              {messages.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Todavia no hay mensajes. Escribe el primero para empezar la conversacion.
-                </p>
-              )}
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`rounded-md border px-3 py-2 text-sm ${
-                    message.kind === "announcement"
-                      ? "border-amber-500/40 bg-amber-500/5"
-                      : "border-border/60"
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                    <span className="flex min-w-0 items-center gap-1">
-                      {message.kind === "announcement" && (
-                        <Megaphone className="h-3.5 w-3.5 shrink-0 text-amber-500" />
-                      )}
-                      <span className="truncate font-medium text-foreground/80">
-                        {message.author_name ?? "Alguien"}
-                        {message.user_id === user?.id ? " (tu)" : ""}
-                      </span>
-                      {message.pinned && <Pin className="h-3 w-3 shrink-0" />}
-                    </span>
-                    <span className="flex shrink-0 items-center gap-1">
-                      {message.pending ? (
-                        <span className="inline-flex items-center gap-1">
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          Enviando
-                        </span>
-                      ) : (
-                        formatDateTime(message.created_at)
-                      )}
-                      {!message.pending && isOwner && (
-                        <button
-                          type="button"
-                          onClick={() => togglePin(message)}
-                          title={message.pinned ? "Desfijar" : "Fijar"}
-                          className="rounded p-0.5 hover:bg-accent"
-                        >
-                          {message.pinned ? (
-                            <PinOff className="h-3.5 w-3.5" />
-                          ) : (
-                            <Pin className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-                      )}
-                      {!message.pending && (message.user_id === user?.id || isOwner) && (
-                        <button
-                          type="button"
-                          onClick={() => removeMessage(message)}
-                          title="Borrar mensaje"
-                          className="rounded p-0.5 hover:bg-accent"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </span>
-                  </div>
-                  <p className="mt-1 whitespace-pre-wrap break-words">{message.content}</p>
-                </div>
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
-
-            <form onSubmit={sendMessage} className="space-y-2">
-              <textarea
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder="Escribe un mensaje..."
-                rows={2}
-                maxLength={4000}
-                className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              />
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                {isOwner ? (
-                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <input
-                      type="checkbox"
-                      checked={asAnnouncement}
-                      onChange={(e) => setAsAnnouncement(e.target.checked)}
-                    />
-                    Publicar como anuncio (se fija arriba)
-                  </label>
-                ) : (
-                  <span />
-                )}
-                <Button type="submit" size="sm" disabled={!draft.trim() || sending}>
-                  {sending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                  Enviar
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-
+      <AnimatePresence mode="wait" initial={false}><motion.div key={tab} data-class-tab={tab} role="tabpanel" initial={{opacity:0,x:reduceMotion?0:16}} animate={{opacity:1,x:0}} exit={{opacity:0,x:reduceMotion?0:-16}} transition={{duration:reduceMotion?0:0.16}} className="min-w-0">
+      {tab === "news" && <ClassNewsTab classId={classId} messages={messages} isOwner={isOwner} userId={user?.id??""} onRefresh={loadAll} onPin={togglePin} onDelete={removeMessage} assignments={assignments} events={events} />}
       {/* ------------------------------------------------------------- Calendario */}
       {tab === "calendar" && (
-        <div className="order-4 space-y-4 xl:col-span-full xl:row-start-2">
-          <Card>
-            <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <CardTitle className="text-base">{monthLabel}</CardTitle>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs text-muted-foreground">
-                  Comparte una fecha de tu calendario personal para que la vea toda la clase.
-                </p>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setShareDatesOpen(true)}
-                >
-                  <CalendarPlus className="h-4 w-4" />
-                  Compartir fechas de mi calendario
-                </Button>
-              </div>
-              <div className="grid grid-cols-7 gap-1">
-                {WEEKDAYS.map((day) => (
-                  <div key={day} className="pb-1 text-center text-xs text-muted-foreground">
-                    {day}
-                  </div>
-                ))}
-                {grid.map((day, index) => {
-                  if (day === null) {
-                    return <div key={`empty-${index}`} />;
-                  }
-                  const key = localDayKey(day);
-                  const dayEvents = eventsByDay.get(key) ?? [];
-                  const isToday = localDayKey(new Date()) === key;
-                  const isSelected = eventDate === key;
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      data-touch-compact
-                      onClick={() => setEventDate(key)}
-                      className={`min-h-[64px] rounded-md border p-1 text-left transition-colors hover:border-primary/50 ${
-                        isSelected ? "border-primary" : "border-border/50"
-                      } ${isToday ? "bg-primary/5" : ""}`}
-                    >
-                      <span
-                        className={`text-xs ${
-                          isToday ? "font-semibold text-primary" : "text-muted-foreground"
-                        }`}
-                      >
-                        {day.getDate()}
-                      </span>
-                      <div className="mt-0.5 space-y-0.5">
-                        {dayEvents.slice(0, 2).map((event) => (
-                          <div
-                            key={event.id}
-                            className={`truncate rounded px-1 py-0.5 text-[10px] ${
-                              event.is_exam
-                                ? "bg-red-50 font-semibold text-red-600"
-                                : "bg-primary/10 text-primary"
-                            }`}
-                          >
-                            {event.title}
-                          </div>
-                        ))}
-                        {dayEvents.length > 2 && (
-                          <div className="text-[10px] text-muted-foreground">
-                            +{dayEvents.length - 2} mas
-                          </div>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">
-                  {editingEventId ? "Editar evento" : "Anadir evento"}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form ref={eventFormRef} onSubmit={createEvent} className="space-y-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="event-title">Titulo</Label>
-                    <Input
-                      id="event-title"
-                      value={eventTitle}
-                      onChange={(e) => setEventTitle(e.target.value)}
-                      placeholder="Examen de Calculo"
-                      maxLength={300}
-                    />
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="col-span-3 space-y-1 sm:col-span-1">
-                      <Label htmlFor="event-date">Dia</Label>
-                      <Input
-                        id="event-date"
-                        type="date"
-                        value={eventDate}
-                        onChange={(e) => setEventDate(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="event-start">Inicio</Label>
-                      <Input
-                        id="event-start"
-                        type="time"
-                        value={eventStart}
-                        onChange={(e) => setEventStart(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="event-end">Fin (opcional)</Label>
-                      <Input
-                        id="event-end"
-                        type="time"
-                        value={eventEnd}
-                        onChange={(e) => setEventEnd(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="event-location">Lugar (opcional)</Label>
-                    <Input
-                      id="event-location"
-                      value={eventLocation}
-                      onChange={(e) => setEventLocation(e.target.value)}
-                      placeholder="Aula 3 / Zoom"
-                      maxLength={200}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="event-description">Descripcion (opcional)</Label>
-                    <Input
-                      id="event-description"
-                      value={eventDescription}
-                      onChange={(e) => setEventDescription(e.target.value)}
-                      maxLength={2000}
-                    />
-                  </div>
-                  <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <input
-                      type="checkbox"
-                      checked={eventIsExam}
-                      onChange={(e) => setEventIsExam(e.target.checked)}
-                    />
-                    Es un examen (se resalta en rojo para toda la clase)
-                  </label>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      type="submit"
-                      size="sm"
-                      disabled={!eventTitle.trim() || savingEvent}
-                    >
-                      {savingEvent ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                      {editingEventId ? "Guardar cambios" : "Crear evento"}
-                    </Button>
-                    {editingEventId && (
-                      <Button type="button" size="sm" variant="ghost" onClick={resetEventForm}>
-                        Cancelar
-                      </Button>
-                    )}
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Proximos eventos</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {upcomingEvents.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    No hay eventos proximos. Crea uno para que lo vea toda la clase.
-                  </p>
-                )}
-                {upcomingEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    className={`flex items-start justify-between gap-2 rounded-md border px-3 py-2 text-sm ${
-                      event.is_exam ? "border-red-300 bg-red-50/70" : "border-border/60"
-                    }`}
-                  >
-                    <div className="min-w-0">
-                      <p className="flex items-center gap-2 truncate font-medium">
-                        {event.is_exam && (
-                          <span className="shrink-0 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-600">
-                            Examen
-                          </span>
-                        )}
-                        <span className="truncate">{event.title}</span>
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatEventRange(event)}
-                        {event.location ? ` - ${event.location}` : ""}
-                      </p>
-                      {event.description && (
-                        <p className="mt-0.5 text-xs text-muted-foreground">{event.description}</p>
-                      )}
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        Creado por {event.creator_name ?? "alguien"}
-                      </p>
-                    </div>
-                    {(event.created_by === user?.id || isOwner) && (
-                      <div className="flex shrink-0 items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => startEditEvent(event)}
-                          title="Editar evento"
-                          aria-label={`Editar ${event.title}`}
-                          className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-[#0066FF] dark:hover:text-[#8ab9ff]"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeEvent(event)}
-                          title="Eliminar evento"
-                          aria-label={`Eliminar ${event.title}`}
-                          className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-rose-500"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        <ClassCalendarTab setMonth={setMonth} month={month} monthLabel={monthLabel} setShareDatesOpen={setShareDatesOpen} WEEKDAYS={WEEKDAYS} grid={grid} localDayKey={localDayKey} eventsByDay={eventsByDay} eventDate={eventDate} setEventDate={setEventDate} editingEventId={editingEventId} eventFormRef={eventFormRef} createEvent={createEvent} eventTitle={eventTitle} setEventTitle={setEventTitle} eventStart={eventStart} setEventStart={setEventStart} eventEnd={eventEnd} setEventEnd={setEventEnd} eventLocation={eventLocation} setEventLocation={setEventLocation} eventDescription={eventDescription} setEventDescription={setEventDescription} eventIsExam={eventIsExam} setEventIsExam={setEventIsExam} savingEvent={savingEvent} resetEventForm={resetEventForm} upcomingEvents={upcomingEvents} formatEventRange={formatEventRange} user={user} isOwner={isOwner} startEditEvent={startEditEvent} removeEvent={removeEvent} />
       )}
 
       {shareDatesOpen && detail ? (
@@ -1446,140 +1084,18 @@ export default function ClassDetailView() {
       {/* ----------------------------------------------------------- Trabajo */}
       {tab === "work" && <ClassworkBoard classId={classId} isOwner={isOwner} />}
 
+      {tab === "notebooks" && <ClassResourcesTab>
       {/* -------------------------------------------------------------- Cuadernos */}
       {tab === "notebooks" && (
-        <Card className="order-4 xl:col-span-full xl:row-start-2">
-          <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
-            <div>
-              <CardTitle className="text-base">Cuadernos compartidos</CardTitle>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Apuntes que los miembros han compartido con la clase.
-              </p>
-            </div>
-            <Link href="/notebooks">
-              <Button size="sm" variant="secondary">
-                <NotebookPen className="h-4 w-4" /> Mis cuadernos
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {notebooks.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Nadie ha compartido cuadernos todavía. En Cuadernos, elige uno y pulsa «Compartir
-                con una clase».
-              </p>
-            )}
-            {notebooks.map((notebook) => (
-              <div
-                key={notebook.id}
-                className="flex items-center gap-3 rounded-xl border border-border/60 px-3 py-2.5 text-sm"
-              >
-                <span
-                  className="h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: notebook.color }}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{notebook.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {notebook.user_id === user?.id ? "Tu cuaderno" : "Compartido por un compañero"} ·{" "}
-                    {notebook.share_permission === "edit" ? "Se puede editar" : "Solo lectura"} ·
-                    Actualizado {new Date(notebook.updated_at).toLocaleDateString("es-ES")}
-                  </p>
-                </div>
-                <Button size="sm" variant="outline" onClick={() => openSharedNotebook(notebook)}>
-                  Abrir
-                </Button>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        <ClassNotebooksTab notebooks={notebooks} user={user} openSharedNotebook={openSharedNotebook} />
       )}
 
       {/* -------------------------------------------------------------- Archivos */}
-      <Card className="order-3 xl:col-start-3 xl:row-start-1">
-          <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-base">Archivos de la clase</CardTitle>
-            <div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept={ACCEPT}
-                className="hidden"
-                onChange={onFileChange}
-              />
-              <Button size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                {uploading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Upload className="h-4 w-4" />
-                )}
-                Subir archivo
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {uploading && progress && (
-              <div className="space-y-1 rounded-md border border-border/60 px-3 py-2">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Subiendo... {progress.percent}%</span>
-                  <span>
-                    {formatBytes(progress.uploadedBytes)} / {formatBytes(progress.totalBytes)}
-                  </span>
-                </div>
-                <Progress value={progress.percent} />
-              </div>
-            )}
+      <ClassFilesTab fileInputRef={fileInputRef} ACCEPT={ACCEPT} onFileChange={onFileChange} uploading={uploading} progress={progress} formatBytes={formatBytes} files={files} SharedFileRow={SharedFileRow} canDeleteFile={canDeleteFile} downloadFile={downloadFile} removeFile={removeFile} />
 
-            {files.length === 0 && !uploading && (
-              <p className="text-sm text-muted-foreground">
-                No hay archivos compartidos todavia (hasta 20 GB por archivo).
-              </p>
-            )}
-
-            {files.map((file) => (
-              <SharedFileRow
-                key={file.id}
-                file={file}
-                canDelete={canDeleteFile(file)}
-                onDownload={downloadFile}
-                onRemove={removeFile}
-              />
-            ))}
-          </CardContent>
-      </Card>
-
-      {/* -------------------------------------------------------------- Miembros */}
-      <Card className="order-1 xl:col-start-1 xl:row-start-1">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Miembros ({detail.members.length})</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {detail.members.map((member) => (
-              <div
-                key={member.user_id}
-                className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2 text-sm"
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-medium">
-                    {member.full_name ?? member.email}
-                    {member.user_id === user?.id ? " (tu)" : ""}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">{member.email}</p>
-                </div>
-                <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
-                    member.role === "owner"
-                      ? "bg-primary/10 text-primary"
-                      : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  {member.role === "owner" ? "Propietario" : "Miembro"}
-                </span>
-              </div>
-            ))}
-          </CardContent>
-      </Card>
-      </div>
+      </ClassResourcesTab>}
+      {tab === "people" && <ClassPeopleTab detail={detail} userId={user?.id??""} onLeave={isOwner&&detail.members.length===1?deleteClass:leaveClass} />}
+      </motion.div></AnimatePresence>
 
       {openNotebook && (
         <div

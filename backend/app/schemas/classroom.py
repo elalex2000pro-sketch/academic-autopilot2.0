@@ -26,6 +26,7 @@ class ClassMemberRead(BaseModel):
     email: str
     full_name: str | None
     role: str
+    username: str | None = None
     joined_at: datetime
 
 
@@ -45,6 +46,7 @@ class ClassDetail(ClassRead):
 
 
 class MessageCreate(BaseModel):
+    parent_id: uuid.UUID | None = None
     content: str = Field(min_length=1, max_length=4000)
     kind: str = Field(default="message", pattern="^(message|announcement)$")
 
@@ -54,6 +56,7 @@ class MessageUpdate(BaseModel):
 
 
 class MessageRead(BaseModel):
+    parent_id: uuid.UUID | None = None
     id: uuid.UUID
     class_id: uuid.UUID
     user_id: uuid.UUID
