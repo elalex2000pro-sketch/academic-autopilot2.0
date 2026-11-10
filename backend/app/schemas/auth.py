@@ -39,6 +39,15 @@ class UserRead(BaseModel):
     created_at: datetime
     recovery_question: str | None = None
     has_recovery: bool = False
+    # Tick azul del chat: la cuenta acreditó un correo institucional.
+    is_verified: bool = False
+    institutional_email: str | None = None
+
+
+class VerificationRequest(BaseModel):
+    """Correo institucional con el que se pide la verificación de la cuenta."""
+
+    institutional_email: EmailStr
 
 
 class RecoveryQuestionRequest(BaseModel):

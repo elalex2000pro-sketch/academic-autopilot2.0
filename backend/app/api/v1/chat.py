@@ -59,7 +59,10 @@ def _display_name(user: User) -> str:
 
 def _user_read(user: User) -> ChatUserRead:
     return ChatUserRead(
-        id=user.id, username=user.username, display_name=_display_name(user)
+        id=user.id,
+        username=user.username,
+        display_name=_display_name(user),
+        is_verified=bool(user.is_verified),
     )
 
 
@@ -80,6 +83,7 @@ def _message_read(message: ChatMessage, sender: User) -> ChatMessageRead:
         sender_id=message.sender_id,
         sender_name=_display_name(sender),
         sender_username=sender.username,
+        sender_verified=bool(sender.is_verified),
         content=message.content,
         attachment=_attachment_read(message),
         status=(

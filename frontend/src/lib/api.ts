@@ -267,6 +267,12 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(body),
     }),
+  // Tick azul del chat: acredita la cuenta con un correo institucional.
+  requestVerification: (institutional_email: string) =>
+    request<User>("/api/v1/auth/verification", {
+      method: "POST",
+      body: JSON.stringify({ institutional_email }),
+    }),
 
   // --- Integraciones ---
   integrations: () => request<Integration[]>("/api/v1/integrations"),

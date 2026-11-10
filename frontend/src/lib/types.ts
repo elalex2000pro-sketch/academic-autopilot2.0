@@ -19,6 +19,9 @@ export interface User {
   recovery_question?: string | null;
   /** True si la cuenta ya tiene pregunta y respuesta de seguridad. */
   has_recovery?: boolean;
+  /** Tick azul del chat: la cuenta acreditó un correo institucional. */
+  is_verified?: boolean;
+  institutional_email?: string | null;
 }
 
 export interface Course {
@@ -528,6 +531,8 @@ export interface ChatUser {
   id: string;
   username: string | null;
   display_name: string;
+  /** Tick azul junto al nombre. */
+  is_verified?: boolean;
 }
 
 export interface ChatMember {
@@ -547,6 +552,8 @@ export interface ChatMessage {
   sender_id: string;
   sender_name: string;
   sender_username: string | null;
+  /** Tick azul del remitente. */
+  sender_verified?: boolean;
   content: string;
   attachment: ChatFileAttachment | null;
   /** Tick de enviado, entregado o leído (solo para mis mensajes). */

@@ -1,6 +1,7 @@
 """Modelo de usuario."""
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import String
@@ -31,6 +32,11 @@ class User(UUIDPkMixin, TimestampMixin, Base):
     username: Mapped[str | None] = mapped_column(
         String(24), unique=True, index=True
     )
+    # Verificación de cuenta: tick azul en el chat. Se consigue acreditando un
+    # correo institucional valido; no cambia el correo de acceso.
+    is_verified: Mapped[bool] = mapped_column(default=False, nullable=False)
+    verified_at: Mapped[datetime | None] = mapped_column()
+    institutional_email: Mapped[str | None] = mapped_column(String(320))
     timezone: Mapped[str] = mapped_column(String(64), default="UTC", nullable=False)
 
     # Recuperacion de contrasena sin depender de correo: pregunta de seguridad

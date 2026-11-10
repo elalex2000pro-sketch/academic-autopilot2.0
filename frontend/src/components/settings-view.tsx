@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { pageItem, pageStagger } from "@/components/page-animated-wrapper";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -49,6 +49,7 @@ import {
   type SettingsTabId,
 } from "@/components/settings/settings-ui";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { VerifiedTick } from "@/components/verified-tick";
 import { UpdateCheckButton } from "@/components/update-check-button";
 import { WallpaperPicker } from "@/components/wallpaper-picker";
 import { Badge } from "@/components/ui/badge";
@@ -592,6 +593,30 @@ export function SettingsView() {
   const { sidebar: sidebarLayout, updateSidebar } = useSidebarPreferences();
   const layoutEditing = useLayoutEditing();
 
+  const [verificationEmail, setVerificationEmail] = useState("");
+  const [verificationBusy, setVerificationBusy] = useState(false);
+
+  const handleRequestVerification = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      setVerificationBusy(true);
+      try {
+        await api.requestVerification(verificationEmail.trim());
+        await refreshUser();
+        setNotice(
+          "Cuenta verificada: el tick azul ya aparece junto a tu nombre en el chat.",
+        );
+      } catch (error) {
+        setNotice(
+          error instanceof Error ? error.message : "No se pudo verificar la cuenta.",
+        );
+      } finally {
+        setVerificationBusy(false);
+      }
+    },
+    [refreshUser, verificationEmail],
+  );
+
   const handleResetLayout = useCallback(() => {
     resetAllLayouts();
     setLayoutEditing(false);
@@ -793,6 +818,49 @@ export function SettingsView() {
                   </Button>
                 </div>
               </div>
+            </SettingsCard>
+
+            <SettingsCard
+              icon={ShieldCheck}
+              title="Verificación"
+              description="Consigue el tick azul en el chat acreditando tu correo institucional."
+            >
+              {user?.is_verified ? (
+                <div className="flex items-center gap-2 rounded-xl border border-[#0a84ff]/25 bg-[#0a84ff]/[0.06] px-3 py-2.5">
+                  <VerifiedTick className="h-4 w-4" />
+                  <span className="min-w-0 flex-1 text-[11.5px] font-medium text-[#0b63c7] dark:text-[#9dcaff]">
+                    Cuenta verificada
+                    {user.institutional_email ? ` con ${user.institutional_email}` : ""}. El
+                    tick aparece junto a tu nombre en el chat.
+                  </span>
+                </div>
+              ) : (
+                <form onSubmit={handleRequestVerification} className="space-y-2.5">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="verification-email">Correo institucional</Label>
+                    <Input
+                      id="verification-email"
+                      type="email"
+                      value={verificationEmail}
+                      onChange={(event) => setVerificationEmail(event.target.value)}
+                      placeholder="tu.nombre@universidad.edu"
+                      required
+                    />
+                  </div>
+                  <p className="text-[10.5px] leading-4 text-slate-500 dark:text-white/35">
+                    Aceptamos dominios educativos (.edu, .edu.mx, .ac.uk…). No cambia tu correo
+                    de acceso; solo acredita la cuenta para mostrar el tick.
+                  </p>
+                  <Button type="submit" size="sm" disabled={verificationBusy}>
+                    {verificationBusy ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                    )}
+                    Verificar mi cuenta
+                  </Button>
+                </form>
+              )}
             </SettingsCard>
 
             <SettingsCard

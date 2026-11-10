@@ -1,10 +1,11 @@
 {
-  "version": "1.3.35",
-  "publishedAt": "2026-11-10T15:10:00.000Z",
+  "version": "1.3.36",
+  "publishedAt": "2026-11-10T16:20:00.000Z",
   "sizeBytes": 8388608,
   "notes": [
-    "En el Planificador, la columna derecha cambia el mini calendario por «Próximos exámenes»: fecha, asignatura, cuenta atrás y aviso de examen sin nota.",
-    "Pulsa un examen de la lista para abrirlo y editarlo sin salir del Planificador."
+    "Nuevo tick azul de cuenta verificada en el chat: aparece junto al nombre en la cabecera y en los grupos.",
+    "Se consigue en Ajustes → Verificación acreditando un correo institucional (.edu, .edu.mx, .ac.uk…). No cambia tu correo de acceso.",
+    "Los usuarios verificados muestran el tick también al buscar personas para un chat."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases"
 }

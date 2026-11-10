@@ -14,6 +14,7 @@ class ChatUserRead(BaseModel):
     id: uuid.UUID
     username: str | None = None
     display_name: str
+    is_verified: bool = False
 
 
 class ChatMemberRead(BaseModel):
@@ -33,6 +34,7 @@ class ChatMessageRead(BaseModel):
     sender_id: uuid.UUID
     sender_name: str
     sender_username: str | None = None
+    sender_verified: bool = False
     content: str
     attachment: ChatAttachmentRead | None = None
     # Ticks del chat: enviado, entregado o leído.

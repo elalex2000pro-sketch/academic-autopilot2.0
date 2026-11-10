@@ -42,6 +42,7 @@ import {
 import { useRealtime } from "@/components/realtime-provider";
 import { setActiveChatConversation } from "@/lib/chat-active";
 import { Button } from "@/components/ui/button";
+import { VerifiedTick } from "@/components/verified-tick";
 import { chatApi } from "@/lib/api";
 import {
   isChatMuted,
@@ -712,6 +713,7 @@ export function ChatView() {
       sender_id: meId,
       sender_name: user?.full_name?.trim() || user?.email || "Tu",
       sender_username: user?.username ?? null,
+      sender_verified: user?.is_verified ?? false,
       content: text,
       attachment: pendingFile
         ? {
@@ -904,8 +906,14 @@ export function ChatView() {
                 <ArrowLeft className="h-4 w-4" />
               </button>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">
-                  {conversationTitle(active, meId)}
+                <p className="flex min-w-0 items-center gap-1 text-sm font-semibold">
+                  <span className="truncate">{conversationTitle(active, meId)}</span>
+                  {active.kind !== "group" &&
+                  active.members.some(
+                    (member) => member.user.id !== meId && member.user.is_verified,
+                  ) ? (
+                    <VerifiedTick />
+                  ) : null}
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
                   {active.members
@@ -1009,10 +1017,13 @@ export function ChatView() {
                           )}
                         >
                           {!mine && active.kind === "group" ? (
-                            <p className="mb-0.5 text-[11px] font-semibold opacity-70">
-                              {message.sender_username
-                                ? `@${message.sender_username}`
-                                : message.sender_name}
+                            <p className="mb-0.5 flex items-center gap-1 text-[11px] font-semibold opacity-70">
+                              <span className="truncate">
+                                {message.sender_username
+                                  ? `@${message.sender_username}`
+                                  : message.sender_name}
+                              </span>
+                              {message.sender_verified ? <VerifiedTick className="h-3 w-3" /> : null}
                             </p>
                           ) : null}
                           {message.content ? (
@@ -1475,8 +1486,9 @@ function NewConversationDialog({
                     {initials(user.display_name)}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium">
+                    <span className="flex items-center gap-1 truncate font-medium">
                       {user.display_name}
+                      {user.is_verified ? <VerifiedTick className="h-3 w-3" /> : null}
                     </span>
                     <span className="block truncate text-xs text-muted-foreground">
                       {user.username ? `@${user.username}` : "Sin @usuario"}

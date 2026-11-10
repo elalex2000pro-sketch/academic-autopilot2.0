@@ -1,5 +1,6 @@
 """Endpoints de autenticacion (registro, login, perfil y recuperacion)."""
 import re
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import select
@@ -23,6 +24,7 @@ from app.schemas.auth import (
     UserLogin,
     UserRead,
     UserRegister,
+    VerificationRequest,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -192,6 +194,77 @@ async def set_recovery(
 
     current_user.recovery_question = question
     current_user.recovery_answer_hash = hash_password(answer)
+    await db.commit()
+    await db.refresh(current_user)
+    return current_user
+
+
+# Dominios educativos habituales que no siguen el patrón .edu / .ac.
+_ACADEMIC_DOMAIN_SUFFIXES = (
+    ".unam.mx",
+    ".ipn.mx",
+    ".itesm.mx",
+    ".tec.mx",
+    ".us.es",
+    ".ucm.es",
+    ".upv.es",
+    ".ull.es",
+    ".ugr.es",
+    ".unizar.es",
+    ".uam.es",
+    ".uma.es",
+    ".usal.es",
+    ".unex.es",
+    ".uvigo.es",
+    ".upf.edu",
+    ".uoc.edu",
+    ".uned.es",
+    ".uchile.cl",
+    ".puc.cl",
+    ".usach.cl",
+    ".udec.cl",
+    ".uv.cl",
+    ".uba.ar",
+    ".unlp.edu.ar",
+    ".unal.edu.co",
+    ".uniandes.edu.co",
+    ".udelar.edu.uy",
+    ".unmsm.edu.pe",
+    ".ulima.edu.pe",
+)
+_EDU_DOMAIN_RE = re.compile(r"\.edu(\.[a-z]{2,3})?$")
+_AC_DOMAIN_RE = re.compile(r"\.ac\.[a-z]{2,3}$")
+
+
+def _is_academic_domain(email: str) -> bool:
+    """Comprueba que el correo pertenece a una institución educativa."""
+    domain = email.rsplit("@", 1)[-1].strip().lower()
+    if not domain or "." not in domain:
+        return False
+    return bool(
+        _EDU_DOMAIN_RE.search(domain)
+        or _AC_DOMAIN_RE.search(domain)
+        or domain.endswith(_ACADEMIC_DOMAIN_SUFFIXES)
+    )
+
+
+@router.post("/verification", response_model=UserRead)
+async def request_verification(
+    payload: VerificationRequest, current_user: CurrentUser, db: DbSession
+) -> User:
+    """Acredita la cuenta con un correo institucional y activa el tick."""
+    email = str(payload.institutional_email).strip().lower()
+    if not _is_academic_domain(email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Usa un correo de tu institución educativa "
+                "(por ejemplo, tu.nombre@universidad.edu)."
+            ),
+        )
+    current_user.is_verified = True
+    current_user.verified_at = datetime.now(UTC)
+    current_user.institutional_email = email
     await db.commit()
     await db.refresh(current_user)
     return current_user
