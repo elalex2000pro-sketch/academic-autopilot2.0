@@ -13,6 +13,7 @@ import {
 
 import { useAuth } from "@/components/auth-provider";
 import { realtimeUrl } from "@/lib/api";
+import { notifyChatMessage } from "@/lib/chat-notifications";
 
 export interface RealtimeEvent {
   event: string;
@@ -59,6 +60,9 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
               console.error("Error en listener realtime", error);
             }
           });
+          // El aviso vive aqui y no en la vista de chat para que llegue aunque
+          // el usuario este en otra seccion de la app.
+          void notifyChatMessage(parsed, userId);
         } catch {
           /* ignora mensajes no JSON */
         }

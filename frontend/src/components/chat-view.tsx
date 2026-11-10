@@ -10,6 +10,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   AtSign,
+  Bell,
+  BellOff,
   Check,
   FileText,
   FolderOpen,
@@ -39,6 +41,11 @@ import {
 import { useRealtime } from "@/components/realtime-provider";
 import { Button } from "@/components/ui/button";
 import { chatApi } from "@/lib/api";
+import {
+  isChatMuted,
+  setChatMuted,
+  subscribeChatMutes,
+} from "@/lib/chat-mutes";
 import {
   DEFAULT_CHAT_BACKGROUND,
   backgroundStyle,
@@ -394,6 +401,8 @@ export function ChatView() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingList, setLoadingList] = useState(true);
+  // Conversaciones silenciadas (ids) guardadas en este dispositivo.
+  const [mutedChats, setMutedChats] = useState<string[]>([]);
   const [loadingThread, setLoadingThread] = useState(false);
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState("");
@@ -427,6 +436,12 @@ export function ChatView() {
     [activeId, conversations],
   );
 
+  const activeMuted = activeId ? mutedChats.includes(activeId) : false;
+
+  const toggleMute = useCallback((conversationId: string) => {
+    setMutedChats(setChatMuted(conversationId, !isChatMuted(conversationId)));
+  }, []);
+
   const forwardTargets = useMemo<ForwardTarget[]>(
     () =>
       conversations
@@ -439,6 +454,8 @@ export function ChatView() {
         })),
     [activeId, conversations, meId],
   );
+
+  useEffect(() => subscribeChatMutes(setMutedChats), []);
 
   useEffect(() => {
     if (!meId) {
@@ -766,7 +783,16 @@ export function ChatView() {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center justify-between gap-2">
-                      <span className="truncate text-sm font-medium">{title}</span>
+                      <span className="flex min-w-0 items-center gap-1">
+                        <span className="truncate text-sm font-medium">{title}</span>
+                        {mutedChats.includes(conversation.id) ? (
+                          <BellOff
+                            className="h-3 w-3 shrink-0 text-muted-foreground"
+                            aria-label="Silenciado"
+                            role="img"
+                          />
+                        ) : null}
+                      </span>
                       {conversation.last_message ? (
                         <span className="shrink-0 text-[10px] text-muted-foreground">
                           {formatClock(conversation.last_message.created_at)}
@@ -821,6 +847,32 @@ export function ChatView() {
                     .join(" · ")}
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={() => toggleMute(active.id)}
+                className={cn(
+                  "flex items-center gap-1 rounded-md px-2 py-1.5 text-xs transition hover:bg-muted",
+                  activeMuted
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-muted-foreground",
+                )}
+                aria-label={
+                  activeMuted
+                    ? "Activar notificaciones de esta conversacion"
+                    : "Silenciar notificaciones de esta conversacion"
+                }
+                aria-pressed={activeMuted}
+                title={activeMuted ? "Activar notificaciones" : "Silenciar"}
+              >
+                {activeMuted ? (
+                  <BellOff className="h-4 w-4" />
+                ) : (
+                  <Bell className="h-4 w-4" />
+                )}
+                <span className="hidden sm:inline">
+                  {activeMuted ? "Silenciado" : "Silenciar"}
+                </span>
+              </button>
               <button
                 type="button"
                 onClick={() => setBackgroundOpen(true)}

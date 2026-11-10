@@ -1,12 +1,12 @@
 {
-  "version": "1.3.18",
-  "publishedAt": "2026-11-10T08:10:41.000Z",
+  "version": "1.3.19",
+  "publishedAt": "2026-11-10T12:00:00.000Z",
   "sizeBytes": 8388608,
   "notes": [
-    "El lector PDF guarda ahora la página exacta al volver a la biblioteca o al desmontar el visor, en lugar de inferirla al final.",
-    "El detector de scroll ignora layouts incompletos o colapsados: ya no puede marcar la última página como actual por una transición del documento.",
-    "Las escrituras de progreso se serializan para que el guardado de salida no sea sobrescrito por una lectura anterior.",
-    "El porcentaje se calcula desde la página actual y el total (página 1 = 0 %). Verificado con página 3 al 30 %, página 10 al 100 % y salida inmediata al 0 %."
+    "Los mensajes nuevos del chat lanzan una notificación nativa en el PC cuando la ventana no tiene el foco, aunque estés en otra sección de la app.",
+    "La campana de la cabecera del chat silencia (o vuelve a activar) los avisos de esa persona o grupo; los mensajes siguen llegando, solo dejan de molestar.",
+    "En los grupos el aviso muestra el nombre del grupo, y tus propios mensajes nunca generan notificación.",
+    "Las conversaciones silenciadas se marcan con una campana tachada en la lista y se recuerdan en el dispositivo."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases"
 }

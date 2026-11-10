@@ -574,6 +574,9 @@ async def send_message(
             "chat",
             {
                 "conversation_id": str(conversation.id),
+                # Metadatos para que el aviso nativo titula bien un grupo.
+                "conversation_kind": conversation.kind,
+                "conversation_title": conversation.title,
                 "action": "message",
                 "message_id": str(message.id),
                 "message": read.model_dump(mode="json"),
