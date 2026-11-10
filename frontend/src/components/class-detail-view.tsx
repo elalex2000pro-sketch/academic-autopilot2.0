@@ -6,6 +6,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   CalendarDays,
+  CalendarPlus,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -28,6 +29,7 @@ import {
   Trash2,
   Upload,
   Users,
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -224,6 +226,7 @@ export default function ClassDetailView() {
   const [assignments, setAssignments] = useState<ClassAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [shareDatesOpen, setShareDatesOpen] = useState(false);
   const [tab, setTab] = useState<Tab | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -1197,6 +1200,20 @@ export default function ClassDetailView() {
               </Button>
             </CardHeader>
             <CardContent>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-muted-foreground">
+                  Comparte una fecha de tu calendario personal para que la vea toda la clase.
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShareDatesOpen(true)}
+                >
+                  <CalendarPlus className="h-4 w-4" />
+                  Compartir fechas de mi calendario
+                </Button>
+              </div>
               <div className="grid grid-cols-7 gap-1">
                 {WEEKDAYS.map((day) => (
                   <div key={day} className="pb-1 text-center text-xs text-muted-foreground">
@@ -1414,6 +1431,15 @@ export default function ClassDetailView() {
           </div>
         </div>
       )}
+
+      {shareDatesOpen && detail ? (
+        <ShareDatesDialog
+          classId={detail.id}
+          existing={events}
+          onClose={() => setShareDatesOpen(false)}
+          onCreated={(created) => setEvents((current) => [...current, ...created])}
+        />
+      ) : null}
 
       {/* ----------------------------------------------------------- Trabajo */}
       {tab === "work" && (
@@ -1914,3 +1940,228 @@ const SharedFileRow = memo(function SharedFileRow({
     </div>
   );
 });
+
+interface SharedDateCandidate {
+  id: string;
+  title: string;
+  date: string;
+  isExam: boolean;
+  description: string | null;
+}
+
+/**
+ * Diálogo para publicar en el calendario de la clase fechas del calendario
+ * personal (fechas importantes y exámenes). Evita duplicar las que ya están.
+ */
+function ShareDatesDialog({
+  classId,
+  existing,
+  onClose,
+  onCreated,
+}: {
+  classId: string;
+  existing: ClassEvent[];
+  onClose: () => void;
+  onCreated: (created: ClassEvent[]) => void;
+}) {
+  const [items, setItems] = useState<SharedDateCandidate[]>([]);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const [important, grades] = await Promise.all([
+          api.importantDates(),
+          api.grades(),
+        ]);
+        if (cancelled) return;
+        const already = new Set(
+          existing.map(
+            (event) =>
+              `${event.title.trim().toLowerCase()}|${event.start_at.slice(0, 10)}`,
+          ),
+        );
+        const candidates: SharedDateCandidate[] = [
+          ...important.map((item) => ({
+            id: `important-${item.id}`,
+            title: item.title,
+            date: item.date.slice(0, 10),
+            isExam: false,
+            description: item.notes?.trim() || null,
+          })),
+          ...grades
+            .filter((grade) => grade.is_exam && grade.graded_at)
+            .map((grade) => ({
+              id: `exam-${grade.id}`,
+              title: grade.title,
+              date: (grade.graded_at as string).slice(0, 10),
+              isExam: true,
+              description: null,
+            })),
+        ]
+          .filter(
+            (item) =>
+              Boolean(item.date) &&
+              !already.has(`${item.title.trim().toLowerCase()}|${item.date}`),
+          )
+          .sort((a, b) => a.date.localeCompare(b.date));
+        setItems(candidates);
+        setSelected(candidates.map((item) => item.id));
+      } catch (caught) {
+        if (!cancelled) setError(errorMessage(caught));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [existing]);
+
+  function toggle(id: string) {
+    setSelected((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+    );
+  }
+
+  async function confirm() {
+    const chosen = items.filter((item) => selected.includes(item.id));
+    if (chosen.length === 0) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const created: ClassEvent[] = [];
+      for (const item of chosen) {
+        created.push(
+          await api.createClassEvent(classId, {
+            title: item.title,
+            description: item.description,
+            start_at: new Date(`${item.date}T09:00:00`).toISOString(),
+            all_day: !item.isExam,
+            is_exam: item.isExam,
+          }),
+        );
+      }
+      onCreated(created);
+      onClose();
+    } catch (caught) {
+      setError(errorMessage(caught));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Compartir fechas de mi calendario"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
+          <div>
+            <h2 className="text-base font-semibold">Compartir fechas de mi calendario</h2>
+            <p className="text-xs text-muted-foreground">
+              Se añadirán al calendario de la clase y las verá todo el mundo.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="rounded p-1 text-muted-foreground hover:bg-accent"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+          {loading ? (
+            <div className="flex items-center justify-center py-8 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+            </div>
+          ) : items.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              No quedan fechas por compartir: tus fechas importantes y exámenes ya están en el
+              calendario de la clase.
+            </p>
+          ) : (
+            <ul className="space-y-1">
+              {items.map((item) => (
+                <li key={item.id}>
+                  <label className="flex cursor-pointer items-start gap-2 rounded-md px-2 py-2 text-sm hover:bg-accent">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={selected.includes(item.id)}
+                      onChange={() => toggle(item.id)}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2">
+                        <span className="truncate font-medium">{item.title}</span>
+                        {item.isExam ? (
+                          <span className="shrink-0 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-600">
+                            Examen
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        {longDateLabel(item.date)}
+                        {item.description ? ` · ${item.description}` : ""}
+                      </span>
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          )}
+          {error ? <p className="mt-3 text-xs text-destructive">{error}</p> : null}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-3">
+          <span className="text-xs text-muted-foreground">
+            {selected.length} seleccionada{selected.length === 1 ? "" : "s"}
+          </span>
+          <div className="flex gap-2">
+            <Button type="button" size="sm" variant="ghost" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void confirm()}
+              disabled={busy || selected.length === 0}
+            >
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Compartir en la clase
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Fecha legible de una fecha ISO corta (YYYY-MM-DD). */
+function longDateLabel(key: string): string {
+  const date = new Date(`${key}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return key;
+  return date.toLocaleDateString("es-ES", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
