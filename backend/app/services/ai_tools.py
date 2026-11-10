@@ -431,9 +431,14 @@ async def _find_grade(db: AsyncSession, user: User, title: str) -> tuple[Grade |
 # Ejecucion
 # --------------------------------------------------------------------------- #
 async def execute_tool(
-    db: AsyncSession, user: User, name: str, args: dict[str, Any]
+    db: AsyncSession, user: User, name: str, args: dict[str, Any],
+    *, notebook=None, citations=None,
 ) -> tuple[dict[str, Any], list[str]]:
     """Ejecuta una herramienta. Devuelve (resultado, eventos de tiempo real)."""
+    if notebook is not None:
+        # Scoped catalogue: never expose personal assistant tools to notebook sources.
+        from app.services.notebook_ai import execute
+        return await execute(db, notebook, user, name, args, citations or []), []
     handler = _HANDLERS.get(name)
     if handler is None:
         return {"ok": False, "error": f"Herramienta desconocida: {name}"}, []

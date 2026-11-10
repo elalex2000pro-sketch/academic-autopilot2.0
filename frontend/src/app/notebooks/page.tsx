@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { NotebookChat } from "@/components/notebook-chat";
 import { useAuth } from "@/components/auth-provider";
 import { api, ApiError } from "@/lib/api";
 import { NEW_NOTEBOOK_EVENT } from "@/lib/documents";
@@ -897,6 +898,15 @@ export default function NotebooksPage() {
                     >
                       <Check className="h-4 w-4" /> {localOnly ? "Sincronizar" : "Guardar"}
                     </Button>
+                    <NotebookChat
+                      key={selected.id}
+                      notebookId={selected.id}
+                      disabled={dirty || saving || localOnly}
+                      onNotebookChanged={(updated) => {
+                        setNotebooks((current) => current.map((item) => item.id === updated.id ? updated : item));
+                        if (selectedIdRef.current === updated.id) setDraft(toDraft(updated));
+                      }}
+                    />
                     <Button variant="ghost" size="sm" onClick={downloadWord}>
                       <Download className="h-4 w-4" /> Word
                     </Button>

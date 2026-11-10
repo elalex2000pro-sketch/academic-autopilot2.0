@@ -35,7 +35,7 @@ except Exception:  # pragma: no cover
 logger = get_logger(__name__)
 
 
-def extract_text(document: Document) -> str:
+def extract_text(document: Document, *, truncate: bool = True) -> str:
     abs_path = os.path.join(settings.files_dir, document.storage_path)
     if not os.path.exists(abs_path):
         raise ValueError("Archivo no encontrado en almacenamiento")
@@ -48,12 +48,12 @@ def extract_text(document: Document) -> str:
             text = "\n".join((page.extract_text() or "") for page in reader.pages)
         except Exception as exc:
             raise ValueError("No se pudo extraer texto del PDF") from exc
-        return _sanitize(text)
+        return _sanitize(text, truncate=truncate)
 
     if ext in (".txt", ".md", ".csv"):
         try:
             with open(abs_path, encoding="utf-8", errors="replace") as f:
-                return _sanitize(f.read())
+                return _sanitize(f.read(), truncate=truncate)
         except Exception as exc:
             raise ValueError("No se pudo leer el archivo de texto") from exc
 
@@ -63,7 +63,7 @@ def extract_text(document: Document) -> str:
             text = "\n".join(p.text for p in doc.paragraphs)
         except Exception as exc:
             raise ValueError("No se pudo leer el archivo DOCX") from exc
-        return _sanitize(text)
+        return _sanitize(text, truncate=truncate)
 
     if ext in (".xlsx", ".xlsm") and load_workbook is not None:
         try:
@@ -72,7 +72,7 @@ def extract_text(document: Document) -> str:
             for sheet in workbook.worksheets:
                 parts.append(f"# Hoja: {sheet.title}")
                 for row_index, row in enumerate(sheet.iter_rows(values_only=True)):
-                    if row_index > 1500:
+                    if truncate and row_index > 1500:
                         parts.append("... (hoja truncada)")
                         break
                     cells = [str(value).strip() for value in row if value is not None and str(value).strip()]
@@ -81,16 +81,16 @@ def extract_text(document: Document) -> str:
             workbook.close()
         except Exception as exc:
             raise ValueError("No se pudo leer el archivo de Excel") from exc
-        return _sanitize("\n".join(parts))
+        return _sanitize("\n".join(parts), truncate=truncate)
 
     raise ValueError(f"Formato no soportado para resumen/infografia: {ext or 'desconocido'}")
 
 
-def _sanitize(text: str) -> str:
+def _sanitize(text: str, *, truncate: bool = True) -> str:
     if not text:
         return ""
     # Limitar longitud para evitar prompts excesivos
-    if len(text) > settings.ai_studio_max_chars:
+    if truncate and len(text) > settings.ai_studio_max_chars:
         text = text[: settings.ai_studio_max_chars] + "\n\n[...texto truncado...]"
     return text.strip()
 

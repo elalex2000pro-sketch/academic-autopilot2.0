@@ -28,6 +28,8 @@ import type {
   ImportantDate,
   Integration,
   Notebook,
+  NotebookChatResponse,
+  NotebookChatMessage,
   NotebookSource,
   OptimizedPlan,
   PendingAction,
@@ -521,6 +523,10 @@ export const api = {
   },
 
   // --- Cuadernos de notas ---
+  notebookChat: (id: string, body: { question: string; source_ids: string[] }) =>
+    request<NotebookChatResponse>(`/api/v1/notebooks/${id}/chat`, { method: "POST", body: JSON.stringify(body) }),
+  notebookMessages: (id: string) => request<NotebookChatMessage[]>(`/api/v1/notebooks/${id}/messages`),
+  notebook: (id: string) => request<Notebook>(`/api/v1/notebooks/${id}`),
   notebooks: () => request<Notebook[]>("/api/v1/notebooks"),
   createNotebook: (body: { title?: string; color?: string; content?: string }) =>
     request<Notebook>("/api/v1/notebooks", { method: "POST", body: JSON.stringify(body) }),

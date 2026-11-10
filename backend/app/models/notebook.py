@@ -5,7 +5,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, String, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPkMixin
@@ -70,3 +70,22 @@ class NotebookSource(UUIDPkMixin, TimestampMixin, Base):
     notebook: Mapped["Notebook"] = relationship(back_populates="sources")
     book: Mapped["Book | None"] = relationship()
     document: Mapped["Document | None"] = relationship()
+
+
+class NotebookMessage(UUIDPkMixin, TimestampMixin, Base):
+    __tablename__ = "notebook_messages"
+    notebook_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("notebooks.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    citations: Mapped[list[dict]] = mapped_column(JSONB, default=list, nullable=False)
+    actions: Mapped[list[dict]] = mapped_column(JSONB, default=list, nullable=False)
+
+
+class NotebookAction(UUIDPkMixin, TimestampMixin, Base):
+    __tablename__ = "notebook_actions"
+    notebook_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("notebooks.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    tool: Mapped[str] = mapped_column(String(60), nullable=False)
+    arguments_summary: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    result: Mapped[dict] = mapped_column(JSONB, nullable=False)

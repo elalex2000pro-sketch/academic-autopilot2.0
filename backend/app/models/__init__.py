@@ -20,7 +20,7 @@ from app.models.focus_session import FocusSession
 from app.models.grade import Grade
 from app.models.important_date import ImportantDate
 from app.models.integration import Integration
-from app.models.notebook import Notebook, NotebookSource
+from app.models.notebook import Notebook, NotebookSource, NotebookMessage, NotebookAction
 from app.models.quiz import Quiz
 from app.models.reminder_settings import ReminderSettings
 from app.models.schedule_block import ScheduleBlock

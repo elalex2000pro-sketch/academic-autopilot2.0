@@ -577,3 +577,41 @@ export interface ChatConversation {
   unread_count: number;
   updated_at: string;
 }
+
+
+export interface NotebookCitation {
+  number: number;
+  source_id: string;
+  title: string;
+  page: number | null;
+  page_end?: number | null;
+  fragment: string;
+  offset: number;
+  url: string;
+}
+export interface NotebookToolAction {
+  id: string;
+  tool: string;
+  ok: boolean;
+  ids?: string[];
+  count?: number;
+  items?: number;
+  error?: string;
+  reused?: boolean;
+}
+export interface NotebookChatResponse {
+  id: string;
+  answer: string;
+  citations: NotebookCitation[];
+  actions: NotebookToolAction[];
+  state: { sources: { source_id: string; title: string; size_bytes: number }[]; counts: Record<string, number>; recent_actions: unknown[] };
+  warnings: string[];
+}
+export interface NotebookChatMessage {
+  id: string;
+  role: string;
+  content: string;
+  citations: NotebookCitation[];
+  actions: NotebookToolAction[];
+  created_at: string;
+}

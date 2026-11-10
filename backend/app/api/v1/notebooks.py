@@ -16,7 +16,7 @@ from app.api.deps import CurrentUser, DbSession
 from app.core.text import normalize_filename
 from app.models.book import Book
 from app.models.document import Document
-from app.models.notebook import Notebook, NotebookSource
+from app.models.notebook import Notebook, NotebookMessage, NotebookSource
 from app.models.shared_class import ClassMembership
 from app.schemas.notebook import (
     NotebookCreate,
@@ -25,8 +25,51 @@ from app.schemas.notebook import (
     NotebookSourceRead,
     NotebookUpdate,
 )
+from app.services import notebook_ai
 
 router = APIRouter(prefix="/notebooks", tags=["notebooks"])
+
+
+@router.get("/{notebook_id}/sources/{source_id}/fragment")
+async def notebook_fragment(
+    notebook_id: uuid.UUID,
+    source_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DbSession,
+    offset: int = 0,
+    page: int | None = None,
+    section_id: str | None = None,
+):
+    notebook = await _get_accessible(notebook_id, current_user.id, db)
+    chunks, _, _ = await notebook_ai.load_sources(db, notebook, [source_id])
+    for chunk in chunks:
+        if chunk['offset'] == offset and chunk.get('page') == page and chunk.get('section_id') == section_id:
+            return chunk
+    raise HTTPException(404, "Fragmento no encontrado")
+
+
+@router.post("/{notebook_id}/chat")
+async def notebook_chat(
+    notebook_id: uuid.UUID, payload: notebook_ai.ChatRequest,
+    current_user: CurrentUser, db: DbSession,
+):
+    notebook = await _get_accessible(notebook_id, current_user.id, db)
+    return await notebook_ai.chat(db, notebook, current_user, payload)
+
+
+@router.get("/{notebook_id}/messages")
+async def notebook_messages(notebook_id: uuid.UUID, current_user: CurrentUser, db: DbSession):
+    await _get_accessible(notebook_id, current_user.id, db)
+    rows = (await db.scalars(
+        select(NotebookMessage)
+        .where(NotebookMessage.notebook_id == notebook_id, NotebookMessage.user_id == current_user.id)
+        .order_by(NotebookMessage.created_at, NotebookMessage.id)
+    )).all()
+    return [
+        {"id": str(m.id), "role": m.role, "content": m.content, "citations": m.citations,
+         "actions": m.actions, "created_at": m.created_at}
+        for m in rows
+    ]
 
 
 class NotebookShareUpdate(BaseModel):

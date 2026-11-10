@@ -5,6 +5,7 @@ import {ClassResourcesTab} from "@/components/class/class-resources-tab";
 import { ClassCalendarTab } from "@/components/class/class-calendar-tab";
 import { ClassNotebooksTab } from "@/components/class/class-notebooks-tab";
 import { ClassFilesTab } from "@/components/class/class-files-tab";
+import { NotebookChat } from "@/components/notebook-chat";
 import { ClassPeopleTab } from "@/components/class/class-people-tab";
 
 import { ClassworkBoard } from "@/components/class/classwork-board";
@@ -1140,6 +1141,13 @@ export default function ClassDetailView() {
                 <Button variant="secondary" size="sm" onClick={() => setOpenNotebook(null)}>
                   Volver
                 </Button>
+                <NotebookChat key={openNotebook.id} notebookId={openNotebook.id}
+                  disabled={savingNotebook || (canEditNotebook && notebookDraft !== openNotebook.content)}
+                  onNotebookChanged={(updated) => {
+                    setOpenNotebook(updated);
+                    setNotebookDraft(updated.content);
+                    setNotebooks((current) => current.map((item) => item.id === updated.id ? updated : item));
+                  }} />
                 {canEditNotebook && (
                   <Button size="sm" onClick={saveSharedNotebook} disabled={savingNotebook}>
                     {savingNotebook && <Loader2 className="h-4 w-4 animate-spin" />}
