@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Brain,
@@ -18,6 +18,10 @@ import {
   XCircle,
 } from "lucide-react";
 
+import Link from "next/link";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { ReviewWorkspace } from "@/components/review/review-workspace";
+import type { StudyTarget } from "@/components/review/review-studio";
 import { StudyGames } from "@/components/review/study-games";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -104,6 +108,9 @@ function ReviewRing({
 
 export default function ReviewPage() {
   const [tab, setTab] = useState<Tab>("decks");
+  const [study, setStudy] = useState<StudyTarget | null>(null);
+  const [selectedId, setSelectedId] = useState("");
+  const reduced = useReducedMotion();
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [stats, setStats] = useState<FlashcardStats>({ total: 0, due: 0 });
@@ -120,6 +127,10 @@ export default function ReviewPage() {
         api.flashcardStats(),
       ]);
       setNotebooks(notebookList);
+      setSelectedId((current) => {
+        const requested = current || new URLSearchParams(window.location.search).get("notebook");
+        return notebookList.find((item) => item.id === requested)?.id ?? notebookList[0]?.id ?? "";
+      });
       setCards(cardList);
       setStats(statsData);
     } catch (error) {
@@ -133,8 +144,46 @@ export default function ReviewPage() {
     void load();
   }, [load]);
 
+  const notebook = notebooks.find((item) => item.id === selectedId);
+  function enterStudy(target: StudyTarget) {
+    setTab(target.tab);
+    setStudy(target);
+  }
+
+  if (!study) {
+    return (
+      <div className="mx-auto max-w-7xl space-y-4 pb-10">
+        <header className="app-glass flex flex-wrap items-end justify-between gap-3 rounded-2xl p-4">
+          <div className="min-w-0">
+            <h1 className="mb-2 text-2xl font-semibold tracking-tight">Repaso</h1>
+            <label className="block text-sm text-muted-foreground">
+              Cuaderno
+              <select value={selectedId} onChange={(event) => setSelectedId(event.target.value)} className="ml-2 max-w-full rounded-lg border border-border bg-background/70 p-2 text-foreground">
+                {notebooks.length === 0 && <option value="">{loading ? "Cargando…" : "Sin cuadernos"}</option>}
+                {notebooks.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+              </select>
+            </label>
+          </div>
+          <Button variant="outline" onClick={() => enterStudy({ tab: "decks" })}>Modo de estudio</Button>
+        </header>
+        {notice && <p role="status" className="text-sm">{notice}</p>}
+        <AnimatePresence mode="wait" initial={false}>
+          {notebook && (
+            <motion.div key={notebook.id} initial={{ opacity: 0, x: reduced ? 0 : 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: reduced ? 0 : -8 }}>
+              <ReviewWorkspace notebook={notebook} cards={cards} onNotebookChanged={(updated) => setNotebooks((list) => list.map((item) => item.id === updated.id ? updated : item))} onMaterialChanged={() => load(true)} onStudy={enterStudy} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {!loading && !notebook && <p className="app-glass rounded-2xl p-4 text-sm">Crea un <Link className="underline" href="/notebooks">cuaderno</Link> para consultar sus fuentes.</p>}
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-4 pb-10">
+      <Button variant="ghost" onClick={() => { setStudy(null); setNotice(null); }}>
+        <ArrowLeft className="h-4 w-4" /> Volver al cuaderno
+      </Button>
       <header className="app-glass rounded-3xl p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -213,11 +262,13 @@ export default function ReviewPage() {
           setBusy={setBusy}
           notify={setNotice}
           reload={load}
+          initialTarget={study.tab === "decks" ? study : undefined}
         />
       ) : tab === "games" ? (
         <StudyGames cards={cards} />
       ) : (
         <ExamsTab
+          initialId={study.tab === "exams" ? study.id : undefined}
           notebooks={notebooks}
           notify={setNotice}
           busy={busy}
@@ -237,6 +288,7 @@ function DecksView({
   setBusy,
   notify,
   reload,
+  initialTarget,
 }: {
   notebooks: Notebook[];
   cards: Flashcard[];
@@ -246,10 +298,14 @@ function DecksView({
   setBusy: (value: boolean) => void;
   notify: (message: string | null) => void;
   reload: (silent?: boolean) => Promise<void>;
+  initialTarget?: StudyTarget;
 }) {
-  const [activeDeck, setActiveDeck] = useState<string | null>(null);
-  const [dueOnly, setDueOnly] = useState(true);
-  const [queue, setQueue] = useState<Flashcard[]>([]);
+  const [activeDeck, setActiveDeck] = useState<string | null>(initialTarget?.id ?? null);
+  const [dueOnly, setDueOnly] = useState(!initialTarget?.id);
+  const [queue, setQueue] = useState<Flashcard[]>(() => cards.filter((card) =>
+    card.notebook_id === initialTarget?.id &&
+    (!initialTarget.cardIds || initialTarget.cardIds.includes(card.id)),
+  ));
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [sessionBusy, setSessionBusy] = useState(false);
@@ -891,17 +947,20 @@ function DecksView({
 // --------------------------------------------------------------------------- //
 function ExamsTab({
   notebooks,
+  initialId,
   notify,
   busy,
   setBusy,
 }: {
   notebooks: Notebook[];
+  initialId?: string;
   notify: (message: string | null) => void;
   busy: boolean;
   setBusy: (value: boolean) => void;
 }) {
   const [notebookId, setNotebookId] = useState(notebooks[0]?.id ?? "");
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const pendingQuiz = useRef(initialId);
   const [active, setActive] = useState<Quiz | null>(null);
   const [answers, setAnswers] = useState<number[]>([]);
   const [result, setResult] = useState<QuizResult | null>(null);
@@ -912,7 +971,16 @@ function ExamsTab({
 
   const load = useCallback(async () => {
     try {
-      setQuizzes(await api.quizzes());
+      const quizList = await api.quizzes();
+      setQuizzes(quizList);
+      if (pendingQuiz.current) {
+        const quiz = quizList.find((item) => item.id === pendingQuiz.current);
+        pendingQuiz.current = undefined;
+        if (quiz) {
+          setActive(quiz);
+          setAnswers(quiz.questions.map(() => -1));
+        }
+      }
     } catch (error) {
       notify(errorMessage(error));
     }

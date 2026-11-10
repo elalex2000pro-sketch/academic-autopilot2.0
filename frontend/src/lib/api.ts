@@ -523,8 +523,10 @@ export const api = {
   },
 
   // --- Cuadernos de notas ---
-  notebookChat: (id: string, body: { question: string; source_ids: string[] }) =>
+  notebookChat: (id: string, body: { question: string; source_ids: string[]; turn_id?: string }) =>
     request<NotebookChatResponse>(`/api/v1/notebooks/${id}/chat`, { method: "POST", body: JSON.stringify(body) }),
+  saveNotebookMessageNote: (id: string, messageId: string) =>
+    request<Notebook>(`/api/v1/notebooks/${id}/messages/${messageId}/note`, { method: "POST" }),
   notebookMessages: (id: string) => request<NotebookChatMessage[]>(`/api/v1/notebooks/${id}/messages`),
   notebook: (id: string) => request<Notebook>(`/api/v1/notebooks/${id}`),
   notebooks: () => request<Notebook[]>("/api/v1/notebooks"),

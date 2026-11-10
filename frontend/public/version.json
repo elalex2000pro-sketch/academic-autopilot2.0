@@ -1,10 +1,10 @@
 {
-  "version": "1.3.42",
-  "publishedAt": "2026-11-10T21:54:09.739223+00:00",
+  "version": "1.3.43",
+  "publishedAt": "2026-11-10T22:20:27.356297+00:00",
   "sizeBytes": 8388608,
   "notes": [
-    "IA en cuadernos propios y compartidos, con selección de fuentes y citas expandibles.",
-    "Herramientas auditadas para tarjetas, quizzes y resúmenes; historial personal y respaldo JSON."
+    "Repaso con Fuentes, Chat y Studio en cristal y pestañas en móvil.",
+    "Citas navegables, notas desde el chat y acceso directo al material creado."
   ],
-  "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases/tag/v1.3.42"
+  "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases/tag/v1.3.43"
 }

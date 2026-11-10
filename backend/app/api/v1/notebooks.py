@@ -72,6 +72,32 @@ async def notebook_messages(notebook_id: uuid.UUID, current_user: CurrentUser, d
     ]
 
 
+@router.post("/{notebook_id}/messages/{message_id}/note", response_model=NotebookRead)
+async def save_message_as_note(
+    notebook_id: uuid.UUID, message_id: uuid.UUID, current_user: CurrentUser, db: DbSession,
+):
+    notebook = await _get_accessible(notebook_id, current_user.id, db, write=True)
+    message = await db.scalar(select(NotebookMessage).where(
+        NotebookMessage.id == message_id,
+        NotebookMessage.notebook_id == notebook_id,
+        NotebookMessage.user_id == current_user.id,
+        NotebookMessage.role == "assistant",
+    ))
+    if message is None:
+        raise HTTPException(404, "Respuesta no encontrada")
+
+    await db.refresh(notebook, with_for_update=True)
+    note = "## Nota de repaso\n" + message.content
+    if message.citations:
+        note = notebook_ai.with_references(note, message.citations)
+    content = notebook.content or ""
+    if note not in content:
+        notebook.content = (content.rstrip() + "\n\n" + note).lstrip()
+    await db.commit()
+    await db.refresh(notebook)
+    return notebook
+
+
 class NotebookShareUpdate(BaseModel):
     class_id: uuid.UUID
     permission: Literal["read", "edit"] = "read"

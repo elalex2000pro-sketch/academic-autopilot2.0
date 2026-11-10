@@ -5,6 +5,7 @@ import { pageItem, pageStagger } from "@/components/page-animated-wrapper";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   AudioLines,
   BookOpen,
@@ -117,6 +118,7 @@ function formatBytes(bytes: number): string {
 }
 
 export default function NotebooksPage() {
+  const router = useRouter();
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>({ title: "", color: "#6366f1", content: "" });
@@ -167,6 +169,12 @@ export default function NotebooksPage() {
   const load = useCallback(async () => {
     const data = await api.notebooks();
     setNotebooks(data);
+    const sourceNotebook = new URLSearchParams(window.location.search).get("addSource");
+    if (sourceNotebook && data.some((item) => item.id === sourceNotebook)) {
+      setSelectedId(sourceNotebook);
+      setShowSourcePicker(true);
+      return;
+    }
     if (data.length > 0) {
       setSelectedId((current) => current ?? data[0].id);
     }
@@ -502,6 +510,9 @@ export default function NotebooksPage() {
       );
       setSources((current) => [...current, created]);
       setShowSourcePicker(false);
+      if (new URLSearchParams(window.location.search).get("addSource") === selected.id) {
+        router.push(`/review?notebook=${selected.id}`);
+      }
       setNotice(`"${created.title}" se añadió como fuente del cuaderno.`);
     } catch (error) {
       setNotice(errorMessage(error));

@@ -24,6 +24,7 @@ from app.models.document import Document
 from app.models.flashcard import Flashcard
 from app.models.quiz import Quiz
 from app.services import ai_service, ai_studio_service, ai_tools
+from app.services.realtime import notify
 
 NO_ANSWER = "No encuentro esa información en las fuentes seleccionadas."
 TOOLS = {
@@ -35,6 +36,7 @@ TOOLS = {
 class ChatRequest(BaseModel):
     question: str = Field(min_length=1, max_length=12000)
     source_ids: list[uuid.UUID] = Field(default_factory=list)
+    turn_id: uuid.UUID | None = None
 
 
 def terms(text):
@@ -187,6 +189,13 @@ def tool_schemas():
 
 
 async def chat(db, notebook, user, payload):
+    def progress(stage):
+        if payload.turn_id:
+            notify(user.id, "notebook_chat_progress", {
+                "turn_id": str(payload.turn_id), "stage": stage,
+            })
+
+    progress("reading")
     chunks, inventory, warnings = await load_sources(db, notebook, payload.source_ids)
     citations, context = await run_in_threadpool(retrieve, chunks, payload.question, settings.ai_studio_max_chars)
     nid, uid = notebook.id, user.id
@@ -211,6 +220,7 @@ async def chat(db, notebook, user, payload):
     if context and profile.configured:
         try:
             for _ in range(max(1, profile.max_tool_iterations)):
+                progress("answering")
                 msg = await ai_service._post_chat(profile,messages,profile.model,tool_schemas() if profile.tools_enabled else None)
                 calls = msg.get('tool_calls') or []
                 raw = msg.get('content') or ''
@@ -227,6 +237,8 @@ async def chat(db, notebook, user, payload):
                         fn = call.get('function',{})
                         try: args=json.loads(fn.get('arguments') or '{}')
                         except (ValueError,TypeError): args={}
+                        if fn.get("name") in TOOLS:
+                            progress(fn["name"])
                         result, _ = await ai_tools.execute_tool(db,user,fn.get('name',''),args,notebook=notebook,citations=citations)
                         actions.append(result)
                         messages.append({'role':'tool' if native else 'user', **({'tool_call_id':call['id']} if native else {}), 'content':json.dumps(result,ensure_ascii=False)})
