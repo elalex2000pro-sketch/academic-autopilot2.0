@@ -70,9 +70,10 @@ const pageShellByLevel: Record<AnimationLevel, Variants> = {
 /**
  * Envoltorio de entrada de todas las vistas.
  *
- * Al vivir dentro de `AnimatePresence`, la vista actual termina su salida antes
- * de que se monte la siguiente. Los bloques marcados con `variants={pageItem}`
- * aparecen uno a uno con `staggerChildren: 0.1`.
+ * La navegación no espera a que la vista anterior termine de salir: el wrapper
+ * se remonta con la nueva ruta y los bloques marcados con `variants={pageItem}`
+ * aparecen uno a uno con `staggerChildren: 0.1`. Así un chunk lento o un
+ * `Suspense` no puede dejar la navegación bloqueada.
  */
 export function PageAnimatedWrapper({
   children,

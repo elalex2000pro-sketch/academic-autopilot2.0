@@ -1,12 +1,12 @@
 {
-  "version": "1.3.15",
-  "publishedAt": "2026-11-09T20:30:00.000Z",
+  "version": "1.3.16",
+  "publishedAt": "2026-11-10T07:35:19.755Z",
   "sizeBytes": 8388608,
   "notes": [
-    "Cada archivo o imagen recibida en el chat incorpora dos botones: «Abrir», que lo lanza con el programa predeterminado del sistema, y «Guardar», que abre el diálogo nativo «Guardar como…» del PC.",
-    "Los mensajes y archivos se pueden reenviar a cualquier otra conversación con el botón de flecha curva y el nuevo modal de vidrio, sin salir del chat.",
-    "Nuevo fondo por conversación: colores, patrones o una foto propia, guardado en este dispositivo.",
-    "Las burbujas usan un efecto cristal translúcido para mantener el texto legible sobre cualquier fondo, también en modo oscuro."
+    "La navegación entre secciones ya no se bloquea ni deja el contenido en blanco: la ruta nueva se monta de inmediato y la anterior se desmonta sin esperar a que termine una animación.",
+    "Se eliminó AnimatePresence mode=\"wait\" del enrutador, causante de congelamientos al cambiar rápidamente entre Dashboard, Planificador y Ajustes.",
+    "Cada cambio de sección muestra ahora una pantalla de carga de ruta mientras se descarga el módulo correspondiente, y conserva la animación de entrada.",
+    "Verificado con 24 cambios consecutivos de sección, sin bloqueos ni pantallas vacías."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases"
 }

@@ -1,29 +1,32 @@
 "use client";
 
-import { AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 
 import { PageAnimatedWrapper } from "@/components/page-animated-wrapper";
+import { ViewLoading } from "@/components/view-loading";
 
 export { pageItem, pageStagger } from "@/components/page-animated-wrapper";
 
 /**
  * Transición compartida por todas las vistas del App Router.
  *
- * En una SPA clásica esto viviría junto al router; aquí `usePathname()` es la
- * fuente de verdad y `AppShell` envuelve el árbol de páginas. La clave cambia
- * con cada ruta para que AnimatePresence espere la salida antes de montar la
- * siguiente vista, que entra con sus bloques en cascada.
+ * La ruta nueva se monta inmediatamente: `key={pathname}` desmonta la anterior
+ * y dispara la animación de entrada. No se usa `AnimatePresence mode="wait"`
+ * aquí porque en el App Router la página anterior puede quedarse esperando su
+ * salida mientras el siguiente segmento suspende o carga su chunk; el resultado
+ * es el área de contenido en blanco o la navegación bloqueada.
+ *
+ * Las animaciones de salida siguen disponibles dentro de cada vista para los
+ * elementos que sí viven en su propio `AnimatePresence` (modales, avisos, etc.).
  */
 export function PageTransition({ children }: { children: ReactNode }) {
   // En App Router no existen `<Routes>` ni `useLocation`: `usePathname` es la
-  // location y la key debe vivir en el hijo directo de AnimatePresence. Esta es
-  // la adaptación exacta del patrón `location` + `key` de React Router.
-  const location = usePathname();
+  // location y la key del wrapper fuerza el remontaje de la vista nueva.
+  const location = usePathname() ?? "/";
 
   return (
-    <AnimatePresence mode="wait">
+    <Suspense fallback={<ViewLoading label="Cargando…" />}>
       <PageAnimatedWrapper
         key={location}
         className="min-w-0"
@@ -31,6 +34,6 @@ export function PageTransition({ children }: { children: ReactNode }) {
       >
         {children}
       </PageAnimatedWrapper>
-    </AnimatePresence>
+    </Suspense>
   );
 }
