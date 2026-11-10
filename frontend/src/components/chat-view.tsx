@@ -43,6 +43,7 @@ import { useRealtime } from "@/components/realtime-provider";
 import { setActiveChatConversation } from "@/lib/chat-active";
 import { Button } from "@/components/ui/button";
 import { VerifiedTick } from "@/components/verified-tick";
+import { notifyChatMessage } from "@/lib/chat-notifications";
 import { chatApi } from "@/lib/api";
 import {
   isChatMuted,
@@ -611,6 +612,10 @@ export function ChatView() {
     }
 
     if (data?.action === "message" && incoming) {
+      // La vista también pide el aviso del sistema: así llega aunque el
+      // proveedor global no llegue a dispararlo. `notifyChatMessage` deduplica
+      // por id, de modo que nunca salta dos veces.
+      void notifyChatMessage(event, meId);
       if (conversationId === activeIdRef.current) {
         setMessages((current) => mergeIncomingMessage(current, incoming, meId));
         setConversations((current) =>

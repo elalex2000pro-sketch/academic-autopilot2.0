@@ -19,6 +19,10 @@ export interface ChatRealtimePayload {
   message?: ChatMessage;
 }
 
+// Evita duplicados: el WebSocket global y la vista de chat pueden recibir el
+// mismo mensaje y ambos piden el aviso.
+const notifiedMessages = new Set<string>();
+
 function bodyFor(message: ChatMessage): string {
   const sticker = parseStickerMessage(message.content);
   const text = sticker
@@ -51,10 +55,16 @@ export async function notifyChatMessage(
     !data?.conversation_id ||
     data.action !== "message" ||
     !message ||
-    message.sender_id === meId
+    String(message.sender_id) === String(meId)
   ) {
     return false;
   }
+
+  const dedupeKey = message.id
+    ? `${data.conversation_id}:${message.id}`
+    : "";
+  if (dedupeKey && notifiedMessages.has(dedupeKey)) return false;
+  if (dedupeKey) notifiedMessages.add(dedupeKey);
 
   // Solo se calla si la ventana tiene el foco Y la conversación abierta es
   // justo esta: en cualquier otra sección el aviso sí debe saltar.
@@ -77,10 +87,15 @@ export async function notifyChatMessage(
     if (!granted) return false;
   }
 
-  return showSystemNotification({
+  try {
+    return await showSystemNotification({
     title: titleFor(data, message),
     body: bodyFor(message),
-    tag: `chat-${data.conversation_id}`,
-    url: "/chat",
-  });
+      tag: `chat-${data.conversation_id}`,
+      url: "/chat",
+    });
+  } catch (error) {
+    console.warn("No se pudo mostrar el aviso del chat", error);
+    return false;
+  }
 }

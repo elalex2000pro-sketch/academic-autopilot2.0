@@ -68,10 +68,12 @@ export async function showSystemNotification(
   const bridge = desktopBridge();
   if (bridge?.notify) {
     try {
-      await bridge.notify(payload);
-      return true;
+      const result = await bridge.notify(payload);
+      // Si Electron no puede mostrar avisos, se intenta la API del navegador
+      // en lugar de dar el aviso por enviado.
+      if (!result || result.ok !== false) return true;
     } catch {
-      return false;
+      // Se intenta la ruta web antes de rendirse.
     }
   }
 
