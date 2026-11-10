@@ -2,6 +2,12 @@ import localforage from "localforage";
 import * as pdfjs from "pdfjs-dist";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 
+import {
+  DEFAULT_LIBRARY_CATEGORY,
+  normalizeCategory,
+  type LibraryCategoryId,
+} from "@/lib/library-categories";
+
 // El worker se sirve desde /public para que la lectura funcione sin CDN ni
 // conexión. La versión debe coincidir con la de pdfjs-dist instalada.
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
@@ -20,6 +26,8 @@ export interface LocalBook {
   zoom: number;
   notes: string;
   bookmarks: number[];
+  /** Sección de la biblioteca: apuntes, libros del ciclo, lectura u otros. */
+  category: LibraryCategoryId;
 }
 
 export type ImportStage = "reading" | "cover" | "saving";
@@ -97,6 +105,7 @@ async function renderCover(pdf: PDFDocumentProxy): Promise<string> {
 export async function importPdf(
   file: File,
   onStage?: (stage: ImportStage) => void,
+  category: LibraryCategoryId = DEFAULT_LIBRARY_CATEGORY,
 ): Promise<LocalBook> {
   if (!/\.pdf$/i.test(file.name) && file.type !== "application/pdf") {
     throw new Error("El archivo seleccionado no es un PDF.");
@@ -136,6 +145,7 @@ export async function importPdf(
       zoom: 100,
       notes: "",
       bookmarks: [],
+      category: normalizeCategory(category),
     };
 
     onStage?.("saving");
@@ -155,7 +165,8 @@ export async function importPdf(
 export async function listBooks(): Promise<LocalBook[]> {
   const books: LocalBook[] = [];
   await booksStore.iterate<LocalBook, void>((value) => {
-    if (value) books.push(value);
+    // Los PDFs importados antes de las secciones no tienen `category`.
+    if (value) books.push({ ...value, category: normalizeCategory(value.category) });
   });
   return books.sort((a, b) => b.updatedAt - a.updatedAt);
 }
@@ -181,6 +192,21 @@ export async function updateBook(
     id,
     updatedAt: Date.now(),
   };
+  await booksStore.setItem(id, next);
+  return next;
+}
+
+/**
+ * Cambia de sección sin tocar `updatedAt`: mover un PDF no debe reordenar la
+ * biblioteca ni falsear el orden por última lectura.
+ */
+export async function updateBookCategory(
+  id: string,
+  category: LibraryCategoryId,
+): Promise<LocalBook | null> {
+  const current = await getBook(id);
+  if (!current) return null;
+  const next: LocalBook = { ...current, category: normalizeCategory(category), id };
   await booksStore.setItem(id, next);
   return next;
 }

@@ -1,12 +1,12 @@
 {
-  "version": "1.3.21",
-  "publishedAt": "2026-11-10T18:40:00.000Z",
+  "version": "1.3.22",
+  "publishedAt": "2026-11-10T21:05:00.000Z",
   "sizeBytes": 8388608,
   "notes": [
-    "El desplazamiento con la rueda del ratón ahora tiene inercia: se desliza de forma progresiva en lugar de saltar de golpe.",
-    "El modo de animación reducida sigue usando el scroll nativo, sin inercia.",
-    "Con un panel o modal abierto la rueda ya no mueve la página que queda detrás.",
-    "Los paneles con scroll propio (chat, cajones, tablas) conservan su desplazamiento nativo."
+    "La biblioteca se organiza en secciones: Todos, Apuntes, Libros SMR, Lectura y Otros, con pestañas de cristal y el número de PDFs en cada una.",
+    "Al cambiar de sección las portadas entran y salen con una transición suave, sin recargar ni parpadear.",
+    "Puedes elegir la sección al importar un PDF o cambiarla después con el botón de la tarjeta o con el clic derecho, en «Mover a».",
+    "Los PDFs que ya tenías se conservan y aparecen en Otros hasta que los muevas a su sección."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases"
 }

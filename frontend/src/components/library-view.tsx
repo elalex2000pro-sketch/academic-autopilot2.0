@@ -6,10 +6,12 @@ import { usePreferences } from "@/components/preferences-provider";
 import Image from "next/image";
 import Link from "next/link";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion, type Variants } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowRight,
   BookOpen,
+  Check,
+  FolderInput,
   HardDrive,
   Loader2,
   Plus,
@@ -18,11 +20,18 @@ import {
 } from "lucide-react";
 
 import {
+  LIBRARY_CATEGORIES,
+  categoryLabel,
+  normalizeCategory,
+  type LibraryCategoryId,
+} from "@/lib/library-categories";
+import {
   deleteBook,
   formatBytes,
   importPdf,
   listBooks,
   progressPercent,
+  updateBookCategory,
   type ImportStage,
   type LocalBook,
 } from "@/lib/local-library";
@@ -46,22 +55,6 @@ const FILTERS: Array<{ value: LibraryFilter; label: string }> = [
   { value: "reading", label: "En curso" },
   { value: "not-started", label: "Sin empezar" },
 ];
-
-const LIBRARY_STAGGER: Variants = {
-  hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.09, delayChildren: 0.08 },
-  },
-};
-
-const LIBRARY_ITEM: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { type: "spring", stiffness: 300, damping: 28 },
-  },
-};
 
 const BookCover = memo(function BookCover({
   book,
@@ -105,6 +98,10 @@ export default function LibraryView() {
   const [pendingDelete, setPendingDelete] = useState<LocalBook | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [filter, setFilter] = useState<LibraryFilter>("all");
+  // Sección activa ("all" = todos) y sección de destino al importar.
+  const [category, setCategory] = useState<"all" | LibraryCategoryId>("all");
+  const [importCategory, setImportCategory] = useState<LibraryCategoryId>("apuntes");
+  const [menu, setMenu] = useState<{ book: LocalBook; x: number; y: number } | null>(null);
   const { animationLevel } = usePreferences();
   const reduceMotion = animationLevel === "reduced";
   const inputRef = useRef<HTMLInputElement>(null);
@@ -149,11 +146,15 @@ export default function LibraryView() {
     for (let index = 0; index < files.length; index += 1) {
       const file = files[index];
       try {
-        await importPdf(file, (stage) => {
-          setImportLabel(
-            `${stageLabel(stage)}: ${file.name} (${index + 1}/${files.length})`,
-          );
-        });
+        await importPdf(
+          file,
+          (stage) => {
+            setImportLabel(
+              `${stageLabel(stage)}: ${file.name} (${index + 1}/${files.length})`,
+            );
+          },
+          importCategory,
+        );
       } catch (caught) {
         failures.push(`${file.name}: ${errorMessage(caught)}`);
       }
@@ -179,18 +180,70 @@ export default function LibraryView() {
     }
   }
 
+  const openMenu = useCallback((book: LocalBook, point?: { x: number; y: number }) => {
+    const width = 210;
+    const height = 230;
+    const x = point?.x ?? window.innerWidth / 2 - width / 2;
+    const y = point?.y ?? window.innerHeight / 2 - height / 2;
+    setMenu({
+      book,
+      x: Math.max(12, Math.min(x, window.innerWidth - width - 12)),
+      y: Math.max(12, Math.min(y, window.innerHeight - height - 12)),
+    });
+  }, []);
+
+  const moveBook = useCallback(async (book: LocalBook, next: LibraryCategoryId) => {
+    setMenu(null);
+    if (book.category === next) return;
+    try {
+      const updated = await updateBookCategory(book.id, next);
+      if (!updated) return;
+      setBooks((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+    } catch (caught) {
+      setError(errorMessage(caught));
+    }
+  }, []);
+
+  // El menú se cierra con Escape, al hacer scroll o al cambiar el tamaño.
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenu(null);
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [menu]);
+
   const continueBook = useMemo(
     () => books.find((book) => book.lastPage > 1) ?? books[0] ?? null,
     [books],
   );
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const book of books) {
+      counts.set(book.category, (counts.get(book.category) ?? 0) + 1);
+    }
+    return counts;
+  }, [books]);
+
   const visibleBooks = useMemo(
     () =>
       books.filter((book) => {
+        if (category !== "all" && book.category !== category) return false;
         if (filter === "reading") return book.lastPage > 1;
         if (filter === "not-started") return book.lastPage <= 1;
         return true;
       }),
-    [books, filter],
+    [books, category, filter],
   );
 
   return (
@@ -220,19 +273,38 @@ export default function LibraryView() {
             leerlos sin conexión.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={importing}
-          className="inline-flex h-11 shrink-0 touch-manipulation items-center justify-center gap-2 rounded-full bg-[#1b1b1f] px-4 text-[12px] font-semibold text-white shadow-[0_12px_28px_-15px_rgba(20,20,28,0.75)] transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60"
-        >
-          {importing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Plus className="h-4 w-4" />
-          )}
-          {importing ? "Importando…" : "Añadir PDFs"}
-        </button>
+        <div className="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+          {/* El PDF entra directamente en la sección elegida; luego se puede
+              cambiar con el botón o el clic derecho de cada tarjeta. */}
+          <label className="flex h-11 items-center gap-2 rounded-full border border-white/45 bg-white/45 px-3 text-[11px] font-semibold text-black/50 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.05] dark:text-white/50">
+            <span className="whitespace-nowrap">Guardar en</span>
+            <select
+              value={importCategory}
+              onChange={(event) => setImportCategory(normalizeCategory(event.target.value))}
+              aria-label="Sección para los nuevos PDFs"
+              className="max-w-[124px] cursor-pointer truncate bg-transparent text-[11.5px] font-semibold text-[#1d1d1f] outline-none dark:text-white/85"
+            >
+              {LIBRARY_CATEGORIES.map((option) => (
+                <option key={option.id} value={option.id} className="text-black">
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={importing}
+            className="inline-flex h-11 shrink-0 touch-manipulation items-center justify-center gap-2 rounded-full bg-[#1b1b1f] px-4 text-[12px] font-semibold text-white shadow-[0_12px_28px_-15px_rgba(20,20,28,0.75)] transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60"
+          >
+            {importing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            {importing ? "Importando…" : "Añadir PDFs"}
+          </button>
+        </div>
       </motion.header>
 
       {error && (
@@ -332,10 +404,10 @@ export default function LibraryView() {
             <div className="mb-3 flex items-end justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold tracking-[-0.035em] text-[#1d1d1f] dark:text-white">
-                  Todos los libros
+                  {category === "all" ? "Todos los libros" : categoryLabel(category)}
                 </h2>
                 <p className="mt-0.5 text-[11.5px] text-black/40 dark:text-white/40">
-                  {books.length} {books.length === 1 ? "PDF" : "PDFs"} en este dispositivo
+                  {visibleBooks.length} de {books.length} {books.length === 1 ? "PDF" : "PDFs"} en este dispositivo
                 </p>
               </div>
               <button
@@ -345,6 +417,50 @@ export default function LibraryView() {
               >
                 Importar más
               </button>
+            </div>
+
+            <div
+              role="tablist"
+              aria-label="Secciones de la biblioteca"
+              className="mb-3 mt-4 flex gap-1 overflow-x-auto rounded-2xl border border-white/45 bg-white/40 p-1 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04]"
+            >
+              {[
+                { id: "all" as const, label: "Todos", count: books.length },
+                ...LIBRARY_CATEGORIES.map((option) => ({
+                  id: option.id,
+                  label: option.label,
+                  count: categoryCounts.get(option.id) ?? 0,
+                })),
+              ].map((tab) => {
+                const active = category === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setCategory(tab.id)}
+                    className={cn(
+                      "relative flex h-9 shrink-0 touch-manipulation items-center gap-1.5 rounded-xl px-3 text-[11.5px] font-semibold transition-colors",
+                      active
+                        ? "bg-white/85 text-[#1d1d1f] shadow-[0_6px_16px_-12px_rgba(20,20,28,0.65)] dark:bg-white/15 dark:text-white"
+                        : "text-black/45 hover:bg-white/55 dark:text-white/45 dark:hover:bg-white/[0.07]",
+                    )}
+                  >
+                    {tab.label}
+                    <span
+                      className={cn(
+                        "rounded-full px-1.5 text-[9.5px] font-semibold",
+                        active
+                          ? "bg-black/[0.07] text-black/55 dark:bg-white/20 dark:text-white/80"
+                          : "bg-black/[0.05] text-black/35 dark:bg-white/10 dark:text-white/40",
+                      )}
+                    >
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
             <div className="mb-4 flex flex-wrap gap-2">
@@ -370,19 +486,25 @@ export default function LibraryView() {
             </div>
 
             <motion.div
-              variants={LIBRARY_STAGGER}
-              initial="hidden"
-              animate="visible"
+              layout
               className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
             >
+              <AnimatePresence mode="popLayout" initial={false}>
               {visibleBooks.map((book) => {
                 const percent = progressPercent(book);
                 return (
                   <motion.article
                     key={book.id}
-                    variants={LIBRARY_ITEM}
+                    layout
+                    initial={{ opacity: 0, scale: 0.96, y: 12 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.94, y: -8 }}
                     whileHover={reduceMotion ? undefined : { y: -5 }}
                     transition={{ type: "spring", stiffness: 300, damping: 26 }}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      openMenu(book, { x: event.clientX, y: event.clientY });
+                    }}
                     className="glass-card group min-w-0 rounded-[24px] p-3"
                   >
                     <Link
@@ -412,6 +534,9 @@ export default function LibraryView() {
                         <p className="mt-0.5 text-[10px] text-black/35 dark:text-white/30">
                           {book.pages} páginas · {formatBytes(book.size)}
                         </p>
+                        <p className="mt-1 inline-flex items-center rounded-full bg-black/[0.05] px-1.5 py-0.5 text-[9.5px] font-semibold text-black/45 dark:bg-white/[0.07] dark:text-white/45">
+                          {categoryLabel(book.category)}
+                        </p>
                         <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-black/[0.07] dark:bg-white/10">
                           <div
                             className="h-full rounded-full bg-[#1b1b1f] dark:bg-white"
@@ -419,6 +544,18 @@ export default function LibraryView() {
                           />
                         </div>
                       </div>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          const rect = event.currentTarget.getBoundingClientRect();
+                          openMenu(book, { x: rect.right - 210, y: rect.bottom + 6 });
+                        }}
+                        aria-label={`Mover ${book.title} a otra sección`}
+                        title="Mover a otra sección"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-300 opacity-100 transition hover:bg-black/[0.05] hover:text-black/60 dark:text-white/25 dark:hover:bg-white/10 dark:hover:text-white/70 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+                      >
+                        <FolderInput className="h-3.5 w-3.5" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => setPendingDelete(book)}
@@ -432,10 +569,19 @@ export default function LibraryView() {
                   </motion.article>
                 );
               })}
+              </AnimatePresence>
               {visibleBooks.length === 0 ? (
-                <p className="col-span-full rounded-2xl border border-dashed border-black/[0.08] px-4 py-8 text-center text-[12px] text-black/40 dark:border-white/10 dark:text-white/35">
-                  No hay libros en este filtro.
-                </p>
+                <motion.p
+                  key="library-empty"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="col-span-full rounded-2xl border border-dashed border-black/[0.08] px-4 py-8 text-center text-[12px] text-black/40 dark:border-white/10 dark:text-white/35"
+                >
+                  {category === "all"
+                    ? "No hay libros en este filtro."
+                    : `Aún no hay PDFs en ${categoryLabel(category)}.`}
+                </motion.p>
               ) : null}
             </motion.div>
           </section>
@@ -452,6 +598,51 @@ export default function LibraryView() {
           <span className="min-w-0 truncate">{importLabel || "Preparando importación…"}</span>
         </motion.div>
       )}
+
+      {menu ? (
+        <div
+          className="fixed inset-0 z-[86]"
+          onClick={() => setMenu(null)}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            setMenu(null);
+          }}
+        >
+          <div
+            role="menu"
+            aria-label={`Mover ${menu.book.title} de sección`}
+            style={{ left: menu.x, top: menu.y }}
+            className="fixed w-[210px] rounded-2xl border border-white/50 bg-white/90 p-1.5 shadow-[0_24px_60px_-24px_rgba(15,23,42,0.5)] backdrop-blur-3xl dark:border-white/10 dark:bg-slate-950/92"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <p className="px-2 py-1 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-black/40 dark:text-white/35">
+              Mover a
+            </p>
+            {LIBRARY_CATEGORIES.map((option) => {
+              const current = menu.book.category === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={current}
+                  disabled={current}
+                  onClick={() => void moveBook(menu.book, option.id)}
+                  className={cn(
+                    "flex w-full items-center justify-between gap-2 rounded-xl px-2 py-1.5 text-left text-[12px] font-medium transition-colors",
+                    current
+                      ? "text-black/35 dark:text-white/30"
+                      : "text-slate-700 hover:bg-black/[0.05] dark:text-white/75 dark:hover:bg-white/10",
+                  )}
+                >
+                  {option.label}
+                  {current ? <Check className="h-3.5 w-3.5" /> : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       {pendingDelete && (
         <motion.div variants={pageItem}
