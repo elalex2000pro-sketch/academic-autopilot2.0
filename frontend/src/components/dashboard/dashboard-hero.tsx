@@ -43,7 +43,9 @@ export function DashboardHero({
         className="pointer-events-none absolute -bottom-20 left-1/3 h-48 w-48 rounded-full bg-white/30 blur-3xl"
       />
 
-      <div className="relative z-10 flex h-full min-h-[238px] flex-col justify-between gap-6">
+      {/* El saludo va pegado a la fecha: con `justify-between` la tarjeta
+          repartía el alto sobrante y lo empujaba hacia el centro. */}
+      <div className="relative z-10 flex h-full min-h-[238px] flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/45 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#5b536e] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-xl">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.55)]" />
@@ -71,7 +73,7 @@ export function DashboardHero({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="mt-auto flex flex-wrap items-center gap-2">
           <Link
             href="/planner"
             className="inline-flex h-11 touch-manipulation items-center gap-1.5 rounded-full bg-[#1b1b1f] px-4 text-[11.5px] font-semibold text-white shadow-[0_12px_26px_-14px_rgba(20,20,28,0.9)] transition-transform hover:-translate-y-0.5"
