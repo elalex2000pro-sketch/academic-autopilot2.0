@@ -500,7 +500,10 @@ export default function BookReaderView() {
   const bookRef = useRef<LocalBook | null>(null);
   const pageRefs = useRef(new Map<number, HTMLDivElement>());
   const lastObservedPageRef = useRef(1);
+  const currentPageRef = useRef(1);
+  const closingRef = useRef(false);
   const saveTimerRef = useRef<number | null>(null);
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const pendingPatchRef = useRef<Partial<LocalBook>>({});
   const searchTokenRef = useRef<SearchToken>({ cancelled: true });
   const initialPageRef = useRef(1);
@@ -512,15 +515,26 @@ export default function BookReaderView() {
   const pageLockTimerRef = useRef<number | null>(null);
   const zoomRef = useRef(100);
 
+  const setReaderPage = useCallback((page: number) => {
+    currentPageRef.current = page;
+    setPageNumber(page);
+  }, []);
+
   const flushSave = useCallback(async () => {
     if (!bookRef.current || Object.keys(pendingPatchRef.current).length === 0) return;
     const patch = pendingPatchRef.current;
     pendingPatchRef.current = {};
-    try {
-      await updateBook(bookId, patch);
-    } catch {
-      // IndexedDB puede fallar en modo privado; la lectura continúa en memoria.
-    }
+    // Serializa las escrituras para que una lectura anterior no pueda pisar
+    // la página exacta que se guarda al cerrar el lector.
+    const write = saveQueueRef.current.then(async () => {
+      try {
+        await updateBook(bookId, patch);
+      } catch {
+        // IndexedDB puede fallar en modo privado; la lectura continúa en memoria.
+      }
+    });
+    saveQueueRef.current = write;
+    await write;
   }, [bookId]);
 
   const persist = useCallback(
@@ -581,9 +595,9 @@ export default function BookReaderView() {
         setZoom(metadata.zoom >= 50 && metadata.zoom <= 200 ? metadata.zoom : 100);
         const initial = clamp(metadata.lastPage, metadata.pages);
         initialPageRef.current = initial;
-        setPageNumber(initial);
-        setPageDraft(String(initial));
         lastObservedPageRef.current = initial;
+        setReaderPage(initial);
+        setPageDraft(String(initial));
         if (!blob) {
           setError("El archivo PDF no está disponible en este dispositivo.");
           return;
@@ -610,9 +624,30 @@ export default function BookReaderView() {
         window.clearTimeout(saveTimerRef.current);
         saveTimerRef.current = null;
       }
-      void flushSave();
     };
-  }, [bookId, flushSave]);
+  }, [bookId, flushSave, setReaderPage]);
+
+  const saveCurrentPage = useCallback(() => {
+    if (!bookRef.current) return;
+    const current = clamp(currentPageRef.current, bookRef.current.pages);
+    pendingPatchRef.current = {
+      ...pendingPatchRef.current,
+      lastPage: current,
+    };
+    void flushSave();
+  }, [flushSave]);
+
+  useEffect(() => {
+    closingRef.current = false;
+    return () => {
+      closingRef.current = true;
+      if (saveTimerRef.current) {
+        window.clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      saveCurrentPage();
+    };
+  }, [saveCurrentPage]);
 
   const attachContent = useCallback((element: HTMLDivElement | null) => {
     setContentElement(element);
@@ -715,13 +750,13 @@ export default function BookReaderView() {
 
   const handleActivePage = useCallback(
     (page: number) => {
-      if (pageLockRef.current) return;
+      if (closingRef.current || pageLockRef.current) return;
       if (page === lastObservedPageRef.current) return;
       lastObservedPageRef.current = page;
-      setPageNumber(page);
+      setReaderPage(page);
       persist({ lastPage: page });
     },
-    [persist],
+    [persist, setReaderPage],
   );
 
   useEffect(() => {
@@ -730,20 +765,27 @@ export default function BookReaderView() {
 
     const updateActivePage = () => {
       frame = 0;
-      if (!scrollReadyRef.current || pageLockRef.current) return;
+      if (!scrollReadyRef.current || pageLockRef.current || closingRef.current) return;
       let active = 1;
+      let previousTop = -Infinity;
       const readingLine = window.innerHeight * 0.35;
       for (let page = 1; page <= numPages; page += 1) {
         const element = pageRefs.current.get(page);
-        if (!element) continue;
-        if (element.getBoundingClientRect().top <= readingLine) active = page;
+        // Si el layout aún no está completo o las páginas se solapan durante
+        // una transición, no interpretes el final del documento como leído.
+        if (!element) return;
+        const top = element.getBoundingClientRect().top;
+        if (!Number.isFinite(top)) return;
+        if (page > 1 && top <= previousTop) return;
+        previousTop = top;
+        if (top <= readingLine) active = page;
         else break;
       }
       handleActivePage(active);
     };
 
     const onScroll = () => {
-      if (!scrollReadyRef.current || pageLockRef.current || frame) return;
+      if (!scrollReadyRef.current || pageLockRef.current || closingRef.current || frame) return;
       frame = window.requestAnimationFrame(updateActivePage);
     };
 
@@ -764,14 +806,14 @@ export default function BookReaderView() {
     (value: number, behavior: ScrollBehavior = "smooth") => {
       const next = clamp(value, totalPages);
       lastObservedPageRef.current = next;
-      setPageNumber(next);
+      setReaderPage(next);
       persist({ lastPage: next });
       const element = pageRefs.current.get(next);
       if (element) {
         element.scrollIntoView({ behavior, block: "start" });
       }
     },
-    [persist, totalPages],
+    [persist, setReaderPage, totalPages],
   );
 
   const handleLoadSuccess = useCallback(
@@ -781,7 +823,7 @@ export default function BookReaderView() {
       setError(null);
       const initial = clamp(bookRef.current?.lastPage ?? 1, pdf.numPages);
       lastObservedPageRef.current = initial;
-      setPageNumber(initial);
+      setReaderPage(initial);
       setPageDraft(String(initial));
       setOutlineLoading(true);
       void buildOutline(pdf)
@@ -794,7 +836,7 @@ export default function BookReaderView() {
           ?.scrollIntoView({ behavior: "auto", block: "start" });
       }, 250);
     },
-    [],
+    [setReaderPage],
   );
 
   const toggleBookmark = useCallback(() => {
@@ -821,7 +863,7 @@ export default function BookReaderView() {
       // La página ancla manda durante el reflow, aunque el navegador haya
       // emitido un scroll intermedio al cambiar el tamaño de las páginas.
       lastObservedPageRef.current = anchor.page;
-      setPageNumber((current) => (current === anchor.page ? current : anchor.page));
+      setReaderPage(anchor.page);
     }
     if (pageLockTimerRef.current) window.clearTimeout(pageLockTimerRef.current);
     pageLockTimerRef.current = window.setTimeout(() => {
@@ -829,7 +871,7 @@ export default function BookReaderView() {
       zoomAnchorRef.current = null;
       pageLockTimerRef.current = null;
     }, 250);
-  }, [contentSize.width, contentSize.height, fitMode, zoom]);
+  }, [contentSize.width, contentSize.height, fitMode, setReaderPage, zoom]);
 
   const changeZoom = useCallback(
     (delta: number) => {
@@ -1273,6 +1315,7 @@ export default function BookReaderView() {
           <div className="flex flex-wrap items-center gap-2 px-2.5 py-2 sm:px-4">
             <Link
               href="/library"
+              onClick={saveCurrentPage}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/55 hover:bg-white/10 hover:text-white"
               aria-label="Volver a la biblioteca"
             >

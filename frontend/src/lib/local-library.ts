@@ -52,10 +52,15 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-/** Porcentaje leído; la primera página todavía no cuenta como progreso. */
+/** Porcentaje leído; la primera página es el estado inicial (0 %). */
 export function progressPercent(book: Pick<LocalBook, "lastPage" | "pages">): number {
-  if (!book.pages || book.lastPage <= 1) return 0;
-  return Math.min(100, Math.max(0, Math.round((book.lastPage / book.pages) * 100)));
+  const totalPages = Math.max(1, Math.trunc(Number(book.pages)) || 0);
+  const currentPage = Math.min(
+    totalPages,
+    Math.max(1, Math.trunc(Number(book.lastPage)) || 1),
+  );
+  if (currentPage <= 1) return 0;
+  return Math.min(100, Math.max(0, Math.round((currentPage / totalPages) * 100)));
 }
 
 async function renderCover(pdf: PDFDocumentProxy): Promise<string> {
