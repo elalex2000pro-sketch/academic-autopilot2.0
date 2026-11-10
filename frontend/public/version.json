@@ -1,6 +1,6 @@
 {
-  "version": "1.3.33",
-  "publishedAt": "2026-11-10T14:10:00.000Z",
+  "version": "1.3.34",
+  "publishedAt": "2026-11-10T14:40:00.000Z",
   "sizeBytes": 8388608,
   "notes": [
     "El subrayado ya funciona en PDFs escaneados: además de seleccionar texto, puedes arrastrar sobre la página para marcar una zona.",

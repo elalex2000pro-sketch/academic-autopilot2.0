@@ -84,6 +84,12 @@ function clamp(value: number, max: number): number {
   return Math.min(Math.max(Math.trunc(value), 1), Math.max(1, max));
 }
 
+/** Normaliza una coordenada de la página al rango 0-1. */
+function clamp01(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(1, Math.max(0, value));
+}
+
 function escapeHtml(value: string): string {
   return value.replace(
     /[&<>"']/g,
@@ -914,8 +920,8 @@ export default function BookReaderView() {
       const top = Math.min(event.clientY, drag.startY);
       const width = Math.abs(event.clientX - drag.startX);
       const height = Math.abs(event.clientY - drag.startY);
-      const x = clamp((left - box.left) / box.width, 1);
-      const y = clamp((top - box.top) / box.height, 1);
+      const x = clamp01((left - box.left) / box.width);
+      const y = clamp01((top - box.top) / box.height);
       setDragDraft({
         page: drag.page,
         rect: {
