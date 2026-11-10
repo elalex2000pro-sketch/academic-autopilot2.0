@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type FormEvent,
@@ -18,6 +19,7 @@ import {
   BookmarkCheck,
   ChevronRight,
   Download,
+  Highlighter,
   LayoutGrid,
   ListTree,
   Loader2,
@@ -45,6 +47,11 @@ import {
   updateBook,
   type LocalBook,
 } from "@/lib/local-library";
+import {
+  loadHighlights,
+  saveHighlights,
+  type ReaderHighlight,
+} from "@/lib/reader-highlights";
 import { cn } from "@/lib/utils";
 
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
@@ -334,6 +341,7 @@ interface PdfPageProps {
   forceVisible: boolean;
   customTextRenderer: ((textItem: { str: string }) => string) | undefined;
   register: (page: number, element: HTMLDivElement | null) => void;
+  highlights: ReaderHighlight[];
 }
 
 function PdfPage({
@@ -344,6 +352,7 @@ function PdfPage({
   forceVisible,
   customTextRenderer,
   register,
+  highlights,
 }: PdfPageProps) {
   const shellRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(forceVisible);
@@ -371,6 +380,26 @@ function PdfPage({
     return () => observer.disconnect();
   }, [visible]);
 
+  const highlightLayer =
+    highlights.length > 0 ? (
+      <div aria-hidden="true" className="pdf-highlight-layer">
+        {highlights.map((mark) =>
+          mark.rects.map((rect, index) => (
+            <span
+              key={`${mark.id}-${index}`}
+              className="pdf-highlight"
+              style={{
+                left: `${rect.x * 100}%`,
+                top: `${rect.y * 100}%`,
+                width: `${rect.w * 100}%`,
+                height: `${rect.h * 100}%`,
+              }}
+            />
+          )),
+        )}
+      </div>
+    ) : null;
+
   return (
     <div
       ref={shellRef}
@@ -386,14 +415,18 @@ function PdfPage({
             height={height}
             customTextRenderer={customTextRenderer}
             className="pdf-page"
-          />
+          >
+            {highlightLayer}
+          </Page>
         ) : (
           <Page
             pageNumber={pageNumber}
             width={width ?? 800}
             customTextRenderer={customTextRenderer}
             className="pdf-page"
-          />
+          >
+            {highlightLayer}
+          </Page>
         )
       ) : (
         <div className="pdf-page-placeholder" style={{ height: placeholderHeight }}>
@@ -485,6 +518,8 @@ export default function BookReaderView() {
   const [outlineLoading, setOutlineLoading] = useState(false);
   const [bookmarks, setBookmarks] = useState<number[]>([]);
   const [notes, setNotes] = useState("");
+  const [highlightMode, setHighlightMode] = useState(false);
+  const [highlights, setHighlights] = useState<ReaderHighlight[]>([]);
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchHit[]>([]);
@@ -497,6 +532,8 @@ export default function BookReaderView() {
   });
 
   const [contentElement, setContentElement] = useState<HTMLDivElement | null>(null);
+  const readerRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
   const bookRef = useRef<LocalBook | null>(null);
   const pageRefs = useRef(new Map<number, HTMLDivElement>());
   const lastObservedPageRef = useRef(1);
@@ -568,6 +605,8 @@ export default function BookReaderView() {
     setPageDraft("1");
     setBookmarks([]);
     setNotes("");
+    setHighlightMode(false);
+    setHighlights(loadHighlights(bookId));
     setOutline([]);
     setSearchInput("");
     setSearchQuery("");
@@ -730,6 +769,88 @@ export default function BookReaderView() {
   }, [book, pageNumber, totalPages]);
 
   useEffect(() => () => clearOpenBook(bookId), [bookId]);
+
+  const highlightsByPage = useMemo(() => {
+    const map = new Map<number, ReaderHighlight[]>();
+    for (const mark of highlights) {
+      const list = map.get(mark.page);
+      if (list) list.push(mark);
+      else map.set(mark.page, [mark]);
+    }
+    return map;
+  }, [highlights]);
+
+  // Publica el alto real de la barra para que los saltos de página dejen la
+  // primera línea justo debajo y no escondida detrás del cristal.
+  useLayoutEffect(() => {
+    const reader = readerRef.current;
+    const header = headerRef.current;
+    if (!reader || !header) return;
+    const apply = () => {
+      reader.style.setProperty(
+        "--reader-header-h",
+        `${Math.round(header.getBoundingClientRect().height)}px`,
+      );
+    };
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(header);
+    return () => observer.disconnect();
+    // El lector solo monta la barra cuando el libro y el archivo están listos:
+    // sin estas dependencias el efecto se quedaba con las referencias vacías.
+  }, [book?.id, file]);
+
+  const captureHighlight = useCallback(() => {
+    if (!highlightMode) return;
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || selection.rangeCount === 0) return;
+    const range = selection.getRangeAt(0);
+    const node = range.commonAncestorContainer;
+    const element = node instanceof Element ? node : node.parentElement;
+    const shell = element?.closest<HTMLElement>(".pdf-page-shell");
+    const pageBox = shell?.querySelector<HTMLElement>(".react-pdf__Page");
+    if (!shell || !pageBox) return;
+    const page = Number(shell.dataset.page);
+    if (!Number.isFinite(page) || page < 1) return;
+    const box = pageBox.getBoundingClientRect();
+    if (box.width < 2 || box.height < 2) return;
+
+    // Rectángulos normalizados respecto a la página: se dibujan igual con
+    // cualquier zoom, ancho o densidad de pantalla.
+    const rects = Array.from(range.getClientRects())
+      .filter((rect) => rect.width > 1 && rect.height > 1)
+      .map((rect) => ({
+        x: (rect.left - box.left) / box.width,
+        y: (rect.top - box.top) / box.height,
+        w: rect.width / box.width,
+        h: rect.height / box.height,
+      }))
+      .filter(
+        (rect) =>
+          rect.x >= -0.02 &&
+          rect.y >= -0.02 &&
+          rect.x + rect.w <= 1.02 &&
+          rect.y + rect.h <= 1.02,
+      );
+    if (rects.length === 0) return;
+
+    const mark: ReaderHighlight = {
+      id:
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `hl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      page,
+      rects,
+      createdAt: Date.now(),
+    };
+
+    setHighlights((current) => {
+      const next = [...current, mark];
+      saveHighlights(bookId, next);
+      return next;
+    });
+    selection.removeAllRanges();
+  }, [bookId, highlightMode]);
 
   const customTextRenderer = useCallback(
     (textItem: { str: string }) => highlightText(textItem.str, searchQuery),
@@ -1038,7 +1159,7 @@ export default function BookReaderView() {
   ];
 
   return (
-    <div className="pdf-reader flex min-h-dvh bg-[#0c0c0f] text-white">
+    <div ref={readerRef} className="pdf-reader flex min-h-dvh bg-[#0c0c0f] text-white">
       {sidebarOpen && (
         <>
           <button
@@ -1311,7 +1432,10 @@ export default function BookReaderView() {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0a0a0a]/60 backdrop-blur-2xl">
+        <header
+          ref={headerRef}
+          className="sticky top-0 z-30 border-b border-white/10 bg-[#0a0a0a]/60 backdrop-blur-2xl"
+        >
           <div className="flex flex-wrap items-center gap-2 px-2.5 py-2 sm:px-4">
             <Link
               href="/library"
@@ -1388,6 +1512,31 @@ export default function BookReaderView() {
 
             <button
               type="button"
+              onClick={() => setHighlightMode((value) => !value)}
+              aria-pressed={highlightMode}
+              aria-label="Subrayar texto"
+              title={
+                highlightMode
+                  ? "Subrayado activo: selecciona texto en la página"
+                  : "Subrayar texto"
+              }
+              className={cn(
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition",
+                highlightMode
+                  ? "bg-amber-300/25 text-amber-200"
+                  : "text-white/45 hover:bg-white/10 hover:text-white",
+              )}
+            >
+              <Highlighter className="h-4 w-4" />
+            </button>
+            {highlightMode ? (
+              <span className="hidden shrink-0 rounded-lg bg-amber-300/15 px-2 py-1 text-[10px] font-medium text-amber-200 lg:inline-flex">
+                Selecciona texto para subrayar
+              </span>
+            ) : null}
+
+            <button
+              type="button"
               onClick={openAiDrawer}
               aria-label="Preguntar a la IA sobre esta página"
               title="Preguntar a la IA sobre esta página"
@@ -1454,7 +1603,14 @@ export default function BookReaderView() {
           </div>
         </header>
 
-        <main ref={attachContent} className="pdf-reader-pages flex-1 px-3 py-5 sm:px-5">
+        <main
+          ref={attachContent}
+          onMouseUp={captureHighlight}
+          className={cn(
+            "pdf-reader-pages flex-1 px-3 py-5 sm:px-5",
+            highlightMode && "cursor-text",
+          )}
+        >
           {file && (
             <Document
               file={file}
@@ -1492,6 +1648,7 @@ export default function BookReaderView() {
                       forceVisible={page === initialPageRef.current}
                       customTextRenderer={customTextRenderer}
                       register={registerPage}
+                      highlights={highlightsByPage.get(page) ?? []}
                     />
                   );
                 })}

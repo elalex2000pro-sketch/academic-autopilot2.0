@@ -448,16 +448,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <GamificationToast />
       <GamificationThemeSync />
 
-      {/* Acceso global al panel de IA, encima de la barra móvil. */}
-      <button
-        type="button"
-        onClick={() => setAiOpen(true)}
-        aria-label="Abrir IA Studio"
-        title="Preguntar a la IA"
-        className="fixed bottom-[calc(var(--mobile-nav-offset,5.5rem)+0.75rem)] right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-[#1b1b1f]/85 text-white shadow-[0_18px_40px_-16px_rgba(0,0,0,0.65)] backdrop-blur-2xl transition-transform hover:scale-105 md:bottom-6 md:right-6 dark:border-white/10"
-      >
-        <Sparkles className="h-5 w-5" />
-      </button>
+      {/* Acceso global al panel de IA, encima de la barra móvil. En el lector
+          de PDF se oculta para dejar la pantalla de lectura limpia. */}
+      {!isBookReader ? (
+        <button
+          type="button"
+          onClick={() => setAiOpen(true)}
+          aria-label="Abrir IA Studio"
+          title="Preguntar a la IA"
+          className="fixed bottom-[calc(var(--mobile-nav-offset,5.5rem)+0.75rem)] right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-[#1b1b1f]/85 text-white shadow-[0_18px_40px_-16px_rgba(0,0,0,0.65)] backdrop-blur-2xl transition-transform hover:scale-105 md:bottom-6 md:right-6 dark:border-white/10"
+        >
+          <Sparkles className="h-5 w-5" />
+        </button>
+      ) : null}
 
       <AnimatePresence>
         {aiOpen ? (

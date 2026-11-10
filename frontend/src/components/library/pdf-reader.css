@@ -17,13 +17,24 @@
   flex-direction: column;
   align-items: center;
   margin: 0 auto 18px;
-  scroll-margin-top: 62px;
+  /* El alto real de la barra superior lo publica el lector en esta variable:
+     así `scrollIntoView` deja la primera línea justo debajo y no detrás. */
+  scroll-margin-top: calc(var(--reader-header-h, 50px) + 14px);
 }
 
-@media (max-width: 1023px) {
-  .pdf-page-shell {
-    scroll-margin-top: 138px;
-  }
+.pdf-highlight-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.pdf-highlight {
+  position: absolute;
+  border-radius: 2px;
+  background: rgba(253, 224, 71, 0.45);
+  box-shadow: inset 0 -0.12em 0 rgba(250, 204, 21, 0.6);
+  mix-blend-mode: multiply;
 }
 
 .pdf-page-shell .react-pdf__Page {
