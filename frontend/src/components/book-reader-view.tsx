@@ -35,7 +35,9 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
+import type { ReaderHighlightRect } from "@/lib/reader-highlights";
 import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 
 import { openAiDrawer } from "@/lib/ai-drawer";
@@ -342,6 +344,7 @@ interface PdfPageProps {
   customTextRenderer: ((textItem: { str: string }) => string) | undefined;
   register: (page: number, element: HTMLDivElement | null) => void;
   highlights: ReaderHighlight[];
+  draft: ReaderHighlightRect | null;
 }
 
 function PdfPage({
@@ -353,6 +356,7 @@ function PdfPage({
   customTextRenderer,
   register,
   highlights,
+  draft,
 }: PdfPageProps) {
   const shellRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(forceVisible);
@@ -381,7 +385,7 @@ function PdfPage({
   }, [visible]);
 
   const highlightLayer =
-    highlights.length > 0 ? (
+    highlights.length > 0 || draft ? (
       <div aria-hidden="true" className="pdf-highlight-layer">
         {highlights.map((mark) =>
           mark.rects.map((rect, index) => (
@@ -397,6 +401,17 @@ function PdfPage({
             />
           )),
         )}
+        {draft ? (
+          <span
+            className="pdf-highlight pdf-highlight-draft"
+            style={{
+              left: `${draft.x * 100}%`,
+              top: `${draft.y * 100}%`,
+              width: `${draft.w * 100}%`,
+              height: `${draft.h * 100}%`,
+            }}
+          />
+        ) : null}
       </div>
     ) : null;
 
@@ -851,6 +866,101 @@ export default function BookReaderView() {
     });
     selection.removeAllRanges();
   }, [bookId, highlightMode]);
+
+  // Subrayado por zona: los PDFs escaneados no tienen capa de texto, así que
+  // en modo subrayar también se puede arrastrar un rectángulo sobre la imagen.
+  const [dragDraft, setDragDraft] = useState<{
+    page: number;
+    rect: ReaderHighlightRect;
+  } | null>(null);
+  const dragRef = useRef<{
+    page: number;
+    pageBox: DOMRect;
+    startX: number;
+    startY: number;
+  } | null>(null);
+
+  const beginRegionHighlight = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      if (!highlightMode || event.button !== 0) return;
+      const target = event.target as HTMLElement | null;
+      const shell = target?.closest<HTMLElement>(".pdf-page-shell");
+      const pageBox = shell?.querySelector<HTMLElement>(".react-pdf__Page");
+      if (!shell || !pageBox) return;
+      const page = Number(shell.dataset.page);
+      if (!Number.isFinite(page) || page < 1) return;
+      dragRef.current = {
+        page,
+        pageBox: pageBox.getBoundingClientRect(),
+        startX: event.clientX,
+        startY: event.clientY,
+      };
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        // Sin captura el arrastre sigue funcionando dentro de la página.
+      }
+    },
+    [highlightMode],
+  );
+
+  const updateRegionHighlight = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      const box = drag.pageBox;
+      if (box.width < 2 || box.height < 2) return;
+      const left = Math.min(event.clientX, drag.startX);
+      const top = Math.min(event.clientY, drag.startY);
+      const width = Math.abs(event.clientX - drag.startX);
+      const height = Math.abs(event.clientY - drag.startY);
+      const x = clamp((left - box.left) / box.width, 1);
+      const y = clamp((top - box.top) / box.height, 1);
+      setDragDraft({
+        page: drag.page,
+        rect: {
+          x,
+          y,
+          w: Math.min(width / box.width, 1 - x),
+          h: Math.min(height / box.height, 1 - y),
+        },
+      });
+    },
+    [],
+  );
+
+  const finishRegionHighlight = useCallback(() => {
+    const drag = dragRef.current;
+    const draft = dragDraft;
+    dragRef.current = null;
+    setDragDraft(null);
+    if (!drag) return;
+
+    // Si el PDF sí tiene texto y hay selección, manda el subrayado de texto.
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed && selection.rangeCount > 0) {
+      captureHighlight();
+      return;
+    }
+
+    // Un clic suelto o un temblor del ratón no crean una marca.
+    if (!draft || draft.rect.w < 0.01 || draft.rect.h < 0.006) return;
+
+    const mark: ReaderHighlight = {
+      id:
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `hl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      page: drag.page,
+      rects: [draft.rect],
+      createdAt: Date.now(),
+    };
+    setHighlights((current) => {
+      const next = [...current, mark];
+      saveHighlights(bookId, next);
+      return next;
+    });
+  }, [bookId, captureHighlight, dragDraft]);
 
   const customTextRenderer = useCallback(
     (textItem: { str: string }) => highlightText(textItem.str, searchQuery),
@@ -1517,7 +1627,7 @@ export default function BookReaderView() {
               aria-label="Subrayar texto"
               title={
                 highlightMode
-                  ? "Subrayado activo: selecciona texto en la página"
+                  ? "Subrayado activo: selecciona texto o arrastra sobre una página escaneada"
                   : "Subrayar texto"
               }
               className={cn(
@@ -1531,7 +1641,7 @@ export default function BookReaderView() {
             </button>
             {highlightMode ? (
               <span className="hidden shrink-0 rounded-lg bg-amber-300/15 px-2 py-1 text-[10px] font-medium text-amber-200 lg:inline-flex">
-                Selecciona texto para subrayar
+                Selecciona texto o arrastra para subrayar
               </span>
             ) : null}
 
@@ -1605,7 +1715,10 @@ export default function BookReaderView() {
 
         <main
           ref={attachContent}
-          onMouseUp={captureHighlight}
+          onPointerDown={beginRegionHighlight}
+          onPointerMove={updateRegionHighlight}
+          onPointerUp={finishRegionHighlight}
+          onPointerCancel={finishRegionHighlight}
           className={cn(
             "pdf-reader-pages flex-1 px-3 py-5 sm:px-5",
             highlightMode && "cursor-text",
@@ -1649,6 +1762,7 @@ export default function BookReaderView() {
                       customTextRenderer={customTextRenderer}
                       register={registerPage}
                       highlights={highlightsByPage.get(page) ?? []}
+                      draft={dragDraft?.page === page ? dragDraft.rect : null}
                     />
                   );
                 })}

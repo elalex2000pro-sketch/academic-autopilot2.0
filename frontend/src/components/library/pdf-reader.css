@@ -37,6 +37,13 @@
   mix-blend-mode: multiply;
 }
 
+.pdf-highlight-draft {
+  border: 1px dashed rgba(250, 204, 21, 0.85);
+  background: rgba(253, 224, 71, 0.28);
+  box-shadow: none;
+  mix-blend-mode: normal;
+}
+
 .pdf-page-shell .react-pdf__Page {
   margin: 0 auto;
   background: #ffffff;

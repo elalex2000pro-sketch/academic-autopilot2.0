@@ -1,10 +1,10 @@
 {
-  "version": "1.3.32",
-  "publishedAt": "2026-11-10T13:35:00.000Z",
+  "version": "1.3.33",
+  "publishedAt": "2026-11-10T14:10:00.000Z",
   "sizeBytes": 8388608,
   "notes": [
-    "El botón flotante de IA de la esquina inferior derecha ya no aparece: la IA sigue accesible desde el menú, el saludo del inicio y Acceso rápido.",
-    "Los avisos del chat en el ordenador y el bloque de Notificaciones de Ajustes se mantienen."
+    "El subrayado ya funciona en PDFs escaneados: además de seleccionar texto, puedes arrastrar sobre la página para marcar una zona.",
+    "Las marcas de zona se guardan por libro como el resto de subrayados y se ven igual con cualquier zoom."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases"
 }
