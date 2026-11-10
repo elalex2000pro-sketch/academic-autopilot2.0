@@ -7,6 +7,7 @@ import { BootSplash } from "@/components/boot-splash";
 import { PreferencesProvider } from "@/components/preferences-provider";
 import { PwaRegister } from "@/components/pwa-register";
 import { RealtimeProvider } from "@/components/realtime-provider";
+import { SmoothScroll } from "@/components/smooth-scroll";
 import { ThemeProvider } from "@/components/theme-provider";
 import { WallpaperBackdrop } from "@/components/wallpaper-backdrop";
 
@@ -70,6 +71,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <PwaRegister />
         <ThemeProvider>
           <PreferencesProvider>
+            <SmoothScroll />
             <AuthProvider>
               <RealtimeProvider>
                 <AppShell>{children}</AppShell>

@@ -1,13 +1,12 @@
 {
-  "version": "1.3.20",
-  "publishedAt": "2026-11-10T15:30:00.000Z",
+  "version": "1.3.21",
+  "publishedAt": "2026-11-10T18:40:00.000Z",
   "sizeBytes": 8388608,
   "notes": [
-    "Documentos gana aire arriba y a los lados: el título y la cabecera ya no se pegan a la barra de título ni al borde de la ventana.",
-    "Nueva calculadora integrada en Documentos, en un panel flotante de cristal que se abre con un clic desde cualquier pestaña.",
-    "Operaciones básicas, porcentajes, cambio de signo, paréntesis, potencias, raíces y funciones científicas con grados o radianes.",
-    "Historial de los últimos cálculos para reutilizar un resultado y botón para copiarlo al portapapeles o insertarlo donde estés escribiendo.",
-    "El título de la pestaña de Documentos ya no repite 'Academic Autopilot'."
+    "El desplazamiento con la rueda del ratón ahora tiene inercia: se desliza de forma progresiva en lugar de saltar de golpe.",
+    "El modo de animación reducida sigue usando el scroll nativo, sin inercia.",
+    "Con un panel o modal abierto la rueda ya no mueve la página que queda detrás.",
+    "Los paneles con scroll propio (chat, cajones, tablas) conservan su desplazamiento nativo."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases"
 }

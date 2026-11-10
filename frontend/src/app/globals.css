@@ -483,6 +483,22 @@
   -webkit-app-region: no-drag;
 }
 
+/* Lenis: la inercia la controla su motor; el navegador no debe animar los
+   saltos por su cuenta porque las dos animaciones se pelean. */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
 .hide-scrollbar {
   scrollbar-width: none;
 }
