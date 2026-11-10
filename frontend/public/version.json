@@ -1,12 +1,13 @@
 {
-  "version": "1.3.19",
-  "publishedAt": "2026-11-10T12:00:00.000Z",
+  "version": "1.3.20",
+  "publishedAt": "2026-11-10T15:30:00.000Z",
   "sizeBytes": 8388608,
   "notes": [
-    "Los mensajes nuevos del chat lanzan una notificación nativa en el PC cuando la ventana no tiene el foco, aunque estés en otra sección de la app.",
-    "La campana de la cabecera del chat silencia (o vuelve a activar) los avisos de esa persona o grupo; los mensajes siguen llegando, solo dejan de molestar.",
-    "En los grupos el aviso muestra el nombre del grupo, y tus propios mensajes nunca generan notificación.",
-    "Las conversaciones silenciadas se marcan con una campana tachada en la lista y se recuerdan en el dispositivo."
+    "Documentos gana aire arriba y a los lados: el título y la cabecera ya no se pegan a la barra de título ni al borde de la ventana.",
+    "Nueva calculadora integrada en Documentos, en un panel flotante de cristal que se abre con un clic desde cualquier pestaña.",
+    "Operaciones básicas, porcentajes, cambio de signo, paréntesis, potencias, raíces y funciones científicas con grados o radianes.",
+    "Historial de los últimos cálculos para reutilizar un resultado y botón para copiarlo al portapapeles o insertarlo donde estés escribiendo.",
+    "El título de la pestaña de Documentos ya no repite 'Academic Autopilot'."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases"
 }

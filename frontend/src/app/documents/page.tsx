@@ -1,6 +1,7 @@
 import { DocumentsView } from "@/components/documents-view";
 
-export const metadata = { title: "Documentos · Academic Autopilot" };
+// El layout ya añade "· Academic Autopilot"; repetirlo duplicaba el título.
+export const metadata = { title: "Documentos" };
 
 export default function DocumentsPage() {
   return <DocumentsView />;

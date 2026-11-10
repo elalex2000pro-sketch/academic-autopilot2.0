@@ -2,10 +2,11 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import { FileText, NotebookPen, PenTool, Plus, X } from "lucide-react";
+import { Calculator, FileText, NotebookPen, PenTool, Plus, X } from "lucide-react";
 
 import NotebooksPage from "@/app/notebooks/page";
 import { AcademicOfficeView } from "@/components/academic-office-view";
+import { CalculatorPanel } from "@/components/calculator";
 import { Button } from "@/components/ui/button";
 import { requestNewCanvas, requestNewNotebook } from "@/lib/documents";
 import { cn } from "@/lib/utils";
@@ -47,6 +48,8 @@ export function DocumentsView() {
   const [chooserOpen, setChooserOpen] = useState(false);
   const [pendingNew, setPendingNew] = useState<DocumentKind | null>(null);
   const [formalSignal, setFormalSignal] = useState(0);
+  // Calculadora flotante: se abre con un clic desde cualquier pestaña.
+  const [calculatorOpen, setCalculatorOpen] = useState(false);
 
   // Si el apunte se crea desde la pestaña de documentos formales, primero hay
   // que montar la vista de cuadernos y avisarle después de que escuche.
@@ -70,7 +73,7 @@ export function DocumentsView() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 px-4 pb-4 pt-2 md:px-6 md:pt-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-[24px] font-semibold tracking-[-0.03em] text-slate-900 dark:text-white/90">
@@ -80,10 +83,22 @@ export function DocumentsView() {
             Apuntes, documentos formales y pizarras en un solo lugar.
           </p>
         </div>
-        <Button size="sm" onClick={() => setChooserOpen(true)}>
-          <Plus className="h-4 w-4" />
-          Nuevo
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setCalculatorOpen((value) => !value)}
+            aria-expanded={calculatorOpen}
+            aria-controls="documents-calculator"
+          >
+            <Calculator className="h-4 w-4" />
+            Calculadora
+          </Button>
+          <Button size="sm" onClick={() => setChooserOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Nuevo
+          </Button>
+        </div>
       </div>
 
       <div
@@ -118,6 +133,13 @@ export function DocumentsView() {
       ) : (
         <CanvasView />
       )}
+
+      <div id="documents-calculator">
+        <CalculatorPanel
+          open={calculatorOpen}
+          onClose={() => setCalculatorOpen(false)}
+        />
+      </div>
 
       {chooserOpen ? (
         <div

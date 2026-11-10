@@ -328,7 +328,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           {/* Barra superior de escritorio: controles globales fuera del rail. */}
           {!isImmersive ? (
-            <header className="mx-auto hidden w-full max-w-7xl shrink-0 items-center justify-end gap-4 px-6 pt-6 pb-1 md:flex">
+            <header className="mx-auto hidden w-full max-w-7xl shrink-0 items-center justify-end gap-4 px-6 pb-2 pt-8 md:flex">
               <motion.div
                 whileHover={reduceMotion ? undefined : { scale: 1.05, y: -2 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -367,7 +367,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               "min-w-0 flex-1 bg-transparent",
               isBookReader ? "overflow-x-clip" : "overflow-x-hidden",
               !isImmersive &&
-                "pb-[calc(var(--mobile-nav-offset)+1.25rem)] pt-4 md:pb-0 md:pt-2",
+                "pb-[calc(var(--mobile-nav-offset)+1.25rem)] pt-4 md:pb-0 md:pt-5",
             )}
           >
             <div
