@@ -1,11 +1,11 @@
 {
-  "version": "1.3.26",
-  "publishedAt": "2026-11-10T09:56:11.310Z",
+  "version": "1.3.27",
+  "publishedAt": "2026-11-10T10:07:51.709Z",
   "sizeBytes": 8388608,
   "notes": [
-    "El saludo del inicio vuelve a su sitio: arriba, justo debajo de la fecha.",
-    "La tarjeta del saludo mantiene el texto pegado arriba y los botones abajo aunque cambie el alto del panel.",
-    "La barra de nivel pasa después del contenido del inicio para no empujar el saludo hacia abajo."
+    "El indicador de la barra lateral se desliza ahora desde la pestaña anterior hasta la nueva.",
+    "Se acabó el salto: la burbuja ya no entra desde fuera de la barra al cambiar de sección.",
+    "La posición se mide sin depender del scroll, así que también funciona con la barra desplazada o con la ventana redimensionada."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases"
 }

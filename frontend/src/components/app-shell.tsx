@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Fragment, lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { Fragment, lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, LogOut, Settings, Sparkles } from "lucide-react";
 
@@ -59,6 +59,8 @@ const RAIL_SPRING = {
   damping: 30,
 } as const;
 
+const RAIL_ITEMS = [...NAV_GROUPS.flatMap((group) => group.items), SETTINGS_ITEM];
+
 const HEADER_CONTROL =
   "flex items-center justify-center rounded-full border border-white/20 bg-white/50 p-2 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/[0.07]";
 
@@ -75,29 +77,24 @@ function RailNavLink({
   icon: Icon,
   active,
   reduceMotion,
+  registerRef,
 }: {
   href: string;
   label: string;
   icon: NavItem["icon"];
   active: boolean;
   reduceMotion: boolean;
+  registerRef?: (element: HTMLAnchorElement | null) => void;
 }) {
   return (
     <Link
+      ref={registerRef}
       href={href}
       aria-current={active ? "page" : undefined}
       aria-label={label}
       title={label}
       className="group relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-white/55"
     >
-      {active ? (
-        <motion.div
-          layoutId="activeNavBubble"
-          aria-hidden="true"
-          className="absolute inset-0 rounded-full bg-[#e9e4f6] shadow-[0_10px_24px_-12px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.75)]"
-          transition={reduceMotion ? { duration: 0 } : RAIL_SPRING}
-        />
-      ) : null}
       <motion.span
         aria-hidden="true"
         className="relative z-10 flex h-full w-full items-center justify-center"
@@ -124,6 +121,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { animationLevel } = usePreferences();
   const { layout } = useLayoutPreferences();
   const sidebarLayout = layout.sidebar;
+  const railRef = useRef<HTMLElement | null>(null);
+  const railLinks = useRef(new Map<string, HTMLAnchorElement>());
+  const [railBubble, setRailBubble] = useState<{ x: number; y: number } | null>(null);
   const reduceMotion = animationLevel === "reduced";
   const isPublic = pathname === "/login";
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -141,6 +141,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (loading || !user || isPublic) return;
     if (!hasCompletedOnboarding()) setShowOnboarding(true);
   }, [loading, user, isPublic]);
+
+  // La burbuja del rail se mide con `offsetTop`/`offsetLeft`, que no dependen del
+  // scroll ni del contenedor: así Framer anima desde la pestaña anterior real y
+  // no desde una coordenada inventada fuera de la barra.
+  useEffect(() => {
+    const measure = () => {
+      const rail = railRef.current;
+      if (!rail) return;
+      const active = RAIL_ITEMS.find((item) => isActive(pathname, item.href));
+      const link = active ? railLinks.current.get(active.href) : null;
+      if (!link) {
+        setRailBubble(null);
+        return;
+      }
+      setRailBubble({ x: link.offsetLeft, y: link.offsetTop });
+    };
+
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [pathname, sidebarLayout.collapsed]);
 
   // El drawer de IA se abre desde cualquier pantalla mediante un evento.
   useEffect(() => {
@@ -204,12 +225,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
       >
         <aside
+          ref={railRef}
           className={cn(
-            "v18-rail sticky top-3 hidden h-[calc(100dvh-1.5rem)] shrink-0 flex-col items-center overflow-hidden rounded-[32px] border border-white/10 bg-[#1b1b1f] pb-4 pt-2 shadow-[0_30px_70px_-30px_rgba(20,20,28,0.72),inset_0_1px_0_rgba(255,255,255,0.09)] transition-[width] duration-200 md:flex",
+            "v18-rail hide-scrollbar relative sticky top-3 hidden h-[calc(100dvh-1.5rem)] shrink-0 flex-col items-center overflow-y-auto overflow-x-hidden rounded-[32px] border border-white/10 bg-[#1b1b1f] pb-4 pt-2 shadow-[0_30px_70px_-30px_rgba(20,20,28,0.72),inset_0_1px_0_rgba(255,255,255,0.09)] transition-[width] duration-200 md:flex",
             sidebarLayout.side === "right" ? "mr-4" : "ml-4",
             sidebarLayout.collapsed ? "w-[62px]" : "w-[78px]",
           )}
         >
+          {railBubble ? (
+            <motion.div
+              aria-hidden="true"
+              className="pointer-events-none absolute left-0 top-0 h-11 w-11 rounded-full bg-[#e9e4f6] shadow-[0_10px_24px_-12px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.75)]"
+              initial={false}
+              animate={{ x: railBubble.x, y: railBubble.y }}
+              transition={reduceMotion ? { duration: 0 } : RAIL_SPRING}
+            />
+          ) : null}
+
           {/* Los semáforos viven dentro del rail oscuro, no en una franja suelta. */}
           <div className="app-drag flex h-9 w-full shrink-0 items-center justify-center">
             <WindowControls compact />
@@ -225,7 +257,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <nav
             aria-label="Navegación principal"
-            className="hide-scrollbar mt-6 flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto px-2"
+            className="hide-scrollbar mt-6 flex w-full min-h-0 flex-1 flex-col items-center gap-1 px-2"
           >
             {NAV_GROUPS.map((group, groupIndex) => (
               <Fragment key={group.label}>
@@ -243,6 +275,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     icon={icon}
                     active={isActive(pathname, href)}
                     reduceMotion={Boolean(reduceMotion)}
+                    registerRef={(element) => {
+                      if (element) railLinks.current.set(href, element);
+                      else railLinks.current.delete(href);
+                    }}
                   />
                 ))}
               </Fragment>
@@ -256,6 +292,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               icon={Settings}
               active={isActive(pathname, SETTINGS_ITEM.href)}
               reduceMotion={Boolean(reduceMotion)}
+              registerRef={(element) => {
+                if (element) railLinks.current.set(SETTINGS_ITEM.href, element);
+                else railLinks.current.delete(SETTINGS_ITEM.href);
+              }}
             />
             <Button
               variant="ghost"
