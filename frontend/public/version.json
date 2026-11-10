@@ -1,12 +1,12 @@
 {
-  "version": "1.3.23",
-  "publishedAt": "2026-11-10T09:16:07.401Z",
+  "version": "1.3.24",
+  "publishedAt": "2026-11-10T09:31:12.208Z",
   "sizeBytes": 8388608,
   "notes": [
-    "Nuevo modo edición en Ajustes: mueve y redimensiona las tarjetas del Dashboard encajando siempre en una cuadrícula de 12 columnas, con guías punteadas y sin solapamientos.",
-    "La barra de navegación puede colocarse a la izquierda o a la derecha y reducir su anchura; la app recuerda tu elección.",
-    "La posición y el tamaño de cada panel se guardan solos en este dispositivo, así que todo sigue igual al volver a abrir la app.",
-    "Botón «Restablecer diseño predeterminado» en Ajustes y en el aviso del inicio para volver de golpe al diseño de fábrica."
+    "El fondo de pantalla personalizado ya se aplica a toda la app: se guarda comprimido en el navegador y se ve detrás del cristal del dashboard, los paneles y la cabecera, incluso después de recargar.",
+    "Las tarjetas y superficies son ahora más translúcidas para dejar pasar la foto sin perder legibilidad.",
+    "El chat muestra ticks de estado en tus mensajes: un tick gris al enviar, dos grises al entregar y dos azules al leer.",
+    "El estado viaja en tiempo real entre los dispositivos y se recupera al volver a abrir la conversación."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases"
 }

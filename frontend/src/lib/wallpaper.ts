@@ -6,19 +6,11 @@ export const WALLPAPER_EVENT = "autopilot-wallpaper-change";
 export function readWallpaper(): string | null {
   if (typeof window === "undefined") return null;
   try {
-    return window.localStorage.getItem(WALLPAPER_STORAGE_KEY);
+    const value = window.localStorage.getItem(WALLPAPER_STORAGE_KEY);
+    return value && value.startsWith("data:image/") ? value : null;
   } catch {
     return null;
   }
-}
-
-export function saveWallpaper(dataUrl: string) {
-  try {
-    window.localStorage.setItem(WALLPAPER_STORAGE_KEY, dataUrl);
-  } catch {
-    throw new Error("No hay espacio en el navegador para guardar la imagen. Prueba con otra más ligera.");
-  }
-  window.dispatchEvent(new Event(WALLPAPER_EVENT));
 }
 
 export function removeWallpaper() {
@@ -39,21 +31,25 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 /**
- * Reduce la imagen a 1920 px y la comprime para poder guardarla en
- * localStorage sin agotar la cuota del navegador.
+ * Reduce la imagen y la comprime para que quepa en `localStorage`. El fondo
+ * blanco evita que un PNG transparente se convierta en negro al pasar a JPEG.
  */
-export async function compressWallpaper(file: File): Promise<string> {
+export async function compressWallpaper(
+  file: File,
+  options: { maxSide?: number; quality?: number } = {},
+): Promise<string> {
   if (!file.type.startsWith("image/")) {
     throw new Error("El archivo no es una imagen.");
   }
 
+  const maxSide = options.maxSide ?? 1920;
+  const quality = options.quality ?? 0.82;
   const objectUrl = URL.createObjectURL(file);
   try {
     const image = await loadImage(objectUrl);
     if (!image.naturalWidth || !image.naturalHeight) {
       throw new Error("No se pudo leer la imagen. Prueba con un JPG o un PNG.");
     }
-    const maxSide = 1920;
     const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
     const width = Math.max(1, Math.round(image.naturalWidth * scale));
     const height = Math.max(1, Math.round(image.naturalHeight * scale));
@@ -68,15 +64,43 @@ export async function compressWallpaper(file: File): Promise<string> {
     context.fillRect(0, 0, width, height);
     context.drawImage(image, 0, 0, width, height);
 
-    let dataUrl = canvas.toDataURL("image/jpeg", 0.82);
-    if (dataUrl.length > 2_800_000) {
-      dataUrl = canvas.toDataURL("image/jpeg", 0.62);
-    }
-    if (dataUrl.length > 4_000_000) {
-      throw new Error("La imagen sigue siendo demasiado grande. Prueba con otra.");
-    }
-    return dataUrl;
+    return canvas.toDataURL("image/jpeg", quality);
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
+}
+
+/** Calidades y tamaños que se prueban en orden hasta que la imagen quepa. */
+const IMPORT_ATTEMPTS: Array<{ maxSide: number; quality: number }> = [
+  { maxSide: 1920, quality: 0.82 },
+  { maxSide: 1600, quality: 0.72 },
+  { maxSide: 1280, quality: 0.62 },
+  { maxSide: 1024, quality: 0.55 },
+];
+
+/**
+ * Importa una imagen, la comprime y la guarda en `localStorage` como Base64.
+ * Si la cuota del navegador se queda corta, reintenta con menos resolución en
+ * lugar de fallar a la primera.
+ */
+export async function importWallpaper(file: File): Promise<string> {
+  if (!file.type.startsWith("image/")) {
+    throw new Error("El archivo no es una imagen.");
+  }
+
+  for (const attempt of IMPORT_ATTEMPTS) {
+    const dataUrl = await compressWallpaper(file, attempt);
+    try {
+      window.localStorage.setItem(WALLPAPER_STORAGE_KEY, dataUrl);
+    } catch {
+      continue;
+    }
+    if (window.localStorage.getItem(WALLPAPER_STORAGE_KEY) !== dataUrl) continue;
+    window.dispatchEvent(new Event(WALLPAPER_EVENT));
+    return dataUrl;
+  }
+
+  throw new Error(
+    "No hay espacio en el navegador para esta imagen. Prueba con una foto más pequeña.",
+  );
 }

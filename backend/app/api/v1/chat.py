@@ -82,8 +82,58 @@ def _message_read(message: ChatMessage, sender: User) -> ChatMessageRead:
         sender_username=sender.username,
         content=message.content,
         attachment=_attachment_read(message),
+        status=(
+            message.status
+            if message.status in ("sent", "delivered", "read")
+            else "sent"
+        ),
         created_at=message.created_at,
     )
+
+
+async def _advance_status(
+    db: DbSession,
+    conversation_id: uuid.UUID,
+    reader_id: uuid.UUID,
+    new_status: str,
+) -> dict[uuid.UUID, list[uuid.UUID]]:
+    """Sube el estado de los mensajes ajenos. Nunca retrocede un tick."""
+    allowed = ("sent",) if new_status == "delivered" else ("sent", "delivered")
+    messages = list(
+        (
+            await db.execute(
+                select(ChatMessage).where(
+                    ChatMessage.conversation_id == conversation_id,
+                    ChatMessage.sender_id != reader_id,
+                    ChatMessage.status.in_(allowed),
+                )
+            )
+        ).scalars()
+    )
+    by_sender: dict[uuid.UUID, list[uuid.UUID]] = {}
+    for message in messages:
+        message.status = new_status
+        by_sender.setdefault(message.sender_id, []).append(message.id)
+    return by_sender
+
+
+def _notify_status(
+    conversation_id: uuid.UUID,
+    new_status: str,
+    by_sender: dict[uuid.UUID, list[uuid.UUID]],
+) -> None:
+    """Avisa a cada emisor de los mensajes que acaban de cambiar de estado."""
+    for sender_id, message_ids in by_sender.items():
+        notify(
+            sender_id,
+            "chat",
+            {
+                "conversation_id": str(conversation_id),
+                "action": "status",
+                "status": new_status,
+                "message_ids": [str(message_id) for message_id in message_ids],
+            },
+        )
 
 
 async def _require_member(
@@ -438,10 +488,26 @@ async def leave_conversation(
 async def mark_read(
     conversation_id: uuid.UUID, current_user: CurrentUser, db: DbSession
 ):
-    """Marca la conversacion como leida (para el contador de no leidos)."""
+    """Marca la conversacion como leida y avisa al emisor con el doble tick azul."""
     _, membership = await _require_member(db, conversation_id, current_user.id)
     membership.last_read_at = datetime.now(tz=UTC)
+    changed = await _advance_status(db, conversation_id, current_user.id, "read")
     await db.commit()
+    _notify_status(conversation_id, "read", changed)
+
+
+@router.post(
+    "/conversations/{conversation_id}/delivered",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def mark_delivered(
+    conversation_id: uuid.UUID, current_user: CurrentUser, db: DbSession
+):
+    """Confirma que el mensaje llego al dispositivo del destinatario."""
+    await _require_member(db, conversation_id, current_user.id)
+    changed = await _advance_status(db, conversation_id, current_user.id, "delivered")
+    await db.commit()
+    _notify_status(conversation_id, "delivered", changed)
 
 
 # ------------------------------------------------------------------ mensajes

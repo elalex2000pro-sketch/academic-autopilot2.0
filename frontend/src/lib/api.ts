@@ -889,6 +889,10 @@ export const chatApi = {
     request<void>(`/api/v1/chat/conversations/${conversationId}/read`, {
       method: "POST",
     }),
+  markDelivered: (conversationId: string) =>
+    request<void>(`/api/v1/chat/conversations/${conversationId}/delivered`, {
+      method: "POST",
+    }),
   leave: (conversationId: string) =>
     request<void>(
       `/api/v1/chat/conversations/${conversationId}/members/me`,

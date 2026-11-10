@@ -35,6 +35,8 @@ class ChatMessageRead(BaseModel):
     sender_username: str | None = None
     content: str
     attachment: ChatAttachmentRead | None = None
+    # Ticks del chat: enviado, entregado o leído.
+    status: Literal["sent", "delivered", "read"] = "sent"
     created_at: datetime
 
 

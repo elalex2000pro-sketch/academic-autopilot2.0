@@ -45,7 +45,12 @@ export function WallpaperBackdrop() {
   const [tone, setTone] = useState<Tone | null>(null);
 
   useEffect(() => {
-    const sync = () => setImage(readWallpaper());
+    const sync = () => {
+      const stored = readWallpaper();
+      setImage(stored);
+      // La hoja de estilos ajusta el velo según haya foto o no.
+      document.documentElement.dataset.wallpaper = stored ? "custom" : "default";
+    };
     sync();
     window.addEventListener(WALLPAPER_EVENT, sync);
     window.addEventListener("storage", sync);

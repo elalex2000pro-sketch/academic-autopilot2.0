@@ -628,14 +628,17 @@ html[data-performance="efficiency"] :is([data-spotlight], .glass-card, .glass-st
 .wallpaper-photo,
 .wallpaper-default {
   position: absolute;
-  inset: -90px;
+  inset: 0;
   background-position: center;
   background-size: cover;
-  transform: scale(1.04);
+  background-repeat: no-repeat;
 }
 
+/* La foto se ve tal cual: el velo y el cristal de las tarjetas se encargan
+   de que el texto siga siendo legible. */
 .wallpaper-photo {
-  filter: blur(30px) saturate(0.7) brightness(1.02);
+  filter: saturate(1.02);
+  transform: scale(1.01);
 }
 
 .wallpaper-default {
@@ -643,23 +646,23 @@ html[data-performance="efficiency"] :is([data-spotlight], .glass-card, .glass-st
 }
 
 .dark .wallpaper-photo {
-  filter: blur(30px) saturate(0.95) brightness(0.5);
+  filter: saturate(0.95) brightness(0.72);
 }
 
 /* Una imagen oscura en tema claro se aclara para que el texto siga legible. */
 :root:not(.dark) .wallpaper-layer[data-tone="dark"] .wallpaper-photo {
-  filter: blur(30px) saturate(0.45) brightness(1.55);
+  filter: saturate(0.55) brightness(1.28);
 }
 
 :root:not(.dark) .wallpaper-layer[data-tone="dark"] .wallpaper-veil {
   background:
-    linear-gradient(180deg, hsl(220 16% 94% / 0.34), hsl(220 14% 90% / 0.22)),
-    hsl(var(--background) / 0.56);
+    linear-gradient(180deg, hsl(220 16% 96% / 0.3), hsl(220 14% 92% / 0.16)),
+    hsl(var(--background) / 0.34);
 }
 
 /* Una imagen clara en tema oscuro se oscurece para no deslumbrar. */
 .dark .wallpaper-layer[data-tone="light"] .wallpaper-photo {
-  filter: blur(30px) saturate(0.9) brightness(0.38);
+  filter: saturate(0.92) brightness(0.5);
 }
 
 .dark .wallpaper-layer[data-tone="light"] .wallpaper-veil {
@@ -668,7 +671,7 @@ html[data-performance="efficiency"] :is([data-spotlight], .glass-card, .glass-st
 
 /* Imagen oscura sobre tema oscuro: conservamos algo de detalle. */
 .dark .wallpaper-layer[data-tone="dark"] .wallpaper-photo {
-  filter: blur(30px) saturate(0.95) brightness(0.78);
+  filter: saturate(0.95) brightness(0.82);
 }
 
 .dark .wallpaper-layer[data-tone="dark"] .wallpaper-veil {

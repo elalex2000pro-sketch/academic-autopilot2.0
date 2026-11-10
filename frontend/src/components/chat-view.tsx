@@ -13,6 +13,7 @@ import {
   Bell,
   BellOff,
   Check,
+  CheckCheck,
   FileText,
   FolderOpen,
   Forward,
@@ -223,6 +224,42 @@ function MessageText({ text }: { text: string }) {
         return <span key={`text-${index}`}>{part}</span>;
       })}
     </span>
+  );
+}
+
+/**
+ * Ticks de WhatsApp en la esquina de la burbuja: un tick gris al enviar, dos
+ * grises al entregar y dos azules al leer. El azul es claro para que se vea
+ * sobre la burbuja azul del emisor.
+ */
+function MessageTicks({
+  mine,
+  status,
+  pending,
+}: {
+  mine: boolean;
+  status?: ChatMessage["status"];
+  pending?: boolean;
+}) {
+  if (pending) {
+    return (
+      <span className="inline-flex items-center gap-1">
+        <Loader2 className="h-2.5 w-2.5 animate-spin" />
+        Enviando
+      </span>
+    );
+  }
+  if (!mine) return null;
+  const value = status ?? "sent";
+  if (value === "sent") {
+    return <Check className="h-3 w-3 text-primary-foreground/70" aria-label="Enviado" />;
+  }
+  const read = value === "read";
+  return (
+    <CheckCheck
+      className={cn("h-3 w-3", read ? "text-[#7dd3fc]" : "text-primary-foreground/55")}
+      aria-label={read ? "Leído" : "Entregado"}
+    />
   );
 }
 
@@ -542,11 +579,27 @@ export function ChatView() {
           conversation_id?: string;
           action?: string;
           message?: ChatMessage;
+          status?: string;
+          message_ids?: string[];
         }
       | undefined;
     const conversationId = data?.conversation_id;
     if (!conversationId) return;
     const incoming = data?.message;
+
+    // El destinatario confirma entrega/lectura y el emisor repinta sus ticks.
+    if (data?.action === "status") {
+      const ids = new Set(data.message_ids ?? []);
+      const nextStatus = data.status === "read" ? "read" : "delivered";
+      if (ids.size > 0) {
+        setMessages((current) =>
+          current.map((message) =>
+            ids.has(message.id) ? { ...message, status: nextStatus } : message,
+          ),
+        );
+      }
+      return;
+    }
 
     if (data?.action === "message" && incoming) {
       if (conversationId === activeIdRef.current) {
@@ -580,6 +633,10 @@ export function ChatView() {
               : conversation,
           ),
         );
+        // La app está abierta: el mensaje ya llegó al dispositivo.
+        if (incoming.sender_id !== meId) {
+          void chatApi.markDelivered(conversationId).catch(() => undefined);
+        }
       }
       return;
     }
@@ -656,6 +713,7 @@ export function ChatView() {
           }
         : null,
       created_at: new Date().toISOString(),
+      status: "sent",
       pending: true,
     };
 
@@ -964,19 +1022,12 @@ export function ChatView() {
                             )}
                           >
                             <span className="inline-flex items-center gap-1">
-                              {message.pending ? (
-                                <>
-                                  <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                                  Enviando
-                                </>
-                              ) : (
-                                <>
-                                  {mine ? (
-                                    <Check className="h-2.5 w-2.5" />
-                                  ) : null}
-                                  {formatClock(message.created_at)}
-                                </>
-                              )}
+                              {formatClock(message.created_at)}
+                              <MessageTicks
+                                mine={mine}
+                                status={message.status}
+                                pending={message.pending}
+                              />
                             </span>
                           </p>
                         </div>

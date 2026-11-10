@@ -94,6 +94,10 @@ class ChatMessage(UUIDPkMixin, TimestampMixin, Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
     content: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    # Estado de entrega del mensaje: "sent", "delivered" o "read".
+    status: Mapped[str] = mapped_column(
+        String(12), default="sent", server_default="sent", nullable=False
+    )
 
     # Adjunto: se guarda en disco y aqui solo quedan los metadatos.
     attachment_name: Mapped[str | None] = mapped_column(String(300))

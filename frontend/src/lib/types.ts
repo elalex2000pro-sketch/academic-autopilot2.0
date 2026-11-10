@@ -549,6 +549,8 @@ export interface ChatMessage {
   sender_username: string | null;
   content: string;
   attachment: ChatFileAttachment | null;
+  /** Tick de enviado, entregado o leído (solo para mis mensajes). */
+  status?: "sent" | "delivered" | "read";
   created_at: string;
   /** Solo en el cliente: burbuja local mientras viaja la peticion. */
   pending?: boolean;

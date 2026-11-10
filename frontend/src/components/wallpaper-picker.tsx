@@ -6,10 +6,9 @@ import { ImagePlus, Loader2, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
-  compressWallpaper,
+  importWallpaper,
   readWallpaper,
   removeWallpaper,
-  saveWallpaper,
   WALLPAPER_EVENT,
 } from "@/lib/wallpaper";
 
@@ -39,9 +38,8 @@ export function WallpaperPicker() {
     setBusy(true);
     setMessage(null);
     try {
-      const dataUrl = await compressWallpaper(file);
-      saveWallpaper(dataUrl);
-      setMessage("Fondo actualizado. Se muestra difuminado detrás de la interfaz.");
+      await importWallpaper(file);
+      setMessage("Fondo actualizado. Se ve detrás del cristal en toda la app.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudo usar esa imagen.");
     } finally {
@@ -71,7 +69,7 @@ export function WallpaperPicker() {
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-medium">Fondo de pantalla</p>
           <p className="text-xs leading-4 text-muted-foreground">
-            Elige una foto y se verá difuminada detrás del cristal. Se guarda solo en este navegador.
+            Elige una foto y se verá detrás del cristal en toda la app. Se guarda solo en este navegador.
           </p>
         </div>
 
