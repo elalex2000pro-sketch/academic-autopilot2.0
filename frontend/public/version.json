@@ -1,10 +1,11 @@
 {
-  "version": "1.3.30",
-  "publishedAt": "2026-11-10T12:40:00.000Z",
+  "version": "1.3.31",
+  "publishedAt": "2026-11-10T13:05:00.000Z",
   "sizeBytes": 8388608,
   "notes": [
-    "La barra de nivel y experiencia vuelve a verse al entrar al inicio, encima del saludo.",
-    "La personalización de paneles sigue siendo global y cada sección conserva su propio diseño."
+    "Los mensajes del chat ya avisan en el ordenador aunque estés en otra sección de la app; solo se callan si tienes ese chat abierto y la ventana en primer plano.",
+    "Nuevo bloque Notificaciones en Ajustes para activar el permiso del sistema y probar un aviso.",
+    "Al pulsar un aviso del chat en la app de escritorio se abre directamente el chat."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases"
 }

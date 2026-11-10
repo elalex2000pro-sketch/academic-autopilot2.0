@@ -40,6 +40,7 @@ import {
   type ForwardTarget,
 } from "@/components/chat-forward-modal";
 import { useRealtime } from "@/components/realtime-provider";
+import { setActiveChatConversation } from "@/lib/chat-active";
 import { Button } from "@/components/ui/button";
 import { chatApi } from "@/lib/api";
 import {
@@ -493,6 +494,13 @@ export function ChatView() {
   );
 
   useEffect(() => subscribeChatMutes(setMutedChats), []);
+
+  // El aviso nativo consulta qué conversación se está leyendo para no
+  // interrumpir con el chat que ya está abierto en pantalla.
+  useEffect(() => {
+    setActiveChatConversation(activeId);
+    return () => setActiveChatConversation(null);
+  }, [activeId]);
 
   useEffect(() => {
     if (!meId) {

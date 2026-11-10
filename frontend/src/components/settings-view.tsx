@@ -66,6 +66,10 @@ import {
   useSidebarPreferences,
 } from "@/lib/layout-preferences";
 import { saveRecoveryHint } from "@/lib/recovery-hint";
+import {
+  ensureSystemNotificationPermission,
+  showSystemNotification,
+} from "@/lib/system-notifications";
 import { openAiDrawer } from "@/lib/ai-drawer";
 import { cn } from "@/lib/utils";
 import type {
@@ -594,6 +598,28 @@ export function SettingsView() {
     setNotice("Diseño restablecido: paneles y barra han vuelto a su sitio de fábrica.");
   }, []);
 
+  const handleEnableNotifications = useCallback(async () => {
+    const granted = await ensureSystemNotificationPermission();
+    setNotice(
+      granted
+        ? "Notificaciones activadas: los mensajes del chat avisarán en el sistema."
+        : "El sistema bloqueó las notificaciones. Actívalas para Academic Autopilot en los ajustes de tu navegador u ordenador.",
+    );
+  }, []);
+
+  const handleTestNotification = useCallback(async () => {
+    const shown = await showSystemNotification({
+      title: "Academic Autopilot",
+      body: "Así se verán los avisos de mensajes nuevos del chat.",
+      tag: "chat-test",
+    });
+    setNotice(
+      shown
+        ? "Aviso enviado al sistema. Si no aparece, revisa el centro de notificaciones de tu ordenador."
+        : "No se pudo mostrar el aviso: activa antes las notificaciones.",
+    );
+  }, []);
+
   return (
     <motion.div variants={pageStagger} className="mx-auto max-w-5xl space-y-5 px-5 pb-12 pt-7 sm:px-8 lg:pt-9">
       <motion.header variants={pageItem}>
@@ -742,6 +768,29 @@ export function SettingsView() {
                       Devuelve los paneles y la barra al diseño de fábrica.
                     </span>
                   </div>
+                </div>
+              </div>
+            </SettingsCard>
+
+            <SettingsCard
+              icon={BellRing}
+              title="Notificaciones"
+              description="Avisos del sistema para los mensajes nuevos del chat, exámenes y entregas."
+            >
+              <div className="space-y-3">
+                <p className="text-[11px] leading-4 text-slate-500 dark:text-white/40">
+                  En el ordenador los avisos necesitan permiso del sistema. Actívalos una vez y
+                  llegarán aunque estés en otra sección de la app; solo se silencian si tienes ese
+                  chat abierto y la ventana en primer plano.
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => void handleEnableNotifications()}>
+                    <BellRing className="h-3.5 w-3.5" />
+                    Activar notificaciones
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => void handleTestNotification()}>
+                    Probar aviso
+                  </Button>
                 </div>
               </div>
             </SettingsCard>

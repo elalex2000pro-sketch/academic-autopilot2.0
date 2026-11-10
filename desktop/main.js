@@ -301,6 +301,11 @@ function registerWindowControls() {
       if (win.isMinimized()) win.restore();
       win.show();
       win.focus();
+      // Los avisos del chat traen la ruta a abrir; el resto solo enfoca.
+      if (typeof payload?.url === "string" && payload.url.startsWith("/")) {
+        const target = `${APP_ORIGIN}${payload.url}`;
+        if (isAppUrl(target)) void win.loadURL(target);
+      }
     });
     notification.show();
     return { ok: true };

@@ -1,10 +1,15 @@
 // Avisos de mensajes nuevos del chat. La decisión vive aquí para que el
 // WebSocket global pueda avisar aunque el usuario esté en otra sección.
 import type { RealtimeEvent } from "@/components/realtime-provider";
+import { getActiveChatConversation } from "@/lib/chat-active";
 import { isChatMuted } from "@/lib/chat-mutes";
 import { parseStickerMessage } from "@/lib/gamification";
 import type { ChatMessage } from "@/lib/types";
-import { showSystemNotification } from "@/lib/system-notifications";
+import {
+  ensureSystemNotificationPermission,
+  showSystemNotification,
+  systemNotificationPermission,
+} from "@/lib/system-notifications";
 
 export interface ChatRealtimePayload {
   conversation_id?: string;
@@ -51,20 +56,31 @@ export async function notifyChatMessage(
     return false;
   }
 
-  if (
+  // Solo se calla si la ventana tiene el foco Y la conversación abierta es
+  // justo esta: en cualquier otra sección el aviso sí debe saltar.
+  const focused =
     typeof document !== "undefined" &&
     document.visibilityState === "visible" &&
-    document.hasFocus()
-  ) {
+    document.hasFocus();
+  if (focused && getActiveChatConversation() === data.conversation_id) {
     return false;
   }
 
   // Este es el último filtro antes de tocar el sistema operativo.
   if (isChatMuted(data.conversation_id)) return false;
 
+  // En el navegador el permiso nace en "default": se pide aquí para que el
+  // primer mensaje no se pierda en silencio. En escritorio el permiso lo
+  // gestiona Electron y esta llamada devuelve true sin preguntar.
+  if (systemNotificationPermission() === "default") {
+    const granted = await ensureSystemNotificationPermission();
+    if (!granted) return false;
+  }
+
   return showSystemNotification({
     title: titleFor(data, message),
     body: bodyFor(message),
     tag: `chat-${data.conversation_id}`,
+    url: "/chat",
   });
 }
