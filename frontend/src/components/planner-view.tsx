@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { EditablePanels } from "@/components/layout/editable-panels";
 import { pageItem, pageStagger } from "@/components/page-animated-wrapper";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -971,7 +972,18 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
         </motion.div>
       )}
 
-      <motion.div variants={pageItem} className="mt-6 grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:gap-6">
+      <EditablePanels
+        section="planner"
+        label="Paneles del Planificador"
+        className="mt-6"
+        panels={[
+          {
+            id: "calendar",
+            label: "Calendario y plan",
+            minW: 6,
+            minH: 4,
+            node: (
+      <motion.div variants={pageItem} className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:gap-6">
         <aside className="order-2 space-y-4 xl:max-h-[calc(100dvh-6rem)] xl:overflow-y-auto xl:pr-1">
           <section ref={quickFormRef} className="app-glass rounded-[26px] p-4">
             <div className="flex items-start justify-between gap-3">
@@ -2239,6 +2251,10 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
           )}
         </section>
       </motion.div>
+            ),
+          },
+        ]}
+      />
 
       {/* Gestión del horario: añadir, editar, importar y quitar clases */}
       <motion.section variants={pageItem} className="mt-5 rounded-3xl bg-white/35 p-4 backdrop-blur-xl dark:bg-white/[0.025] sm:p-5">

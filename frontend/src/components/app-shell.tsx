@@ -30,7 +30,7 @@ import {
   isActive,
   type NavItem,
 } from "@/lib/navigation";
-import { useLayoutPreferences } from "@/lib/layout-preferences";
+import { useSidebarPreferences } from "@/lib/layout-preferences";
 import { hasCompletedOnboarding, markOnboardingCompleted } from "@/lib/onboarding";
 import { cn } from "@/lib/utils";
 
@@ -119,8 +119,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { animationLevel } = usePreferences();
-  const { layout } = useLayoutPreferences();
-  const sidebarLayout = layout.sidebar;
+  const { sidebar: sidebarLayout } = useSidebarPreferences();
   const railRef = useRef<HTMLElement | null>(null);
   const railLinks = useRef(new Map<string, HTMLAnchorElement>());
   const [railBubble, setRailBubble] = useState<{ x: number; y: number } | null>(null);

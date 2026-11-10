@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { EditablePanels } from "@/components/layout/editable-panels";
 import { pageItem, pageStagger } from "@/components/page-animated-wrapper";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -679,6 +680,17 @@ export function AcademicsView() {
   // márgenes laterales e inferiores para no duplicar la separación.
   return (
     <motion.div variants={pageStagger} className="mx-auto max-w-7xl space-y-4 px-4 pb-12 md:px-6">
+      <EditablePanels
+        section="academics"
+        label="Paneles de Académico"
+        panels={[
+          {
+            id: "content",
+            label: "Asignaturas y notas",
+            minW: 6,
+            minH: 4,
+            node: (
+              <>
       <motion.section variants={pageItem} className="app-glass rounded-3xl p-4 md:p-6 lg:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
@@ -1387,6 +1399,11 @@ export function AcademicsView() {
         onClose={() => setExamDialog(null)}
         onSaved={handleExamSaved}
         onDeleted={handleExamDeleted}
+      />
+              </>
+            ),
+          },
+        ]}
       />
     </motion.div>
   );

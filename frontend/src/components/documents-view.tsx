@@ -6,6 +6,7 @@ import { Calculator, FileText, NotebookPen, PenTool, Plus, X } from "lucide-reac
 
 import NotebooksPage from "@/app/notebooks/page";
 import { AcademicOfficeView } from "@/components/academic-office-view";
+import { EditablePanels } from "@/components/layout/editable-panels";
 import { CalculatorPanel } from "@/components/calculator";
 import { Button } from "@/components/ui/button";
 import { requestNewCanvas, requestNewNotebook } from "@/lib/documents";
@@ -126,13 +127,26 @@ export function DocumentsView() {
         ))}
       </div>
 
-      {kind === "notes" ? (
-        <NotebooksPage />
-      ) : kind === "formal" ? (
-        <AcademicOfficeView newSignal={formalSignal} />
-      ) : (
-        <CanvasView />
-      )}
+      <EditablePanels
+        section="documents"
+        label="Paneles de Documentos"
+        panels={[
+          {
+            id: "editor",
+            label: "Editor",
+            minW: 6,
+            minH: 4,
+            node:
+              kind === "notes" ? (
+                <NotebooksPage />
+              ) : kind === "formal" ? (
+                <AcademicOfficeView newSignal={formalSignal} />
+              ) : (
+                <CanvasView />
+              ),
+          },
+        ]}
+      />
 
       <div id="documents-calculator">
         <CalculatorPanel

@@ -1,5 +1,6 @@
 "use client";
 
+import { EditablePanels } from "@/components/layout/editable-panels";
 import { pageItem, pageStagger } from "@/components/page-animated-wrapper";
 import { usePreferences } from "@/components/preferences-provider";
 
@@ -248,6 +249,17 @@ export default function LibraryView() {
 
   return (
     <motion.div variants={pageStagger} className="mx-auto w-full max-w-[1240px] px-4 py-6 sm:px-6 lg:px-8">
+      <EditablePanels
+        section="library"
+        label="Paneles de Biblioteca"
+        panels={[
+          {
+            id: "books",
+            label: "Biblioteca",
+            minW: 6,
+            minH: 4,
+            node: (
+              <>
       <input
         ref={inputRef}
         type="file"
@@ -723,6 +735,11 @@ export default function LibraryView() {
           </div>
         </motion.div>
       )}
+              </>
+            ),
+          },
+        ]}
+      />
     </motion.div>
   );
 }

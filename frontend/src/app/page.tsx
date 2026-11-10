@@ -802,7 +802,7 @@ export default function DashboardPage() {
         )}
       </AnimatePresence>
 
-      <EditablePanels panels={dashboardPanels} className="mt-4" />
+      <EditablePanels section="dashboard" panels={dashboardPanels} className="mt-4" />
 
       {/* La barra de nivel va después del saludo: cuando estaba arriba
           empujaba el "Hola" fuera de su posición clásica. */}

@@ -60,10 +60,10 @@ import { api, ApiError } from "@/lib/api";
 import { GEMINI_MODEL_OPTIONS, GEMINI_RETIRED_NOTE } from "@/lib/ai-models";
 import { resetCustomTimetable } from "@/lib/custom-timetable";
 import {
-  resetLayout,
+  resetAllLayouts,
   setLayoutEditing,
   useLayoutEditing,
-  useLayoutPreferences,
+  useSidebarPreferences,
 } from "@/lib/layout-preferences";
 import { saveRecoveryHint } from "@/lib/recovery-hint";
 import { openAiDrawer } from "@/lib/ai-drawer";
@@ -585,12 +585,11 @@ export function SettingsView() {
     }
   }
 
-  const { layout: appLayout, updateSidebar } = useLayoutPreferences();
+  const { sidebar: sidebarLayout, updateSidebar } = useSidebarPreferences();
   const layoutEditing = useLayoutEditing();
-  const sidebarLayout = appLayout.sidebar;
 
   const handleResetLayout = useCallback(() => {
-    resetLayout();
+    resetAllLayouts();
     setLayoutEditing(false);
     setNotice("Diseño restablecido: paneles y barra han vuelto a su sitio de fábrica.");
   }, []);
@@ -665,7 +664,7 @@ export function SettingsView() {
                 <SettingRow
                   title="Modo edición"
                   titleId="layout-edit-label"
-                  description="Muestra guías punteadas y asas para arrastrar y redimensionar las tarjetas del Dashboard. Cada panel encaja en una cuadrícula de 12 columnas y los cambios se guardan solos en este dispositivo."
+                  description="Muestra guías punteadas y asas para arrastrar y redimensionar los paneles de cualquier sección: inicio, Documentos, Planificador, Biblioteca y Académico. Cada sección guarda su propio diseño en este dispositivo."
                 >
                   <Switch
                     checked={layoutEditing}

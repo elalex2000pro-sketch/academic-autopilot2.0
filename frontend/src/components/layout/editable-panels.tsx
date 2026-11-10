@@ -11,7 +11,7 @@ import {
 import { Check, GripVertical, Maximize2, RotateCcw } from "lucide-react";
 
 import {
-  DEFAULT_LAYOUT,
+  DEFAULT_SECTION_PANELS,
   LAYOUT_COLUMNS,
   LAYOUT_GAP,
   LAYOUT_MAX_ROW,
@@ -22,6 +22,7 @@ import {
   setLayoutEditing,
   useLayoutEditing,
   useLayoutPreferences,
+  type LayoutSection,
   type PanelRect,
 } from "@/lib/layout-preferences";
 import { cn } from "@/lib/utils";
@@ -62,11 +63,16 @@ function cellStyle(rect: PanelRect): CSSProperties {
 export function EditablePanels({
   panels,
   className,
+  section,
+  label,
 }: {
   panels: EditablePanelDefinition[];
   className?: string;
+  /** Sección dueña del diseño: cada una guarda su propia cuadrícula. */
+  section: LayoutSection;
+  label?: string;
 }) {
-  const { layout, updatePanel } = useLayoutPreferences();
+  const { panels: layoutPanels, updatePanel } = useLayoutPreferences(section);
   const editing = useLayoutEditing();
   const containerRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -75,8 +81,8 @@ export function EditablePanels({
   function rectFor(id: string): PanelRect {
     return (
       live[id] ??
-      layout.panels[id] ??
-      DEFAULT_LAYOUT.panels[id] ?? { x: 0, y: 0, w: LAYOUT_COLUMNS, h: 3 }
+      layoutPanels[id] ??
+      DEFAULT_SECTION_PANELS[section][id] ?? { x: 0, y: 0, w: LAYOUT_COLUMNS, h: 3 }
     );
   }
 
@@ -141,7 +147,7 @@ export function EditablePanels({
         // saltos, la tarjeta encaja donde se está viendo.
         setLive((current) => ({
           ...current,
-          [drag.id]: resolveCollisions(drag.id, { ...drag.rect, x, y }, getLayout().panels),
+          [drag.id]: resolveCollisions(drag.id, { ...drag.rect, x, y }, getLayout(section)),
         }));
         return;
       }
@@ -167,7 +173,7 @@ export function EditablePanels({
       setLive((current) => {
         const rect = current[drag.id];
         if (rect) {
-          updatePanel(drag.id, resolveCollisions(drag.id, rect, getLayout().panels));
+          updatePanel(drag.id, resolveCollisions(drag.id, rect, getLayout(section)));
         }
         const next = { ...current };
         delete next[drag.id];
@@ -183,7 +189,7 @@ export function EditablePanels({
       window.removeEventListener("pointerup", handleUp);
       window.removeEventListener("pointercancel", handleUp);
     };
-  }, [editing, updatePanel]);
+  }, [editing, section, updatePanel]);
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -203,7 +209,7 @@ export function EditablePanels({
           <div className="flex shrink-0 items-center gap-1.5">
             <button
               type="button"
-              onClick={() => resetLayout()}
+              onClick={() => resetLayout(section)}
               className="flex h-8 items-center gap-1.5 rounded-xl px-2.5 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-900/[0.06] hover:text-slate-900 dark:text-white/55 dark:hover:bg-white/[0.08] dark:hover:text-white"
             >
               <RotateCcw className="h-3.5 w-3.5" />
@@ -224,7 +230,7 @@ export function EditablePanels({
       <div
         ref={containerRef}
         className={cn("panel-grid", editing && "panel-grid-editing")}
-        aria-label="Paneles del inicio"
+        aria-label={label ?? "Paneles de la sección"}
       >
         {panels.map((panel) => {
           const rect = rectFor(panel.id);
