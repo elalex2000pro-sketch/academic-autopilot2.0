@@ -533,6 +533,9 @@ export interface ChatUser {
   display_name: string;
   /** Tick azul junto al nombre. */
   is_verified?: boolean;
+  /** Presencia confirmada por el servidor; nunca inferida de un mensaje. */
+  online?: boolean;
+  last_seen_at?: string | null;
 }
 
 export interface ChatMember {

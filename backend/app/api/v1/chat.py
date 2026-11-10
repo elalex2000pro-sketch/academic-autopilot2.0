@@ -1,14 +1,18 @@
 """Chat: conversaciones privadas y grupales, adjuntos y avisos en tiempo real."""
+
 from __future__ import annotations
 
+import asyncio
 import os
 import uuid
 from datetime import UTC, datetime
+from typing import Annotated
 from urllib.parse import quote
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import CurrentUser, DbSession
 from app.core.config import settings
@@ -25,7 +29,7 @@ from app.schemas.chat import (
     ChatMessageRead,
     ChatUserRead,
 )
-from app.services.realtime import notify
+from app.services.realtime import manager, notify
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 logger = get_logger(__name__)
@@ -63,6 +67,8 @@ def _user_read(user: User) -> ChatUserRead:
         username=user.username,
         display_name=_display_name(user),
         is_verified=bool(user.is_verified),
+        online=manager.is_online(user.id),
+        last_seen_at=user.last_seen_at,
     )
 
 
@@ -86,13 +92,18 @@ def _message_read(message: ChatMessage, sender: User) -> ChatMessageRead:
         sender_verified=bool(sender.is_verified),
         content=message.content,
         attachment=_attachment_read(message),
-        status=(
-            message.status
-            if message.status in ("sent", "delivered", "read")
-            else "sent"
-        ),
+        status=(message.status if message.status in ("sent", "delivered", "read") else "sent"),
         created_at=message.created_at,
     )
+
+
+def _at_or_after(watermark: datetime | None, created: datetime) -> bool:
+    if watermark is None:
+        return False
+    # SQLite test snapshots use naive UTC; PostgreSQL returns aware values.
+    watermark = watermark.replace(tzinfo=UTC) if watermark.tzinfo is None else watermark
+    created = created.replace(tzinfo=UTC) if created.tzinfo is None else created
+    return watermark >= created
 
 
 async def _advance_status(
@@ -115,7 +126,23 @@ async def _advance_status(
         ).scalars()
     )
     by_sender: dict[uuid.UUID, list[uuid.UUID]] = {}
+    members = list(
+        (
+            await db.execute(
+                select(ChatMember).where(ChatMember.conversation_id == conversation_id)
+            )
+        ).scalars()
+    )
     for message in messages:
+        recipients = [member for member in members if member.user_id != message.sender_id]
+        if not recipients or not all(
+            _at_or_after(
+                member.last_read_at if new_status == "read" else member.last_delivered_at,
+                message.created_at,
+            )
+            for member in recipients
+        ):
+            continue
         message.status = new_status
         by_sender.setdefault(message.sender_id, []).append(message.id)
     return by_sender
@@ -141,13 +168,14 @@ def _notify_status(
 
 
 async def _require_member(
-    db: DbSession, conversation_id: uuid.UUID, user_id: uuid.UUID
+    db: DbSession, conversation_id: uuid.UUID, user_id: uuid.UUID, *, lock: bool = False
 ) -> tuple[ChatConversation, ChatMember]:
-    conversation = (
-        await db.execute(
-            select(ChatConversation).where(ChatConversation.id == conversation_id)
-        )
-    ).scalar_one_or_none()
+    statement = select(ChatConversation).where(ChatConversation.id == conversation_id)
+    if lock:
+        # Serialize receipt transactions before reading recipient watermarks.
+        # PostgreSQL READ COMMITTED then sees the previous acknowledgment.
+        statement = statement.with_for_update()
+    conversation = (await db.execute(statement)).scalar_one_or_none()
     if conversation is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Conversacion no encontrada"
@@ -184,9 +212,7 @@ async def _resolve_users(
 
     cleaned = [name.strip().lstrip("@").lower() for name in usernames if name.strip()]
     if cleaned:
-        rows = await db.execute(
-            select(User).where(func.lower(User.username).in_(cleaned))
-        )
+        rows = await db.execute(select(User).where(func.lower(User.username).in_(cleaned)))
         for user in rows.scalars():
             found[user.id] = user
 
@@ -199,18 +225,14 @@ async def _conversation_read(
     members = list(
         (
             await db.execute(
-                select(ChatMember).where(
-                    ChatMember.conversation_id == conversation.id
-                )
+                select(ChatMember).where(ChatMember.conversation_id == conversation.id)
             )
         ).scalars()
     )
     user_ids = {member.user_id for member in members}
     users = {
         user.id: user
-        for user in (
-            await db.execute(select(User).where(User.id.in_(user_ids)))
-        ).scalars()
+        for user in (await db.execute(select(User).where(User.id.in_(user_ids)))).scalars()
     }
 
     last_message = (
@@ -260,6 +282,30 @@ async def _conversation_read(
     )
 
 
+async def _restore_direct_members(
+    db: DbSession, conversation_id: uuid.UUID, user_ids: tuple[uuid.UUID, uuid.UUID]
+) -> None:
+    """Reopen an existing pair if a participant left using an older app version."""
+    for user_id in user_ids:
+        found = (
+            await db.execute(
+                select(ChatMember.id).where(
+                    ChatMember.conversation_id == conversation_id, ChatMember.user_id == user_id
+                )
+            )
+        ).first()
+        if found is None:
+            try:
+                async with db.begin_nested():
+                    db.add(
+                        ChatMember(conversation_id=conversation_id, user_id=user_id, role="member")
+                    )
+                    await db.flush()
+            except IntegrityError:
+                pass  # Another request restored exactly the same membership.
+    await db.commit()
+
+
 # ------------------------------------------------------------------ personas
 
 
@@ -269,25 +315,17 @@ async def search_users(
     db: DbSession,
     q: str = Query("", max_length=80),
 ) -> list[ChatUserRead]:
-    """Busca personas por @usuario o email para invitarlas a un chat."""
+    """Busca identificadores publicos; los correos privados no son contactos."""
     term = q.strip().lstrip("@").lower()
+    if not term or not all(char.isascii() and (char.isalnum() or char == "_") for char in term):
+        return []
     stmt = select(User).where(User.id != current_user.id)
-    if term:
-        stmt = stmt.where(
-            or_(
-                func.lower(User.username).startswith(term),
-                func.lower(User.email).startswith(term),
-            )
-        )
-    stmt = stmt.order_by(
-        User.username.asc().nullslast(), User.full_name.asc().nullslast()
-    ).limit(10)
+    stmt = stmt.where(func.lower(User.username).startswith(term, autoescape=True))
+    stmt = stmt.order_by(User.username.asc().nullslast(), User.full_name.asc().nullslast()).limit(
+        10
+    )
     rows = await db.execute(stmt)
-    return [
-        _user_read(user)
-        for user in rows.scalars()
-        if user.username or (term and user.email.lower().startswith(term))
-    ]
+    return [_user_read(user) for user in rows.scalars()]
 
 
 # ------------------------------------------------------------ conversaciones
@@ -321,9 +359,7 @@ async def create_conversation(
     payload: ChatConversationCreate, current_user: CurrentUser, db: DbSession
 ) -> ChatConversationRead:
     """Crea un chat privado (reutiliza el existente) o un grupo con invitados."""
-    invited = await _resolve_users(
-        db, payload.member_ids, payload.usernames, current_user.id
-    )
+    invited = await _resolve_users(db, payload.member_ids, payload.usernames, current_user.id)
 
     if payload.kind == "direct":
         if len(invited) != 1:
@@ -335,12 +371,11 @@ async def create_conversation(
         direct_key = ":".join(sorted([str(current_user.id), str(other.id)]))
         existing = (
             await db.execute(
-                select(ChatConversation).where(
-                    ChatConversation.direct_key == direct_key
-                )
+                select(ChatConversation).where(ChatConversation.direct_key == direct_key)
             )
         ).scalar_one_or_none()
         if existing is not None:
+            await _restore_direct_members(db, existing.id, (current_user.id, other.id))
             return await _conversation_read(db, existing, current_user.id)
         conversation = ChatConversation(
             kind="direct", title=None, owner_id=None, direct_key=direct_key
@@ -357,12 +392,23 @@ async def create_conversation(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invita al menos a una persona",
             )
-        conversation = ChatConversation(
-            kind="group", title=title[:200], owner_id=current_user.id
-        )
+        conversation = ChatConversation(kind="group", title=title[:200], owner_id=current_user.id)
 
     db.add(conversation)
-    await db.flush()
+    viewer_id = current_user.id
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        if payload.kind == "direct":
+            existing = (
+                await db.execute(
+                    select(ChatConversation).where(ChatConversation.direct_key == direct_key)
+                )
+            ).scalar_one_or_none()
+            if existing is not None:
+                return await _conversation_read(db, existing, viewer_id)
+        raise
     db.add(
         ChatMember(
             conversation_id=conversation.id,
@@ -372,11 +418,7 @@ async def create_conversation(
         )
     )
     for user in invited:
-        db.add(
-            ChatMember(
-                conversation_id=conversation.id, user_id=user.id, role="member"
-            )
-        )
+        db.add(ChatMember(conversation_id=conversation.id, user_id=user.id, role="member"))
     await db.commit()
     await db.refresh(conversation)
 
@@ -402,9 +444,7 @@ async def invite_member(
     db: DbSession,
 ) -> ChatConversationRead:
     """Invita a una persona por @usuario (solo grupos y solo el propietario)."""
-    conversation, membership = await _require_member(
-        db, conversation_id, current_user.id
-    )
+    conversation, membership = await _require_member(db, conversation_id, current_user.id)
     if conversation.kind != "group":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -435,11 +475,7 @@ async def invite_member(
             status_code=status.HTTP_409_CONFLICT,
             detail="Esa persona ya esta en el grupo",
         )
-    db.add(
-        ChatMember(
-            conversation_id=conversation.id, user_id=new_member.id, role="member"
-        )
-    )
+    db.add(ChatMember(conversation_id=conversation.id, user_id=new_member.id, role="member"))
     await db.commit()
     notify(
         new_member.id,
@@ -448,9 +484,7 @@ async def invite_member(
     )
     for member in (
         await db.execute(
-            select(ChatMember.user_id).where(
-                ChatMember.conversation_id == conversation.id
-            )
+            select(ChatMember.user_id).where(ChatMember.conversation_id == conversation.id)
         )
     ).scalars():
         notify(
@@ -465,20 +499,18 @@ async def invite_member(
     "/conversations/{conversation_id}/members/me",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-async def leave_conversation(
-    conversation_id: uuid.UUID, current_user: CurrentUser, db: DbSession
-):
+async def leave_conversation(conversation_id: uuid.UUID, current_user: CurrentUser, db: DbSession):
     """Sale de la conversacion. Si queda vacia, se elimina con sus mensajes."""
-    conversation, membership = await _require_member(
-        db, conversation_id, current_user.id
-    )
+    conversation, membership = await _require_member(db, conversation_id, current_user.id)
+    if conversation.kind == "direct":
+        raise HTTPException(
+            status_code=400, detail="Los chats privados conservan sus dos participantes"
+        )
     await db.delete(membership)
     await db.flush()
     remaining = (
         await db.execute(
-            select(func.count(ChatMember.id)).where(
-                ChatMember.conversation_id == conversation.id
-            )
+            select(func.count(ChatMember.id)).where(ChatMember.conversation_id == conversation.id)
         )
     ).scalar_one()
     if int(remaining) == 0:
@@ -486,17 +518,35 @@ async def leave_conversation(
     await db.commit()
 
 
-@router.post(
-    "/conversations/{conversation_id}/read", status_code=status.HTTP_204_NO_CONTENT
-)
+@router.post("/conversations/{conversation_id}/read", status_code=status.HTTP_204_NO_CONTENT)
 async def mark_read(
-    conversation_id: uuid.UUID, current_user: CurrentUser, db: DbSession
+    conversation_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: DbSession,
+    through: Annotated[uuid.UUID | None, Query()] = None,
 ):
     """Marca la conversacion como leida y avisa al emisor con el doble tick azul."""
-    _, membership = await _require_member(db, conversation_id, current_user.id)
-    membership.last_read_at = datetime.now(tz=UTC)
+    _, membership = await _require_member(db, conversation_id, current_user.id, lock=True)
+    cutoff = datetime.now(tz=UTC)
+    if through is not None:
+        cutoff = (
+            await db.execute(
+                select(ChatMessage.created_at).where(
+                    ChatMessage.id == through, ChatMessage.conversation_id == conversation_id
+                )
+            )
+        ).scalar_one_or_none()
+        if cutoff is None:
+            raise HTTPException(status_code=404, detail="Mensaje de referencia no encontrado")
+    if not _at_or_after(membership.last_read_at, cutoff):
+        membership.last_read_at = cutoff
+    if not _at_or_after(membership.last_delivered_at, cutoff):
+        membership.last_delivered_at = cutoff
+    await db.flush()
+    delivered = await _advance_status(db, conversation_id, current_user.id, "delivered")
     changed = await _advance_status(db, conversation_id, current_user.id, "read")
     await db.commit()
+    _notify_status(conversation_id, "delivered", delivered)
     _notify_status(conversation_id, "read", changed)
 
 
@@ -504,14 +554,56 @@ async def mark_read(
     "/conversations/{conversation_id}/delivered",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-async def mark_delivered(
-    conversation_id: uuid.UUID, current_user: CurrentUser, db: DbSession
-):
+async def mark_delivered(conversation_id: uuid.UUID, current_user: CurrentUser, db: DbSession):
     """Confirma que el mensaje llego al dispositivo del destinatario."""
-    await _require_member(db, conversation_id, current_user.id)
+    _, membership = await _require_member(db, conversation_id, current_user.id, lock=True)
+    membership.last_delivered_at = datetime.now(tz=UTC)
+    await db.flush()
     changed = await _advance_status(db, conversation_id, current_user.id, "delivered")
     await db.commit()
     _notify_status(conversation_id, "delivered", changed)
+
+
+@router.post("/delivered", status_code=status.HTTP_204_NO_CONTENT)
+async def mark_all_delivered(current_user: CurrentUser, db: DbSession):
+    """Acknowledge receipt on connection/reconnection, even outside the chat view."""
+    conversation_ids = list(
+        (
+            await db.execute(
+                select(ChatMember.conversation_id)
+                .where(ChatMember.user_id == current_user.id)
+                .order_by(ChatMember.conversation_id)
+            )
+        ).scalars()
+    )
+    updates = []
+    # Stable ordering prevents deadlocks when two reconnects share many chats.
+    for conversation_id in conversation_ids:
+        _, membership = await _require_member(db, conversation_id, current_user.id, lock=True)
+        membership.last_delivered_at = datetime.now(tz=UTC)
+        await db.flush()
+        updates.append(
+            (
+                conversation_id,
+                await _advance_status(db, conversation_id, current_user.id, "delivered"),
+            )
+        )
+    await db.commit()
+    for conversation_id, changed in updates:
+        _notify_status(conversation_id, "delivered", changed)
+
+
+@router.get("/conversations/{conversation_id}/presence", response_model=list[ChatUserRead])
+async def conversation_presence(
+    conversation_id: uuid.UUID, current_user: CurrentUser, db: DbSession
+):
+    await _require_member(db, conversation_id, current_user.id)
+    rows = await db.execute(
+        select(User)
+        .join(ChatMember, ChatMember.user_id == User.id)
+        .where(ChatMember.conversation_id == conversation_id, User.id != current_user.id)
+    )
+    return [_user_read(user) for user in rows.scalars()]
 
 
 # ------------------------------------------------------------------ mensajes
@@ -526,7 +618,7 @@ async def list_messages(
     current_user: CurrentUser,
     db: DbSession,
     limit: int = Query(50, ge=1, le=200),
-    before: datetime | None = Query(default=None),
+    before: Annotated[datetime | None, Query()] = None,
 ) -> list[ChatMessageRead]:
     """Ultimos mensajes en orden cronologico; `before` carga los anteriores."""
     await _require_member(db, conversation_id, current_user.id)
@@ -543,9 +635,7 @@ async def list_messages(
     senders = {
         user.id: user
         for user in (
-            await db.execute(
-                select(User).where(User.id.in_({m.sender_id for m in messages}))
-            )
+            await db.execute(select(User).where(User.id.in_({m.sender_id for m in messages})))
         ).scalars()
     }
     return [
@@ -555,9 +645,13 @@ async def list_messages(
     ]
 
 
-async def _save_attachment(
-    conversation_id: uuid.UUID, upload: UploadFile
-) -> dict[str, object]:
+def _write_attachment(directory: str, name: str, data: bytes) -> None:
+    os.makedirs(directory, exist_ok=True)
+    with open(os.path.join(directory, name), "wb") as handle:
+        handle.write(data)
+
+
+async def _save_attachment(conversation_id: uuid.UUID, upload: UploadFile) -> dict[str, object]:
     filename = normalize_filename(upload.filename or "adjunto")
     extension = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     if extension not in _ALLOWED_ATTACHMENTS:
@@ -565,27 +659,30 @@ async def _save_attachment(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Formato de adjunto no permitido",
         )
-    data = await upload.read()
+    data = await upload.read(MAX_ATTACHMENT_MB * 1024 * 1024 + 1)
     if len(data) > MAX_ATTACHMENT_MB * 1024 * 1024:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail=f"El adjunto supera {MAX_ATTACHMENT_MB} MB",
         )
     if not data:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="El adjunto esta vacio"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El adjunto esta vacio")
 
     relative_dir = os.path.join("chat", str(conversation_id))
     absolute_dir = os.path.join(settings.files_dir, relative_dir)
-    os.makedirs(absolute_dir, exist_ok=True)
     stored_name = f"{uuid.uuid4().hex}.{extension}"
-    with open(os.path.join(absolute_dir, stored_name), "wb") as handle:
-        handle.write(data)
+    await asyncio.to_thread(_write_attachment, absolute_dir, stored_name, data)
 
     return {
         "attachment_name": filename[:300],
-        "attachment_type": upload.content_type or "application/octet-stream",
+        "attachment_type": {
+            "png": "image/png",
+            "jpg": "image/jpeg",
+            "jpeg": "image/jpeg",
+            "gif": "image/gif",
+            "webp": "image/webp",
+            "pdf": "application/pdf",
+        }.get(extension, "application/octet-stream"),
         "attachment_size": len(data),
         "attachment_path": os.path.join(relative_dir, stored_name),
     }
@@ -601,7 +698,7 @@ async def send_message(
     current_user: CurrentUser,
     db: DbSession,
     content: str = Form(""),
-    file: UploadFile | None = File(None),
+    file: Annotated[UploadFile | None, File()] = None,
 ) -> ChatMessageRead:
     """Envia texto y/o un adjunto y avisa a todos los miembros por WebSocket."""
     conversation, _ = await _require_member(db, conversation_id, current_user.id)
@@ -624,6 +721,7 @@ async def send_message(
         conversation_id=conversation.id,
         sender_id=current_user.id,
         content=text,
+        created_at=datetime.now(tz=UTC),
         **attachment,
     )
     conversation.updated_at = datetime.now(tz=UTC)
@@ -634,9 +732,7 @@ async def send_message(
     read = _message_read(message, current_user)
     for user_id in (
         await db.execute(
-            select(ChatMember.user_id).where(
-                ChatMember.conversation_id == conversation.id
-            )
+            select(ChatMember.user_id).where(ChatMember.conversation_id == conversation.id)
         )
     ).scalars():
         notify(
@@ -665,9 +761,7 @@ async def download_attachment(
         await db.execute(select(ChatMessage).where(ChatMessage.id == message_id))
     ).scalar_one_or_none()
     if message is None or not message.attachment_path:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Adjunto no encontrado"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Adjunto no encontrado")
     await _require_member(db, message.conversation_id, current_user.id)
 
     absolute_path = os.path.join(settings.files_dir, message.attachment_path)

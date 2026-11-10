@@ -1,4 +1,5 @@
 """Esquemas del chat y de los nombres de usuario."""
+
 from __future__ import annotations
 
 import uuid
@@ -15,6 +16,8 @@ class ChatUserRead(BaseModel):
     username: str | None = None
     display_name: str
     is_verified: bool = False
+    online: bool = False
+    last_seen_at: datetime | None = None
 
 
 class ChatMemberRead(BaseModel):

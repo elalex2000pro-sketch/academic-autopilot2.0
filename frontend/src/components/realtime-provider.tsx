@@ -12,7 +12,7 @@ import {
 } from "react";
 
 import { useAuth } from "@/components/auth-provider";
-import { realtimeUrl } from "@/lib/api";
+import { chatApi, realtimeUrl } from "@/lib/api";
 import { notifyChatMessage } from "@/lib/chat-notifications";
 
 export interface RealtimeEvent {
@@ -47,11 +47,25 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       ws = new WebSocket(url);
       ws.onopen = () => {
         retry = 0;
+        // Un dispositivo conectado confirma entrega incluso fuera de /chat.
+        void chatApi.markAllDelivered().catch(() => undefined);
+        listeners.current.forEach((listener) => {
+          try { listener({ event: "reconnected" }); } catch (error) {
+            console.error("Error en listener realtime", error);
+          }
+        });
       };
       ws.onmessage = (message) => {
         try {
           const parsed = JSON.parse(message.data) as RealtimeEvent;
           if (parsed.event === "ping") return;
+          if (parsed.event === "chat" && parsed.data?.action === "message") {
+            const message = parsed.data.message as { sender_id?: string } | undefined;
+            const conversationId = parsed.data.conversation_id;
+            if (message?.sender_id !== userId && typeof conversationId === "string") {
+              void chatApi.markDelivered(conversationId).catch(() => undefined);
+            }
+          }
           listeners.current.forEach((listener) => {
             try {
               listener(parsed);

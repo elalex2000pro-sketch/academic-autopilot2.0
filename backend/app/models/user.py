@@ -1,10 +1,12 @@
 """Modelo de usuario."""
+
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String
+from sqlalchemy import DateTime, Index, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPkMixin
@@ -28,10 +30,16 @@ class User(UUIDPkMixin, TimestampMixin, Base):
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str | None] = mapped_column(String(200))
-    # Nombre unico para el chat (@usuario). Opcional hasta que se elige.
-    username: Mapped[str | None] = mapped_column(
-        String(24), unique=True, index=True
+    # Toda cuenta recibe un identificador publico; puede personalizarlo después.
+    username: Mapped[str] = mapped_column(
+        String(24),
+        unique=True,
+        index=True,
+        nullable=False,
+        default=lambda: "user_" + uuid.uuid4().hex[:19],
     )
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    __table_args__ = (Index("uq_users_username_lower", func.lower(username), unique=True),)
     # Verificación de cuenta: tick azul en el chat. Se consigue acreditando un
     # correo institucional valido; no cambia el correo de acceso.
     is_verified: Mapped[bool] = mapped_column(default=False, nullable=False)
@@ -58,34 +66,30 @@ class User(UUIDPkMixin, TimestampMixin, Base):
     ai_base_url: Mapped[str | None] = mapped_column(String(300))
 
     # Relaciones (cascade para limpieza total al borrar el usuario).
-    integrations: Mapped[list["Integration"]] = relationship(
+    integrations: Mapped[list[Integration]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
-    courses: Mapped[list["Course"]] = relationship(
+    courses: Mapped[list[Course]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
-    tasks: Mapped[list["Task"]] = relationship(
+    tasks: Mapped[list[Task]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    schedule_blocks: Mapped[list[ScheduleBlock]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
-    schedule_blocks: Mapped[list["ScheduleBlock"]] = relationship(
+    grades: Mapped[list[Grade]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    timetable_entries: Mapped[list[TimetableEntry]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
-    grades: Mapped[list["Grade"]] = relationship(
+    documents: Mapped[list[Document]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
-    timetable_entries: Mapped[list["TimetableEntry"]] = relationship(
+    assistant_messages: Mapped[list[AssistantMessage]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
-    documents: Mapped[list["Document"]] = relationship(
+    ai_outputs: Mapped[list[AiOutput]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
-    assistant_messages: Mapped[list["AssistantMessage"]] = relationship(
-        back_populates="user", cascade="all, delete-orphan"
-    )
-    ai_outputs: Mapped[list["AiOutput"]] = relationship(
-        back_populates="user", cascade="all, delete-orphan"
-    )
-    sync_logs: Mapped[list["SyncLog"]] = relationship(
+    sync_logs: Mapped[list[SyncLog]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 

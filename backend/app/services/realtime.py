@@ -1,4 +1,5 @@
 """Gestor de conexiones en tiempo real (WebSocket) por usuario."""
+
 from __future__ import annotations
 
 import asyncio
@@ -26,6 +27,10 @@ class ConnectionManager:
         subs.discard(queue)
         if not subs:
             self._subs.pop(user_id, None)
+
+    def is_online(self, user_id: uuid.UUID) -> bool:
+        """True only while at least one authenticated WebSocket is connected."""
+        return bool(self._subs.get(user_id))
 
     def notify(self, user_id: uuid.UUID, event: str, data: Any = None) -> None:
         """Avisa a todos los dispositivos conectados de un cambio de datos."""

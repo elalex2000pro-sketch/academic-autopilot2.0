@@ -1,9 +1,11 @@
 """Endpoints de autenticacion (registro, login, perfil y recuperacion)."""
+
 import re
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import CurrentUser, DbSession
 from app.core.rate_limit import limiter
@@ -14,7 +16,6 @@ from app.core.security import (
     verify_password,
 )
 from app.models.user import User
-from app.schemas.chat import UsernameAvailability, UsernameUpdate
 from app.schemas.auth import (
     PasswordResetRequest,
     RecoveryQuestionRead,
@@ -26,6 +27,7 @@ from app.schemas.auth import (
     UserRegister,
     VerificationRequest,
 )
+from app.schemas.chat import UsernameAvailability, UsernameUpdate
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -73,11 +75,7 @@ def _normalize_recovery_pair(
 
 def _token_for(user: User) -> Token:
     """Emite un JWT ligado a la version de contrasena del usuario."""
-    return Token(
-        access_token=create_access_token(
-            user.id, {"ver": int(user.token_version or 0)}
-        )
-    )
+    return Token(access_token=create_access_token(user.id, {"ver": int(user.token_version or 0)}))
 
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
@@ -106,7 +104,13 @@ async def register(request: Request, payload: UserRegister, db: DbSession) -> To
         ),
     )
     db.add(user)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409, detail="Ya existe una cuenta con ese email o identificador"
+        ) from None
     await db.refresh(user)
     return _token_for(user)
 
@@ -149,9 +153,7 @@ async def recovery_question(
 
 @router.post("/recovery/reset", response_model=Token)
 @limiter.limit("5/minute")
-async def reset_password(
-    request: Request, payload: PasswordResetRequest, db: DbSession
-) -> Token:
+async def reset_password(request: Request, payload: PasswordResetRequest, db: DbSession) -> Token:
     """Restablece la contrasena con la respuesta de seguridad."""
     result = await db.execute(select(User).where(User.email == payload.email.lower()))
     user = result.scalar_one_or_none()
@@ -185,9 +187,7 @@ async def reset_password(
 
 
 @router.put("/recovery", response_model=UserRead)
-async def set_recovery(
-    payload: RecoverySetup, current_user: CurrentUser, db: DbSession
-) -> User:
+async def set_recovery(payload: RecoverySetup, current_user: CurrentUser, db: DbSession) -> User:
     """Configura o actualiza la pregunta de seguridad de la cuenta."""
     question, answer = _normalize_recovery_pair(payload.question, payload.answer)
     assert question is not None and answer is not None
@@ -283,9 +283,7 @@ async def username_available(
             available=False,
             reason="Entre 3 y 24 caracteres: minusculas, numeros o guion bajo",
         )
-    taken = (
-        await db.execute(select(User.id).where(User.username == username))
-    ).first()
+    taken = (await db.execute(select(User.id).where(func.lower(User.username) == username))).first()
     return UsernameAvailability(
         username=username,
         valid=True,
@@ -307,9 +305,7 @@ async def update_username(
         )
     existing = (
         await db.execute(
-            select(User).where(
-                User.username == username, User.id != current_user.id
-            )
+            select(User).where(func.lower(User.username) == username, User.id != current_user.id)
         )
     ).scalar_one_or_none()
     if existing is not None:
@@ -318,6 +314,10 @@ async def update_username(
             detail="Ese @usuario ya esta en uso",
         )
     current_user.username = username
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="Ese @usuario ya esta en uso") from None
     await db.refresh(current_user)
     return current_user

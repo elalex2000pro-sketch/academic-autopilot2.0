@@ -212,7 +212,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isBookReader = pathname.startsWith("/library/");
   const isOffice = pathname === "/office";
   const isPlanner = pathname === "/planner";
-  const isImmersive = pathname === "/studio" || isBookReader;
+  const isChat = pathname === "/chat";
+  const isImmersive = pathname === "/studio" || isBookReader || isChat;
 
   return (
     <NotificationCenter>
@@ -429,6 +430,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div
               className={cn(
                 "mx-auto w-full",
+                isChat && "px-4 py-4 md:pl-4 md:pr-5",
                 !isImmersive && (isPlanner ? "max-w-[1800px]" : "max-w-7xl"),
               )}
             >

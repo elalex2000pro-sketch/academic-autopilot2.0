@@ -1,4 +1,5 @@
 """Modelos del chat: conversaciones privadas y grupales, miembros y mensajes."""
+
 from __future__ import annotations
 
 import uuid
@@ -39,10 +40,10 @@ class ChatConversation(UUIDPkMixin, TimestampMixin, Base):
     # unico garantiza que solo exista una conversacion por pareja.
     direct_key: Mapped[str | None] = mapped_column(String(80), unique=True)
 
-    members: Mapped[list["ChatMember"]] = relationship(
+    members: Mapped[list[ChatMember]] = relationship(
         back_populates="conversation", cascade="all, delete-orphan"
     )
-    messages: Mapped[list["ChatMessage"]] = relationship(
+    messages: Mapped[list[ChatMessage]] = relationship(
         back_populates="conversation",
         cascade="all, delete-orphan",
         order_by="ChatMessage.created_at",
@@ -56,9 +57,7 @@ class ChatMember(UUIDPkMixin, TimestampMixin, Base):
     """Pertenencia de un usuario a una conversacion, con su ultimo leido."""
 
     __tablename__ = "chat_members"
-    __table_args__ = (
-        UniqueConstraint("conversation_id", "user_id", name="uq_chat_member"),
-    )
+    __table_args__ = (UniqueConstraint("conversation_id", "user_id", name="uq_chat_member"),)
 
     conversation_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -72,9 +71,10 @@ class ChatMember(UUIDPkMixin, TimestampMixin, Base):
     role: Mapped[str] = mapped_column(String(16), default="member", nullable=False)
     # Se actualiza al abrir la conversacion; sirve para contar no leidos.
     last_read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    conversation: Mapped["ChatConversation"] = relationship(back_populates="members")
-    user: Mapped["User"] = relationship()
+    conversation: Mapped[ChatConversation] = relationship(back_populates="members")
+    user: Mapped[User] = relationship()
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<ChatMember conv={self.conversation_id} user={self.user_id}>"
@@ -105,8 +105,8 @@ class ChatMessage(UUIDPkMixin, TimestampMixin, Base):
     attachment_size: Mapped[int | None] = mapped_column(Integer)
     attachment_path: Mapped[str | None] = mapped_column(String(500))
 
-    conversation: Mapped["ChatConversation"] = relationship(back_populates="messages")
-    sender: Mapped["User"] = relationship()
+    conversation: Mapped[ChatConversation] = relationship(back_populates="messages")
+    sender: Mapped[User] = relationship()
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<ChatMessage conv={self.conversation_id} sender={self.sender_id}>"

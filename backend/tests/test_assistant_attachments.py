@@ -93,6 +93,7 @@ def test_historial_solo_guarda_la_miniatura():
         "https://ejemplo.com/foto.png",
         f"data:image/png;base64,{'A' * 400_001}",
     ],
+    ids=["svg", "html", "remote-url", "oversize"],
 )
 def test_descarta_miniaturas_no_seguras(preview: str):
     assert _sanitize_preview(preview) is None

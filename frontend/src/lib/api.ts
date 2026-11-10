@@ -151,6 +151,9 @@ async function request<T>(
 ): Promise<T> {
   const token = tokenStore.get();
   const method = (options.method ?? "GET").toUpperCase();
+  // Los recibos y la presencia requieren datos vivos. Una respuesta guardada
+  // tampoco puede confirmar que se haya enviado una mutación sin conexión.
+  const cacheable = method === "GET" && !path.startsWith("/api/v1/chat/");
   const headers = new Headers(options.headers);
   if (!(options.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
@@ -161,7 +164,7 @@ async function request<T>(
   try {
     response = await fetch(`${resolveApiBase()}${path}`, { ...options, headers });
   } catch {
-    const cached = await readCachedApiResponse<T>(path);
+    const cached = cacheable ? await readCachedApiResponse<T>(path) : null;
     if (cached) {
       if (typeof window !== "undefined") {
         window.dispatchEvent(
@@ -192,7 +195,7 @@ async function request<T>(
   if (!response.ok) {
     // El servidor puede estar despertando (Render) o caido: si ya hay copia
     // local, es mejor mostrar los datos guardados que una pantalla de error.
-    if ([502, 503, 504].includes(response.status)) {
+    if (cacheable && [502, 503, 504].includes(response.status)) {
       const cached = await readCachedApiResponse<T>(path);
       if (cached) {
         if (typeof window !== "undefined") {
@@ -208,7 +211,7 @@ async function request<T>(
     throw new ApiError(response.status, extractErrorMessage(response.status, data));
   }
 
-  if (method === "GET" && data !== null) {
+  if (cacheable && data !== null) {
     // Se espera la escritura para que "Guardar copia local" no marque la copia
     // como completa antes de que IndexedDB haya guardado los datos.
     await cacheApiResponse(path, data);
@@ -866,6 +869,10 @@ import type {
 } from "@/lib/types";
 
 export const chatApi = {
+  presence: (conversationId: string) =>
+    request<ChatUserModel[]>(`/api/v1/chat/conversations/${conversationId}/presence`),
+  markAllDelivered: () =>
+    request<void>("/api/v1/chat/delivered", { method: "POST" }),
   conversations: () =>
     request<ChatConversationModel[]>("/api/v1/chat/conversations"),
   users: (q: string) =>
@@ -891,8 +898,8 @@ export const chatApi = {
         before ? `?before=${encodeURIComponent(before)}` : ""
       }`,
     ),
-  markRead: (conversationId: string) =>
-    request<void>(`/api/v1/chat/conversations/${conversationId}/read`, {
+  markRead: (conversationId: string, throughId?: string) =>
+    request<void>(`/api/v1/chat/conversations/${conversationId}/read${throughId ? `?through=${encodeURIComponent(throughId)}` : ""}`, {
       method: "POST",
     }),
   markDelivered: (conversationId: string) =>
