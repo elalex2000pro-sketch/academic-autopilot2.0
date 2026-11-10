@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { lockBodyScroll } from "@/lib/scroll-lock";
 import { cn } from "@/lib/utils";
 
 interface OnboardingStep {
@@ -126,14 +127,13 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
   useEffect(() => {
     previousFocusRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const releaseScrollLock = lockBodyScroll();
 
     const timer = window.setTimeout(() => primaryRef.current?.focus(), 80);
 
     return () => {
       window.clearTimeout(timer);
-      document.body.style.overflow = previousOverflow;
+      releaseScrollLock();
       previousFocusRef.current?.focus?.();
     };
   }, []);

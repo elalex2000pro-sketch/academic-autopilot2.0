@@ -18,6 +18,8 @@ import {
   type ReactNode,
 } from "react";
 import { CKEditor } from "@ckeditor/ckeditor5-react";
+
+import { lockBodyScroll } from "@/lib/scroll-lock";
 import {
   Alignment,
   AutoLink,
@@ -661,11 +663,10 @@ export function WriterEditor({
   // (Safari/iOS, permisos del navegador o Electron embebido).
   useEffect(() => {
     if (!focusMode) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const releaseScrollLock = lockBodyScroll();
     document.body.classList.add("office-editor-focus");
     return () => {
-      document.body.style.overflow = previousOverflow;
+      releaseScrollLock();
       document.body.classList.remove("office-editor-focus");
     };
   }, [focusMode]);

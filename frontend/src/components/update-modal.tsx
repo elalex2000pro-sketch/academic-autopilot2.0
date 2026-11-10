@@ -31,6 +31,7 @@ import {
   getDesktopUpdater,
   type DesktopUpdaterState,
 } from "@/lib/desktop-updater";
+import { lockBodyScroll } from "@/lib/scroll-lock";
 import { cn } from "@/lib/utils";
 
 type Phase =
@@ -216,11 +217,7 @@ function WebUpdateModal() {
   // Bloquea el scroll de la página mientras el modal está abierto.
   useEffect(() => {
     if (phase === "hidden") return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
-    };
+    return lockBodyScroll();
   }, [phase]);
 
   // Escape cierra o cancela y Tab queda atrapado dentro del diálogo.

@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
+import { lockBodyScroll } from "@/lib/scroll-lock";
 import { useRealtime } from "@/components/realtime-provider";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
@@ -398,13 +399,12 @@ function NotificationPanel({
   useEffect(() => {
     previousFocusRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const releaseScrollLock = lockBodyScroll();
     const timer = window.setTimeout(() => closeRef.current?.focus(), 80);
 
     return () => {
       window.clearTimeout(timer);
-      document.body.style.overflow = previousOverflow;
+      releaseScrollLock();
       previousFocusRef.current?.focus?.();
     };
   }, []);

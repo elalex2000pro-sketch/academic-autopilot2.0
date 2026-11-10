@@ -25,6 +25,7 @@ import {
   normalizeCategory,
   type LibraryCategoryId,
 } from "@/lib/library-categories";
+import { lockBodyScroll } from "@/lib/scroll-lock";
 import {
   deleteBook,
   formatBytes,
@@ -127,11 +128,10 @@ export default function LibraryView() {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !deleting) setPendingDelete(null);
     };
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const releaseScrollLock = lockBodyScroll();
     window.addEventListener("keydown", onKey);
     return () => {
-      document.body.style.overflow = previousOverflow;
+      releaseScrollLock();
       window.removeEventListener("keydown", onKey);
     };
   }, [pendingDelete, deleting]);

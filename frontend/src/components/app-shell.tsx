@@ -22,6 +22,7 @@ import { ThemeCycleButton } from "@/components/theme-toggle";
 import { WindowControls } from "@/components/window-controls";
 import { Button } from "@/components/ui/button";
 import { AI_DRAWER_EVENT } from "@/lib/ai-drawer";
+import { lockBodyScroll } from "@/lib/scroll-lock";
 import {
   NAV_GROUPS,
   SECONDARY_NAV_ITEMS,
@@ -153,11 +154,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setAiOpen(false);
     };
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const releaseScrollLock = lockBodyScroll();
     window.addEventListener("keydown", onKey);
     return () => {
-      document.body.style.overflow = previousOverflow;
+      releaseScrollLock();
       window.removeEventListener("keydown", onKey);
     };
   }, [aiOpen]);
@@ -379,7 +379,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <main
             className={cn(
               "min-w-0 flex-1 bg-transparent",
-              isBookReader ? "overflow-x-clip" : "overflow-x-hidden",
+              // `clip` no convierte el eje Y en un scroller: con `hidden` el
+              // navegador calcula `overflow-y: auto` y la rueda se queda atrapada
+              // dentro de `main` en vez de mover la página.
+              "overflow-x-clip",
               !isImmersive &&
                 "pb-[calc(var(--mobile-nav-offset)+1.25rem)] pt-4 md:pb-0 md:pt-5",
             )}

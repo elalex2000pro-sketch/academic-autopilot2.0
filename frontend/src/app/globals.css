@@ -483,22 +483,6 @@
   -webkit-app-region: no-drag;
 }
 
-/* Lenis: la inercia la controla su motor; el navegador no debe animar los
-   saltos por su cuenta porque las dos animaciones se pelean. */
-html.lenis,
-html.lenis body {
-  height: auto;
-}
-.lenis.lenis-smooth {
-  scroll-behavior: auto !important;
-}
-.lenis.lenis-stopped {
-  overflow: hidden;
-}
-.lenis.lenis-smooth [data-lenis-prevent] {
-  overscroll-behavior: contain;
-}
-
 .hide-scrollbar {
   scrollbar-width: none;
 }
@@ -1619,7 +1603,9 @@ html.dark .tt-tone-break {
 .panel-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  grid-auto-rows: 80px;
+  /* Cada fila mide al menos 80 px, pero crece con el contenido: así ningún
+     panel necesita scroll propio y la rueda siempre mueve la página. */
+  grid-auto-rows: minmax(80px, auto);
   gap: 16px;
 }
 
@@ -1634,10 +1620,9 @@ html.dark .tt-tone-break {
 .panel-surface {
   height: 100%;
   min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
+  /* Sin scroll interno: la página entera es la única superficie que scrollea.
+     Un hijo con overflow + `overscroll-behavior: contain` se quedaba la rueda. */
+  overflow: visible;
   border-radius: 24px;
 }
 
@@ -1732,7 +1717,6 @@ html.dark .tt-tone-break {
 
   .panel-surface {
     height: auto;
-    overflow: visible;
   }
 
   .panel-grid-editing .panel-surface {
