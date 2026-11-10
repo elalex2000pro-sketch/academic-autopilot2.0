@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type FormEvent,
@@ -495,7 +496,7 @@ export default function BookReaderView() {
     height: typeof window === "undefined" ? 800 : window.innerHeight,
   });
 
-  const contentRef = useRef<HTMLDivElement>(null);
+  const [contentElement, setContentElement] = useState<HTMLDivElement | null>(null);
   const bookRef = useRef<LocalBook | null>(null);
   const pageRefs = useRef(new Map<number, HTMLDivElement>());
   const lastObservedPageRef = useRef(1);
@@ -504,6 +505,12 @@ export default function BookReaderView() {
   const searchTokenRef = useRef<SearchToken>({ cancelled: true });
   const initialPageRef = useRef(1);
   const scrollReadyRef = useRef(false);
+  // Ancla de lectura: guarda la página y su posición vertical antes de un
+  // cambio de zoom/ancho para restaurarla cuando el navegador reflowe el PDF.
+  const zoomAnchorRef = useRef<{ page: number; top: number } | null>(null);
+  const pageLockRef = useRef(false);
+  const pageLockTimerRef = useRef<number | null>(null);
+  const zoomRef = useRef(100);
 
   const flushSave = useCallback(async () => {
     if (!bookRef.current || Object.keys(pendingPatchRef.current).length === 0) return;
@@ -607,24 +614,53 @@ export default function BookReaderView() {
     };
   }, [bookId, flushSave]);
 
+  const attachContent = useCallback((element: HTMLDivElement | null) => {
+    setContentElement(element);
+  }, []);
+
+  const capturePageAnchor = useCallback(() => {
+    if (!scrollReadyRef.current) return;
+    const page = lastObservedPageRef.current;
+    const element = pageRefs.current.get(page);
+    if (!element) return;
+    zoomAnchorRef.current = {
+      page,
+      top: element.getBoundingClientRect().top,
+    };
+    // Mientras el PDF se reflowea, los eventos de scroll no deben cambiar la
+    // página activa: el zoom no es una intención de pasar de página.
+    pageLockRef.current = true;
+    if (pageLockTimerRef.current) window.clearTimeout(pageLockTimerRef.current);
+    pageLockTimerRef.current = window.setTimeout(() => {
+      pageLockRef.current = false;
+      zoomAnchorRef.current = null;
+      pageLockTimerRef.current = null;
+    }, 500);
+  }, []);
+
   useEffect(() => {
     const update = () => {
-      const width = contentRef.current?.clientWidth ?? window.innerWidth;
+      capturePageAnchor();
+      const width = contentElement?.clientWidth ?? window.innerWidth;
       setContentSize({ width, height: window.innerHeight });
     };
     update();
     const observer = new ResizeObserver(update);
-    if (contentRef.current) observer.observe(contentRef.current);
+    if (contentElement) observer.observe(contentElement);
     window.addEventListener("resize", update);
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", update);
     };
-  }, []);
+  }, [capturePageAnchor, contentElement]);
 
   useEffect(() => {
     return () => {
       searchTokenRef.current.cancelled = true;
+      if (pageLockTimerRef.current) {
+        window.clearTimeout(pageLockTimerRef.current);
+        pageLockTimerRef.current = null;
+      }
     };
   }, []);
 
@@ -679,6 +715,7 @@ export default function BookReaderView() {
 
   const handleActivePage = useCallback(
     (page: number) => {
+      if (pageLockRef.current) return;
       if (page === lastObservedPageRef.current) return;
       lastObservedPageRef.current = page;
       setPageNumber(page);
@@ -693,7 +730,7 @@ export default function BookReaderView() {
 
     const updateActivePage = () => {
       frame = 0;
-      if (!scrollReadyRef.current) return;
+      if (!scrollReadyRef.current || pageLockRef.current) return;
       let active = 1;
       const readingLine = window.innerHeight * 0.35;
       for (let page = 1; page <= numPages; page += 1) {
@@ -706,7 +743,7 @@ export default function BookReaderView() {
     };
 
     const onScroll = () => {
-      if (!scrollReadyRef.current || frame) return;
+      if (!scrollReadyRef.current || pageLockRef.current || frame) return;
       frame = window.requestAnimationFrame(updateActivePage);
     };
 
@@ -770,19 +807,68 @@ export default function BookReaderView() {
     persist({ bookmarks: next });
   }, [bookmarks, pageNumber, persist]);
 
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
+
+  useLayoutEffect(() => {
+    const anchor = zoomAnchorRef.current;
+    if (!anchor) return;
+    const element = pageRefs.current.get(anchor.page);
+    if (element) {
+      const delta = element.getBoundingClientRect().top - anchor.top;
+      if (Math.abs(delta) > 0.5) window.scrollBy(0, delta);
+      // La página ancla manda durante el reflow, aunque el navegador haya
+      // emitido un scroll intermedio al cambiar el tamaño de las páginas.
+      lastObservedPageRef.current = anchor.page;
+      setPageNumber((current) => (current === anchor.page ? current : anchor.page));
+    }
+    if (pageLockTimerRef.current) window.clearTimeout(pageLockTimerRef.current);
+    pageLockTimerRef.current = window.setTimeout(() => {
+      pageLockRef.current = false;
+      zoomAnchorRef.current = null;
+      pageLockTimerRef.current = null;
+    }, 250);
+  }, [contentSize.width, contentSize.height, fitMode, zoom]);
+
   const changeZoom = useCallback(
     (delta: number) => {
-      const next = Math.min(200, Math.max(50, zoom + delta));
+      capturePageAnchor();
+      const next = Math.min(200, Math.max(50, zoomRef.current + delta));
+      zoomRef.current = next;
       setFitMode("custom");
       setZoom(next);
       persist({ zoom: next });
     },
-    [persist, zoom],
+    [capturePageAnchor, persist],
   );
 
-  const chooseFit = useCallback((mode: FitMode) => {
-    setFitMode(mode);
-  }, []);
+  const handleWheel = useCallback(
+    (event: WheelEvent) => {
+      // En trackpads el gesto de pinza llega como wheel con ctrlKey. Se consume
+      // aquí para que no haga scroll ni active el detector de página.
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (Math.abs(event.deltaY) < 0.5) return;
+      changeZoom(event.deltaY < 0 ? 10 : -10);
+    },
+    [changeZoom],
+  );
+
+  useEffect(() => {
+    if (!contentElement) return;
+    contentElement.addEventListener("wheel", handleWheel, { passive: false });
+    return () => contentElement.removeEventListener("wheel", handleWheel);
+  }, [contentElement, handleWheel]);
+
+  const chooseFit = useCallback(
+    (mode: FitMode) => {
+      capturePageAnchor();
+      setFitMode(mode);
+    },
+    [capturePageAnchor],
+  );
 
   const runSearch = useCallback(
     async (event?: FormEvent) => {
@@ -1325,7 +1411,7 @@ export default function BookReaderView() {
           </div>
         </header>
 
-        <main ref={contentRef} className="pdf-reader-pages flex-1 px-3 py-5 sm:px-5">
+        <main ref={attachContent} className="pdf-reader-pages flex-1 px-3 py-5 sm:px-5">
           {file && (
             <Document
               file={file}
