@@ -1,11 +1,10 @@
 {
-  "version": "1.3.29",
-  "publishedAt": "2026-11-10T12:10:00.000Z",
+  "version": "1.3.30",
+  "publishedAt": "2026-11-10T12:40:00.000Z",
   "sizeBytes": 8388608,
   "notes": [
-    "La personalización ya es global: mueve y redimensiona paneles en Documentos, Planificador, Biblioteca y Académico, no solo en el inicio.",
-    "Cada sección guarda su propio diseño por separado: cambiar el inicio ya no altera Documentos ni el Planificador.",
-    "Restablecer en Ajustes devuelve todas las secciones y la barra a su sitio de fábrica."
+    "La barra de nivel y experiencia vuelve a verse al entrar al inicio, encima del saludo.",
+    "La personalización de paneles sigue siendo global y cada sección conserva su propio diseño."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases"
 }

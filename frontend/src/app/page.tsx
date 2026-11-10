@@ -588,6 +588,11 @@ export default function DashboardPage() {
       variants={DASHBOARD_STAGGER}
       className="relative mx-auto max-w-[1500px] px-4 pb-12 pt-4 sm:px-6 lg:px-8 lg:pt-6"
     >
+      {/* Barra de nivel y experiencia, visible al entrar al inicio. */}
+      <div className="mb-4">
+        <GamificationCard />
+      </div>
+
       {/* ---- Registro obligatorio de exámenes pasados sin nota ---- */}
       {gradeNotice && (
         <div
@@ -803,12 +808,6 @@ export default function DashboardPage() {
       </AnimatePresence>
 
       <EditablePanels section="dashboard" panels={dashboardPanels} className="mt-4" />
-
-      {/* La barra de nivel va después del saludo: cuando estaba arriba
-          empujaba el "Hola" fuera de su posición clásica. */}
-      <div className="mt-4">
-        <GamificationCard />
-      </div>
 
       {editingExam ? (
         <ExamDialog
