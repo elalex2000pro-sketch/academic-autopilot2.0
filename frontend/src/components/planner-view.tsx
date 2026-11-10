@@ -337,6 +337,18 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
     return map;
   }, [exams]);
 
+  // Exámenes que aún no han pasado, del más cercano al más lejano.
+  const upcomingExams = useMemo(
+    () =>
+      sortExams(exams)
+        .filter((exam) => {
+          const key = examDateKey(exam);
+          return Boolean(key) && (key as string) >= todayKey;
+        })
+        .slice(0, 6),
+    [exams, todayKey],
+  );
+
   const importantByDay = useMemo(() => {
     const map = new Map<string, ImportantDate[]>();
     for (const event of importantDates) {
@@ -1190,144 +1202,82 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
             )}
           </section>
 
-          <section className="app-glass-soft rounded-[26px] p-3.5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
-                Resumen del mes
-              </p>
-              <h2 className="mt-1 text-[17px] font-semibold tracking-[-0.025em] text-slate-800 dark:text-white/90">
-                {monthLabel}
-              </h2>
-            </div>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => changeMonth(-1)}
-                aria-label="Mes anterior"
-                className="h-7 w-7"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => changeMonth(1)}
-                aria-label="Mes siguiente"
-                className="h-7 w-7"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          <div className="mt-3.5 grid grid-cols-7 gap-0.5 sm:gap-1">
-            {WEEKDAYS.map((day) => (
-              <div
-                key={day}
-                className="pb-0.5 text-center text-[8px] font-semibold uppercase tracking-[0.06em] text-slate-400 dark:text-white/30"
-              >
-                {day}
+          {/* Próximos exámenes: sustituye al mini calendario, que ya vive en la
+              columna principal del calendario mensual. */}
+          <section className="app-glass-soft rounded-[26px] p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#d92b22]/80 dark:text-[#ff8a80]/80">
+                  Próximos exámenes
+                </p>
+                <h3 className="mt-1 text-[14px] font-semibold text-slate-800 dark:text-white/90">
+                  Lo que viene
+                </h3>
               </div>
-            ))}
-            {monthCells.map((cell, index) => {
-              if (!cell) {
-                return <div key={`empty-${index}`} className="min-h-[33px] rounded-lg" />;
-              }
-              const dayTasks = tasksByDay.get(cell.key) ?? [];
-              const dayEvents = eventsByDay.get(cell.key) ?? [];
-              const dayExams = examsByDay.get(cell.key) ?? [];
-              const dayImportant = importantByDay.get(cell.key) ?? [];
-              const hasExam = dayExams.length > 0;
-              const markers = [
-                ...dayExams.map(() => "#FF3B30"),
-                ...dayImportant.map(() => "#FF9500"),
-                ...dayTasks.map((task) => PRIORITY_COLOR[task.priority] ?? "#8E8E93"),
-                ...dayEvents.map((event) => (event.is_exam ? "#FF3B30" : "#30B0C7")),
-              ].slice(0, 3);
-              const selected = cell.key === selectedDay;
-              const todayCell = cell.key === todayKey;
-              const weekendCell = weekdayIndex(new Date(cursor.getFullYear(), cursor.getMonth(), cell.day)) >= 5;
-              return (
-                <button
-                  key={cell.key}
-                  type="button"
-                  data-touch-compact
-                  onClick={() => selectDay(cell.key)}
-                  aria-pressed={selected}
-                  aria-label={`${longDate(cell.key)}: ${dayTasks.length} tareas, ${dayExams.length === 1 ? "1 examen" : `${dayExams.length} exámenes`}, ${dayImportant.length} fechas importantes, ${dayEvents.length} eventos`}
-                  title={hasExam ? dayExams.map((exam) => exam.title).join(" · ") : undefined}
-                  className={cn(
-                    "group relative flex min-h-[33px] flex-col items-center justify-center gap-0.5 rounded-lg px-0.5 py-1 text-center transition-all duration-200 ease-mac sm:min-h-[35px]",
-                    selected
-                      ? "bg-[#0066FF] text-white shadow-[0_12px_28px_-16px_rgba(0,102,255,0.95)]"
-                      : todayCell
-                        ? "bg-[#0066FF]/10 text-[#0066FF] dark:bg-[#0066FF]/15 dark:text-[#7fb2ff]"
-                        : hasExam
-                          ? "bg-[#FF3B30]/[0.07] text-slate-700 hover:bg-[#FF3B30]/[0.12] dark:bg-[#FF3B30]/10 dark:text-white/75 dark:hover:bg-[#FF3B30]/15"
-                          : "text-slate-600 hover:bg-slate-900/[0.035] dark:text-white/60 dark:hover:bg-white/[0.05]",
-                    weekendCell && !selected && !todayCell && !hasExam && "text-slate-400 dark:text-white/35",
-                    hasExam && !selected && "ring-1 ring-inset ring-[#FF3B30]/30",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-medium tabular-nums",
-                      selected
-                        ? "bg-white/20"
-                        : todayCell
-                          ? "bg-[#0066FF]/10 dark:bg-[#0066FF]/15"
-                          : hasExam
-                            ? "bg-[#FF3B30]/12 text-[#d92b22] dark:bg-[#FF3B30]/15 dark:text-[#ff8a80]"
-                            : "",
-                    )}
-                  >
-                    {cell.day}
-                  </span>
-                  <span className="flex h-1 items-center justify-center gap-0.5">
-                    {markers.map((color, markerIndex) => (
-                      <span
-                        key={`${cell.key}-${markerIndex}`}
-                        className="h-1 w-1 rounded-full"
-                        style={{ backgroundColor: selected ? "rgba(255,255,255,0.88)" : color }}
-                      />
-                    ))}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 pt-1 text-[9px] text-slate-500 dark:text-white/35">
-            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#FF3B30]" /> Urgente
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#AF52DE]" /> Proyecto
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#0066FF]" /> Tarea
-              </span>
-              <span className="inline-flex items-center gap-1.5 font-medium text-[#d92b22] dark:text-[#ff8a80]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#FF3B30]" /> Examen
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-amber-700 dark:text-amber-300">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#FF9500]" /> Fecha importante
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#30B0C7]" /> Clase
+              <span className="rounded-full bg-[#FF3B30]/10 px-2 py-1 text-[10px] font-semibold text-[#d92b22] dark:bg-[#FF3B30]/15 dark:text-[#ff8a80]">
+                {upcomingExams.length}
               </span>
             </div>
-            <span>
-              {monthExamCount === 1 ? "1 examen" : `${monthExamCount} exámenes`} ·{" "}
-              {monthImportantCount} fecha{monthImportantCount === 1 ? "" : "s"} ·{" "}
-              {monthEventCount} evento{monthEventCount === 1 ? "" : "s"}
-            </span>
-          </div>
+
+            {upcomingExams.length === 0 ? (
+              <p className="mt-3 rounded-xl bg-slate-900/[0.025] px-2.5 py-3 text-[10.5px] leading-4 text-slate-400 dark:bg-white/[0.025] dark:text-white/30">
+                No hay exámenes próximos. Añade uno desde el formulario de arriba o desde Académico.
+              </p>
+            ) : (
+              <ul className="mt-2.5 space-y-1">
+                {upcomingExams.map((exam) => {
+                  const key = examDateKey(exam) ?? "";
+                  const date = parseKey(key);
+                  const days = date
+                    ? Math.round(
+                        (new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() -
+                          new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) /
+                          86400000,
+                      )
+                    : null;
+                  const when =
+                    days === null
+                      ? ""
+                      : days <= 0
+                        ? "Hoy"
+                        : days === 1
+                          ? "Mañana"
+                          : `En ${days} días`;
+                  const course = exam.course_id ? courseById.get(exam.course_id) : undefined;
+                  return (
+                    <li key={exam.id}>
+                      <button
+                        type="button"
+                        onClick={() => openExamDialog("edit", exam)}
+                        className="group flex w-full items-center gap-2 rounded-xl px-1.5 py-2 text-left transition-colors hover:bg-white/35 dark:hover:bg-white/[0.03]"
+                      >
+                        <span className="flex h-8 w-8 shrink-0 flex-col items-center justify-center rounded-lg bg-[#FF3B30]/10 text-[8px] font-semibold uppercase leading-none text-[#d92b22] dark:bg-[#FF3B30]/12 dark:text-[#ff8a80]">
+                          <span className="text-[12px] tabular-nums">{key.slice(8, 10)}</span>
+                          <span>{MONTHS[Number(key.slice(5, 7)) - 1]?.slice(0, 3)}</span>
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[11.5px] font-medium text-slate-700 dark:text-white/75">
+                            {exam.title}
+                          </span>
+                          <span className="block truncate text-[9.5px] text-slate-400 dark:text-white/30">
+                            {[course?.name, when].filter(Boolean).join(" · ")}
+                          </span>
+                        </span>
+                        {exam.score === null ? (
+                          <span className="shrink-0 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[8.5px] font-semibold uppercase tracking-[0.05em] text-amber-700 dark:text-amber-300">
+                            Sin nota
+                          </span>
+                        ) : null}
+                        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 dark:text-white/20" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </section>
         </aside>
+
 
         {/* Calendario principal: mes, semana o día seleccionado. */}
         <section className="order-1 min-w-0 app-glass rounded-[26px] p-4 sm:p-5">
