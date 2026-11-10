@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { pageItem, pageStagger } from "@/components/page-animated-wrapper";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   AppWindow,
@@ -58,6 +59,12 @@ import { Switch } from "@/components/ui/switch";
 import { api, ApiError } from "@/lib/api";
 import { GEMINI_MODEL_OPTIONS, GEMINI_RETIRED_NOTE } from "@/lib/ai-models";
 import { resetCustomTimetable } from "@/lib/custom-timetable";
+import {
+  resetLayout,
+  setLayoutEditing,
+  useLayoutEditing,
+  useLayoutPreferences,
+} from "@/lib/layout-preferences";
 import { saveRecoveryHint } from "@/lib/recovery-hint";
 import { openAiDrawer } from "@/lib/ai-drawer";
 import { cn } from "@/lib/utils";
@@ -578,6 +585,16 @@ export function SettingsView() {
     }
   }
 
+  const { layout: appLayout, updateSidebar } = useLayoutPreferences();
+  const layoutEditing = useLayoutEditing();
+  const sidebarLayout = appLayout.sidebar;
+
+  const handleResetLayout = useCallback(() => {
+    resetLayout();
+    setLayoutEditing(false);
+    setNotice("Diseño restablecido: paneles y barra han vuelto a su sitio de fábrica.");
+  }, []);
+
   return (
     <motion.div variants={pageStagger} className="mx-auto max-w-5xl space-y-5 px-5 pb-12 pt-7 sm:px-8 lg:pt-9">
       <motion.header variants={pageItem}>
@@ -635,6 +652,97 @@ export function SettingsView() {
                 </div>
                 <div className="border-t border-slate-300/40 pt-4 dark:border-white/[0.06]">
                   <WallpaperPicker />
+                </div>
+              </div>
+            </SettingsCard>
+
+            <SettingsCard
+              icon={LayoutDashboard}
+              title="Diseño personalizado"
+              description="Mueve y redimensiona los paneles del inicio y elige dónde vive la barra."
+            >
+              <div className="space-y-4">
+                <SettingRow
+                  title="Modo edición"
+                  titleId="layout-edit-label"
+                  description="Muestra guías punteadas y asas para arrastrar y redimensionar las tarjetas del Dashboard. Cada panel encaja en una cuadrícula de 12 columnas y los cambios se guardan solos en este dispositivo."
+                >
+                  <Switch
+                    checked={layoutEditing}
+                    onCheckedChange={setLayoutEditing}
+                    aria-labelledby="layout-edit-label"
+                  />
+                </SettingRow>
+
+                {layoutEditing ? (
+                  <Link
+                    href="/"
+                    className="flex items-center justify-between gap-2 rounded-xl border border-[#0a84ff]/25 bg-[#0a84ff]/[0.07] px-3 py-2 text-[11.5px] font-medium text-[#0b63c7] transition-colors hover:bg-[#0a84ff]/[0.12] dark:text-[#9dcaff]"
+                  >
+                    Abrir el inicio para colocar tus paneles
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Link>
+                ) : null}
+
+                <div className="border-t border-slate-300/40 pt-4 dark:border-white/[0.06]">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[12.5px] font-medium text-slate-700 dark:text-white/80">
+                        Lado de la barra
+                      </p>
+                      <p className="mt-0.5 text-[10.5px] leading-4 text-slate-500 dark:text-white/35">
+                        La navegación puede vivir a la izquierda o a la derecha.
+                      </p>
+                    </div>
+                    <div
+                      role="group"
+                      aria-label="Lado de la barra"
+                      className="flex shrink-0 gap-1 rounded-xl border border-slate-300/40 bg-slate-100/70 p-1 dark:border-white/10 dark:bg-white/[0.05]"
+                    >
+                      {(["left", "right"] as const).map((side) => (
+                        <button
+                          key={side}
+                          type="button"
+                          onClick={() => updateSidebar({ side })}
+                          aria-pressed={sidebarLayout.side === side}
+                          className={cn(
+                            "h-7 rounded-lg px-3 text-[11px] font-medium transition-colors",
+                            sidebarLayout.side === side
+                              ? "bg-white text-slate-900 shadow-sm dark:bg-white/[0.14] dark:text-white"
+                              : "text-slate-500 hover:text-slate-800 dark:text-white/40 dark:hover:text-white/75",
+                          )}
+                        >
+                          {side === "left" ? "Izquierda" : "Derecha"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-300/40 pt-4 dark:border-white/[0.06]">
+                    <div className="min-w-0">
+                      <p className="text-[12.5px] font-medium text-slate-700 dark:text-white/80">
+                        Barra compacta
+                      </p>
+                      <p className="mt-0.5 text-[10.5px] leading-4 text-slate-500 dark:text-white/35">
+                        Reduce la anchura del rail sin ocultar ningún acceso.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={sidebarLayout.collapsed}
+                      onCheckedChange={(value) => updateSidebar({ collapsed: value })}
+                      aria-label="Barra compacta"
+                    />
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-slate-300/40 pt-4 dark:border-white/[0.06]">
+                    <Button variant="outline" size="sm" onClick={handleResetLayout}>
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Restablecer diseño predeterminado
+                    </Button>
+                    <span className="text-[10.5px] leading-4 text-slate-500 dark:text-white/35">
+                      Devuelve los paneles y la barra al diseño de fábrica.
+                    </span>
+                  </div>
                 </div>
               </div>
             </SettingsCard>

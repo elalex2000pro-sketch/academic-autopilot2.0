@@ -19,6 +19,7 @@ import {
 
 import { useAuth } from "@/components/auth-provider";
 import { GamificationCard } from "@/components/gamification-card";
+import { EditablePanels, type EditablePanelDefinition } from "@/components/layout/editable-panels";
 import { usePreferences } from "@/components/preferences-provider";
 import { Input } from "@/components/ui/input";
 import { SyncStatus } from "@/components/sync-status";
@@ -366,17 +367,13 @@ export default function DashboardPage() {
     }
   }
 
-  return (
-    <motion.div
-      variants={DASHBOARD_STAGGER}
-      className="relative mx-auto max-w-[1500px] px-4 pb-12 pt-4 sm:px-6 lg:px-8 lg:pt-6"
-    >
-      <GamificationCard />
-
-      <motion.div
-        variants={DASHBOARD_STAGGER}
-        className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.9fr)]"
-      >
+  const dashboardPanels: EditablePanelDefinition[] = [
+    {
+      id: "hero",
+      label: "Saludo",
+      minW: 4,
+      minH: 2,
+      node: (
         <DashboardHero
           dateLabel={dateLabel}
           greeting={greeting}
@@ -386,72 +383,212 @@ export default function DashboardPage() {
           impulse={impulse}
           urgentCount={urgentCount}
         />
-
+      ),
+    },
+    {
+      id: "calendar",
+      label: "Semana",
+      minW: 3,
+      minH: 2,
+      node: (
         <WeekCalendar
           month={calendarMonth}
           days={weekDays}
           items={calendarPreview}
           onShiftWeek={(delta) => setWeekOffset((value) => value + delta)}
         />
-      </motion.div>
+      ),
+    },
+    {
+      id: "stats",
+      label: "Métricas",
+      minW: 4,
+      minH: 2,
+      node: (
+        <motion.section
+          variants={STATS_STAGGER}
+          aria-busy={initialLoading}
+          className="relative grid h-full grid-cols-[repeat(auto-fit,minmax(180px,1fr))] content-start gap-4"
+        >
+          {initialLoading ? (
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 z-10 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] content-start gap-4"
+            >
+              {[0, 1, 2, 3].map((item) => (
+                <div
+                  key={item}
+                  className="h-[166px] animate-pulse rounded-2xl border border-white/50 bg-white/30 motion-reduce:animate-none dark:border-white/[0.07] dark:bg-white/[0.04]"
+                />
+              ))}
+            </div>
+          ) : null}
+          <StatsCard
+            title="Pendientes"
+            value={<AnimatedCounter value={tasks.length} />}
+            change={
+              tasks.length === 0
+                ? "Todo al día"
+                : `${urgentCount} urgente${urgentCount === 1 ? "" : "s"}`
+            }
+            icon={ListTodo}
+            gradient="from-rose-500 to-orange-500"
+            tone={urgentCount > 0 ? "warning" : "positive"}
+          />
 
-      {/* ---- Widgets superiores ---- */}
-      <motion.section
-        variants={STATS_STAGGER}
-        aria-busy={initialLoading}
-        className="relative mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"
-      >
-        {initialLoading ? (
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 z-10 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"
-          >
-            {[0, 1, 2, 3].map((item) => (
+          <StatsCard
+            title="Plan de hoy"
+            value={<AnimatedCounter value={planProgress} suffix="%" />}
+            change={`${formatMinutes(completedMinutes)} de ${formatMinutes(totalMinutes)}`}
+            icon={Timer}
+            gradient="from-emerald-400 to-teal-600"
+          />
+
+          <StatsCard
+            title="Bloques"
+            value={<AnimatedCounter value={completedBlocks} />}
+            change={`de ${totalBlocks} bloque${totalBlocks === 1 ? "" : "s"} · ${Math.round(blockProgress)}%`}
+            icon={Layers}
+            gradient="from-violet-500 to-indigo-600"
+          />
+
+          <StatsCard
+            title="Lectura"
+            value={<AnimatedCounter value={readingBooks.length} />}
+            change={readingBooks.length ? `${Math.round(readingProgress)}% de media` : "Sin lecturas activas"}
+            icon={BookOpen}
+            gradient="from-sky-400 to-blue-600"
+            tone={readingBooks.length > 0 ? "positive" : "neutral"}
+          />
+        </motion.section>
+      ),
+    },
+    {
+      id: "agenda",
+      label: "Plan de hoy",
+      minW: 4,
+      minH: 3,
+      node: (
+        <AgendaTimeline
+          loading={loading}
+          dateLabel={dateLabel}
+          planProgress={planProgress}
+          totalBlocks={totalBlocks}
+          totalMinutes={totalMinutes}
+          hasAnything={hasAnything}
+          hasToday={hasToday}
+          todayItems={todayItems}
+          upcomingGroups={upcomingGroups}
+          hasMoreUpcoming={hasMoreUpcoming}
+          onReplan={() => void load()}
+          onComplete={(taskId) => void handleComplete(taskId)}
+        />
+      ),
+    },
+    {
+      id: "tasks",
+      label: "Tareas y lectura",
+      minW: 3,
+      minH: 3,
+      node: (
+        <motion.div variants={DASHBOARD_ITEM} className="min-w-0 space-y-4">
+          {/* ---- Tareas pendientes: activas + historial de vencidas ---- */}
+          <TaskList
+            tasks={tasks}
+            historyTasks={overdueTasks}
+            loading={tasksLoading}
+            error={tasksError}
+            strikeHistory={autoStrikeOverdue}
+            courses={courses}
+            onComplete={completeTask}
+            onDelete={deleteTask}
+            onTaskUpdated={() => void load()}
+          />
+
+          {/* ---- Continuar leyendo ---- */}
+          {continueBook ? (
+            <Link
+              href={`/library/${continueBook.id}`}
+              className="app-glass group flex items-center gap-3 rounded-3xl p-3.5 transition-colors hover:bg-slate-100/65 dark:hover:bg-black/30"
+            >
               <div
-                key={item}
-                className="h-[166px] animate-pulse rounded-2xl border border-white/50 bg-white/30 motion-reduce:animate-none dark:border-white/[0.07] dark:bg-white/[0.04]"
-              />
-            ))}
-          </div>
-        ) : null}
-        <StatsCard
-          title="Pendientes"
-          value={<AnimatedCounter value={tasks.length} />}
-          change={
-            tasks.length === 0
-              ? "Todo al día"
-              : `${urgentCount} urgente${urgentCount === 1 ? "" : "s"}`
-          }
-          icon={ListTodo}
-          gradient="from-rose-500 to-orange-500"
-          tone={urgentCount > 0 ? "warning" : "positive"}
-        />
+                className="relative flex h-[76px] w-[54px] shrink-0 flex-col justify-between overflow-hidden rounded-xl p-2.5 text-white shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)]"
+                style={{
+                  background: `linear-gradient(150deg, ${continueBook.cover_color}, #0f172a)`,
+                }}
+              >
+                <span className="absolute inset-x-0 top-0 h-px bg-slate-400/20 dark:bg-white/10" />
+                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-600 text-white shadow-[0_4px_10px_-4px_rgba(37,99,235,0.8)]">
+                  <BookOpen className="h-3.5 w-3.5" strokeWidth={1.9} />
+                </span>
+                <span className="text-[8px] font-semibold uppercase tracking-wider text-white/55">
+                  {continueBook.format}
+                </span>
+              </div>
 
-        <StatsCard
-          title="Plan de hoy"
-          value={<AnimatedCounter value={planProgress} suffix="%" />}
-          change={`${formatMinutes(completedMinutes)} de ${formatMinutes(totalMinutes)}`}
-          icon={Timer}
-          gradient="from-emerald-400 to-teal-600"
-        />
+              <div className="min-w-0 flex-1">
+                <p className="text-[9.5px] font-medium uppercase tracking-[0.12em] text-slate-600 dark:text-white/70">
+                  Continuar leyendo
+                </p>
+                <p className="mt-1 truncate text-[13px] font-medium text-slate-900 dark:text-white/90">
+                  {continueBook.title}
+                </p>
+                <p className="mt-0.5 truncate text-[10.5px] text-slate-600 dark:text-white/70">
+                  {continueBook.current_section_title ||
+                    `Sección ${continueBook.current_section_index + 1}`}{" "}
+                  · {Math.round(continueBook.progress_percent)}%
+                </p>
+                <div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-900/[0.06] dark:bg-white/[0.08]">
+                  <div
+                    className="h-full rounded-full bg-blue-600 dark:bg-blue-500"
+                    style={{ width: `${Math.max(2, Math.min(100, continueBook.progress_percent))}%` }}
+                  />
+                </div>
+              </div>
 
-        <StatsCard
-          title="Bloques"
-          value={<AnimatedCounter value={completedBlocks} />}
-          change={`de ${totalBlocks} bloque${totalBlocks === 1 ? "" : "s"} · ${Math.round(blockProgress)}%`}
-          icon={Layers}
-          gradient="from-violet-500 to-indigo-600"
-        />
+              <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-400 transition-colors group-hover:text-slate-700 dark:text-white/25 dark:group-hover:text-white/65" />
+            </Link>
+          ) : (
+            <Link
+              href="/library"
+              className="app-glass group flex items-center gap-3 rounded-3xl p-3.5 transition-colors hover:bg-slate-100/65 dark:hover:bg-black/30"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#0a84ff]/15 text-[#0066FF] ring-1 ring-[#0a84ff]/15 dark:text-[#64a8ff]">
+                <BookOpen className="h-4 w-4" strokeWidth={1.8} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[12.5px] font-medium text-slate-700 dark:text-white/80">
+                  {books.length > 0 ? "Elige tu próximo libro" : "Tu biblioteca te espera"}
+                </p>
+                <p className="mt-0.5 text-[10.5px] text-slate-400 dark:text-white/30">
+                  {books.length > 0
+                    ? "Abre uno y guardaremos tu progreso."
+                    : "Sube un PDF, EPUB o DOCX para empezar."}
+                </p>
+              </div>
+              <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-400 transition-colors group-hover:text-slate-700 dark:text-white/25 dark:group-hover:text-white/65" />
+            </Link>
+          )}
 
-        <StatsCard
-          title="Lectura"
-          value={<AnimatedCounter value={readingBooks.length} />}
-          change={readingBooks.length ? `${Math.round(readingProgress)}% de media` : "Sin lecturas activas"}
-          icon={BookOpen}
-          gradient="from-sky-400 to-blue-600"
-          tone={readingBooks.length > 0 ? "positive" : "neutral"}
-        />
-      </motion.section>
+          <SyncStatus onSynced={load} />
+        </motion.div>
+      ),
+    },
+    {
+      id: "quickdock",
+      label: "Acceso rápido",
+      minW: 4,
+      minH: 1,
+      node: <QuickDock />,
+    },
+  ];
+
+  return (
+    <motion.div
+      variants={DASHBOARD_STAGGER}
+      className="relative mx-auto max-w-[1500px] px-4 pb-12 pt-4 sm:px-6 lg:px-8 lg:pt-6"
+    >
+      <GamificationCard />
 
       {/* ---- Registro obligatorio de exámenes pasados sin nota ---- */}
       {gradeNotice && (
@@ -667,111 +804,7 @@ export default function DashboardPage() {
         )}
       </AnimatePresence>
 
-      {/* ---- Línea de tiempo + columna lateral ---- */}
-      <motion.section
-        variants={DASHBOARD_ITEM}
-        className="mt-4 grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]"
-      >
-        <AgendaTimeline
-          loading={loading}
-          dateLabel={dateLabel}
-          planProgress={planProgress}
-          totalBlocks={totalBlocks}
-          totalMinutes={totalMinutes}
-          hasAnything={hasAnything}
-          hasToday={hasToday}
-          todayItems={todayItems}
-          upcomingGroups={upcomingGroups}
-          hasMoreUpcoming={hasMoreUpcoming}
-          onReplan={() => void load()}
-          onComplete={(taskId) => void handleComplete(taskId)}
-        />
-
-        <motion.div variants={DASHBOARD_ITEM} className="min-w-0 space-y-4">
-          {/* ---- Tareas pendientes: activas + historial de vencidas ---- */}
-          <TaskList
-            tasks={tasks}
-            historyTasks={overdueTasks}
-            loading={tasksLoading}
-            error={tasksError}
-            strikeHistory={autoStrikeOverdue}
-            courses={courses}
-            onComplete={completeTask}
-            onDelete={deleteTask}
-            onTaskUpdated={() => void load()}
-          />
-
-          {/* ---- Continuar leyendo ---- */}
-          {continueBook ? (
-            <Link
-              href={`/library/${continueBook.id}`}
-              className="app-glass group flex items-center gap-3 rounded-3xl p-3.5 transition-colors hover:bg-slate-100/65 dark:hover:bg-black/30"
-            >
-              <div
-                className="relative flex h-[76px] w-[54px] shrink-0 flex-col justify-between overflow-hidden rounded-xl p-2.5 text-white shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8)]"
-                style={{
-                  background: `linear-gradient(150deg, ${continueBook.cover_color}, #0f172a)`,
-                }}
-              >
-                <span className="absolute inset-x-0 top-0 h-px bg-slate-400/20 dark:bg-white/10" />
-                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-600 text-white shadow-[0_4px_10px_-4px_rgba(37,99,235,0.8)]">
-                  <BookOpen className="h-3.5 w-3.5" strokeWidth={1.9} />
-                </span>
-                <span className="text-[8px] font-semibold uppercase tracking-wider text-white/55">
-                  {continueBook.format}
-                </span>
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <p className="text-[9.5px] font-medium uppercase tracking-[0.12em] text-slate-600 dark:text-white/70">
-                  Continuar leyendo
-                </p>
-                <p className="mt-1 truncate text-[13px] font-medium text-slate-900 dark:text-white/90">
-                  {continueBook.title}
-                </p>
-                <p className="mt-0.5 truncate text-[10.5px] text-slate-600 dark:text-white/70">
-                  {continueBook.current_section_title ||
-                    `Sección ${continueBook.current_section_index + 1}`}{" "}
-                  · {Math.round(continueBook.progress_percent)}%
-                </p>
-                <div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-900/[0.06] dark:bg-white/[0.08]">
-                  <div
-                    className="h-full rounded-full bg-blue-600 dark:bg-blue-500"
-                    style={{ width: `${Math.max(2, Math.min(100, continueBook.progress_percent))}%` }}
-                  />
-                </div>
-              </div>
-
-              <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-400 transition-colors group-hover:text-slate-700 dark:text-white/25 dark:group-hover:text-white/65" />
-            </Link>
-          ) : (
-            <Link
-              href="/library"
-              className="app-glass group flex items-center gap-3 rounded-3xl p-3.5 transition-colors hover:bg-slate-100/65 dark:hover:bg-black/30"
-            >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#0a84ff]/15 text-[#0066FF] ring-1 ring-[#0a84ff]/15 dark:text-[#64a8ff]">
-                <BookOpen className="h-4 w-4" strokeWidth={1.8} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[12.5px] font-medium text-slate-700 dark:text-white/80">
-                  {books.length > 0 ? "Elige tu próximo libro" : "Tu biblioteca te espera"}
-                </p>
-                <p className="mt-0.5 text-[10.5px] text-slate-400 dark:text-white/30">
-                  {books.length > 0
-                    ? "Abre uno y guardaremos tu progreso."
-                    : "Sube un PDF, EPUB o DOCX para empezar."}
-                </p>
-              </div>
-              <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-400 transition-colors group-hover:text-slate-700 dark:text-white/25 dark:group-hover:text-white/65" />
-            </Link>
-          )}
-
-          <SyncStatus onSynced={load} />
-        </motion.div>
-      </motion.section>
-
-      {/* ---- Quick Dock ---- */}
-      <QuickDock />
+      <EditablePanels panels={dashboardPanels} className="mt-4" />
 
       {editingExam ? (
         <ExamDialog

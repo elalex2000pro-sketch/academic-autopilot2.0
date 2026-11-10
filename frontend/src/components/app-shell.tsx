@@ -29,6 +29,7 @@ import {
   isActive,
   type NavItem,
 } from "@/lib/navigation";
+import { useLayoutPreferences } from "@/lib/layout-preferences";
 import { hasCompletedOnboarding, markOnboardingCompleted } from "@/lib/onboarding";
 import { cn } from "@/lib/utils";
 
@@ -120,6 +121,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { animationLevel } = usePreferences();
+  const { layout } = useLayoutPreferences();
+  const sidebarLayout = layout.sidebar;
   const reduceMotion = animationLevel === "reduced";
   const isPublic = pathname === "/login";
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -194,8 +197,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <NotificationCenter>
       <SystemNotifications />
-      <div className="app-shell flex min-h-dvh flex-col bg-transparent md:flex-row">
-        <aside className="v18-rail sticky top-3 ml-4 hidden h-[calc(100dvh-1.5rem)] w-[78px] shrink-0 flex-col items-center overflow-hidden rounded-[32px] border border-white/10 bg-[#1b1b1f] pb-4 pt-2 shadow-[0_30px_70px_-30px_rgba(20,20,28,0.72),inset_0_1px_0_rgba(255,255,255,0.09)] md:flex">
+      <div
+        className={cn(
+          "app-shell flex min-h-dvh flex-col bg-transparent md:flex-row",
+          sidebarLayout.side === "right" && "md:flex-row-reverse",
+        )}
+      >
+        <aside
+          className={cn(
+            "v18-rail sticky top-3 hidden h-[calc(100dvh-1.5rem)] shrink-0 flex-col items-center overflow-hidden rounded-[32px] border border-white/10 bg-[#1b1b1f] pb-4 pt-2 shadow-[0_30px_70px_-30px_rgba(20,20,28,0.72),inset_0_1px_0_rgba(255,255,255,0.09)] transition-[width] duration-200 md:flex",
+            sidebarLayout.side === "right" ? "mr-4" : "ml-4",
+            sidebarLayout.collapsed ? "w-[62px]" : "w-[78px]",
+          )}
+        >
           {/* Los semáforos viven dentro del rail oscuro, no en una franja suelta. */}
           <div className="app-drag flex h-9 w-full shrink-0 items-center justify-center">
             <WindowControls compact />
@@ -206,7 +220,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             title="Academic Autopilot"
             className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white outline-none transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/55"
           >
-            <Logo className="h-10 w-10" />
+            <Logo className={sidebarLayout.collapsed ? "h-8 w-8" : "h-10 w-10"} />
           </Link>
 
           <nav
