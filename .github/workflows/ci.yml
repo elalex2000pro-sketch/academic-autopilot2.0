@@ -1,0 +1,63 @@
+name: CI
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: python -m pip install -r backend/requirements.txt
+      - run: python -m pytest tests -q
+        working-directory: backend
+  frontend:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
+      NEXT_TELEMETRY_DISABLED: '1'
+      SMOKE_BROWSER_CHANNEL: chromium
+      SMOKE_WEB_MODE: start
+      SMOKE_PYTHON: python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: python -m pip install -r backend/requirements.txt
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run typecheck
+        working-directory: frontend
+      - run: npm run lint
+        working-directory: frontend
+      - run: npm exec --no -- playwright-core install --with-deps chromium
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+      - run: npm run test:smoke
+        working-directory: frontend
+        env:
+          SMOKE_OUTPUT: ${{ runner.temp }}/academic-smoke
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: smoke-diagnostics
+          path: ${{ runner.temp }}/academic-smoke
+          if-no-files-found: ignore

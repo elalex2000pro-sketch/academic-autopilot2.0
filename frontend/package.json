@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test:smoke": "node tests/smoke.cjs",
     "test:chat:browser": "node tests/chat-e2e.cjs"
   },
   "dependencies": {
