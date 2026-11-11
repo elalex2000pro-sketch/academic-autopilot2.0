@@ -1,10 +1,9 @@
 "use client";
 
-// Academic-Office: suite ofimatica integrada (documentos y hojas de calculo).
-//
-// El editor corre en el navegador: Tiptap/ProseMirror para texto y un motor de
-// formulas propio para la hoja. No necesita servidores externos ni claves, asi
-// que funciona igual en local, en Vercel y en la app de escritorio.
+// Academic Office conserva la edición local y sincroniza documentos privados con la API.
+import { OfficeLibrary } from "@/components/office/office-library";
+import { useOfficeStorage } from "@/components/office/use-office-storage";
+import { OfficeData } from "@/lib/office-storage";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
@@ -20,6 +19,7 @@ import {
 
 import { SheetEditor } from "@/components/office/sheet-editor";
 import {
+  buildDocumentHtml,
   exportDocumentAsDoc,
   exportDocumentAsHtml,
   printDocumentAsPdf,
@@ -39,9 +39,6 @@ import { cn } from "@/lib/utils";
 
 type OfficeModule = "document" | "sheet";
 
-const DOC_KEY = "academic-office-document-v1";
-const SHEET_KEY = "academic-office-sheet-v1";
-
 // CKEditor 5 necesita el DOM: se carga solo en cliente y en su propio chunk.
 const WriterEditor = dynamic(
   () =>
@@ -59,16 +56,6 @@ const WriterEditor = dynamic(
 );
 
 const DEFAULT_DOC = `<h1>Documento sin título</h1><p>Empieza a escribir aquí. Puedes dar formato con la barra superior y exportar a Word, HTML o PDF.</p><p></p>`;
-
-interface StoredDocument {
-  name?: string;
-  html?: string;
-}
-
-interface StoredSheet {
-  name?: string;
-  cells?: CellMap;
-}
 
 function AcademicOfficeLogo() {
   return (
@@ -133,122 +120,58 @@ export function AcademicOfficeView({ newSignal = 0 }: { newSignal?: number }) {
   const [docHtml, setDocHtml] = useState(DEFAULT_DOC);
   const [sheetName, setSheetName] = useState("Hoja sin título");
   const [cells, setCells] = useState<CellMap>({});
-  const [hydrated, setHydrated] = useState(false);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [library, setLibrary] = useState(true);
+  const [settings, setSettings] = useState<Record<string, unknown>>({});
+  const [folder, setFolder] = useState<string | null>(null);
+
+
   const openRef = useRef<HTMLInputElement>(null);
 
-  // Recupera el trabajo guardado en este dispositivo.
-  useEffect(() => {
-    try {
-      const rawDocument = window.localStorage.getItem(DOC_KEY);
-      if (rawDocument) {
-        const parsed = JSON.parse(rawDocument) as StoredDocument;
-        if (typeof parsed.html === "string" && parsed.html.trim()) {
-          setDocHtml(parsed.html);
-        }
-        if (parsed.name) setDocName(parsed.name);
-      }
-      const rawSheet = window.localStorage.getItem(SHEET_KEY);
-      if (rawSheet) {
-        const parsed = JSON.parse(rawSheet) as StoredSheet;
-        if (parsed.cells && typeof parsed.cells === "object") {
-          setCells(parsed.cells);
-        }
-        if (parsed.name) setSheetName(parsed.name);
-      }
-    } catch {
-      // Datos corruptos: se empieza con un documento limpio.
-    } finally {
-      setHydrated(true);
-    }
-  }, []);
-
-  // Documentos puede pedir un documento formal nuevo desde fuera.
-  useEffect(() => {
-    if (newSignal > 0) newDocument(true);
+  const data: OfficeData = { title: module === "document" ? docName : sheetName, kind: module, content: module === "document" ? docHtml : JSON.stringify(cells), schema_version: 1, settings, folder };
+  const storage = useOfficeStorage(data, (doc) => {
+    setModule(doc.kind); setSettings(doc.settings); setFolder(doc.folder);
+    if (doc.kind === "document") { setDocName(doc.title); setDocHtml(doc.content); }
+    else { setSheetName(doc.title); try { setCells(JSON.parse(doc.content)); } catch { setCells({}); } }
+  });
+  const saving = storage.status === "Guardando";
+  const savedAt = storage.savedAt;
+  function saveNow(nameOverride?: string) { if (nameOverride) void storage.copy(nameOverride); else void storage.save(); }
+  useEffect(() => { if (newSignal > 0) void createNew("document"); /* external new document request */
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newSignal]);
-
-  // Autoguardado con retardo para no escribir en cada tecla.
-  useEffect(() => {
-    if (!hydrated) return;
-    setSaving(true);
-    const timer = setTimeout(() => {
-      try {
-        window.localStorage.setItem(
-          DOC_KEY,
-          JSON.stringify({ name: docName, html: docHtml } satisfies StoredDocument),
-        );
-        window.localStorage.setItem(
-          SHEET_KEY,
-          JSON.stringify({ name: sheetName, cells } satisfies StoredSheet),
-        );
-        setSavedAt(Date.now());
-      } catch {
-        // Sin espacio o modo privado: el trabajo sigue en memoria.
-      } finally {
-        setSaving(false);
-      }
-    }, 650);
-    return () => clearTimeout(timer);
-  }, [cells, docHtml, docName, hydrated, sheetName]);
-
-  function saveNow(nameOverride?: string) {
-    const name = nameOverride ?? docName;
-    try {
-      window.localStorage.setItem(
-        DOC_KEY,
-        JSON.stringify({ name, html: docHtml } satisfies StoredDocument),
-      );
-      window.localStorage.setItem(
-        SHEET_KEY,
-        JSON.stringify({ name: sheetName, cells } satisfies StoredSheet),
-      );
-      if (nameOverride) setDocName(nameOverride);
-      setSavedAt(Date.now());
-    } catch {
-      // Sin espacio o modo privado: el trabajo sigue en memoria.
-    }
+  async function createNew(kind: OfficeModule) {
+    await storage.fresh({ title: kind === "document" ? "Documento sin título" : "Hoja sin título", kind, content: kind === "document" ? DEFAULT_DOC : "{}", schema_version: 1, settings: {}, folder: null });
+    setLibrary(false);
+  }
+  async function showLibrary() { await storage.save(true); setLibrary(true); }
+  async function openFromPc() {
+    const bridge = window.autopilotDesktop?.files;
+    if (!bridge || module === "sheet") { openRef.current?.click(); return; }
+    const result = await bridge.open({ mode: "pick-office" });
+    if (!result.ok) { if (result.error) window.alert(result.error); return; }
+    if (result.name && result.text !== undefined) await openFile(new File([result.text], result.name));
+  }
+  async function saveToPc(kind: "html" | "txt") {
+    const element = document.createElement("div"); element.innerHTML = docHtml;
+    const text = kind === "html" ? buildDocumentHtml(docName, docHtml) : element.innerText || element.textContent || "";
+    const name = `${safeFileName(docName)}.${kind}`;
+    const blob = new Blob([text], { type: kind === "html" ? "text/html;charset=utf-8" : "text/plain;charset=utf-8" });
+    const bridge = window.autopilotDesktop?.files;
+    if (bridge) { const result = await bridge.save({ name, data: await blob.arrayBuffer() }); if (!result.ok && !result.canceled) window.alert(result.error || "No se pudo guardar el archivo"); }
+    else triggerDownload(name, blob);
   }
 
   const computed = evaluateSheet(cells);
   const filledCells = Object.keys(cells).length;
 
-  function newDocument(force = false) {
-    if (
-      !force &&
-      module === "document" &&
-      !window.confirm("¿Descartar el documento actual y crear uno nuevo?")
-    ) {
-      return;
-    }
-    if (
-      module === "sheet" &&
-      !window.confirm("¿Descartar la hoja actual y crear una nueva?")
-    ) {
-      return;
-    }
-    if (module === "document") {
-      setDocHtml(DEFAULT_DOC);
-      setDocName("Documento sin título");
-    } else {
-      setCells({});
-      setSheetName("Hoja sin título");
-    }
-  }
+  function newDocument() { void createNew(module); }
 
   async function openFile(file: File) {
+    if (file.size > 5 * 1024 * 1024) { window.alert("El archivo supera el límite de 5 MB."); return; }
     const text = await file.text();
     const baseName = file.name.replace(/\.[^.]+$/, "");
-    if (module === "document") {
-      const looksLikeHtml = /\.html?$/i.test(file.name);
-      setDocHtml(looksLikeHtml ? text : textToHtml(text));
-      setDocName(baseName || "Documento importado");
-    } else {
-      setCells(parseCsv(text));
-      setSheetName(baseName || "Hoja importada");
-    }
+    await storage.fresh({ title: baseName || "Archivo importado", kind: module, content: module === "document" ? (/\.html?$/i.test(file.name) ? text : textToHtml(text)) : JSON.stringify(parseCsv(text)), schema_version: 1, settings: {}, folder: null });
+    setLibrary(false);
   }
 
   function exportDocument(kind: "doc" | "html" | "pdf") {
@@ -295,6 +218,8 @@ export function AcademicOfficeView({ newSignal = 0 }: { newSignal?: number }) {
       {/* Barra superior personalizada */}
       <header className="relative z-10 flex flex-wrap items-center gap-3 border-b border-white/50 px-3 py-2.5 dark:border-white/10 sm:px-4">
         <AcademicOfficeLogo />
+        <GlassButton label="Mis documentos" onClick={() => void showLibrary()}><FolderOpen className="h-4 w-4" /></GlassButton>
+        <span role="status" className="text-xs">{storage.status}</span>
 
         <div className="order-3 flex w-full gap-1 rounded-xl border border-white/50 bg-white/40 p-1 backdrop-blur sm:order-none sm:ml-3 sm:w-auto dark:border-white/10 dark:bg-white/5">
           {(
@@ -306,7 +231,7 @@ export function AcademicOfficeView({ newSignal = 0 }: { newSignal?: number }) {
             <button
               key={tab.id}
               type="button"
-              onClick={() => setModule(tab.id)}
+              onClick={() => { if (tab.id !== module) void createNew(tab.id); }}
               aria-pressed={module === tab.id}
               className={cn(
                 "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition sm:flex-none",
@@ -392,17 +317,22 @@ export function AcademicOfficeView({ newSignal = 0 }: { newSignal?: number }) {
       </div>
       )}
 
+      {storage.error && <div role="alert" className="relative z-10 bg-amber-400/10 p-2 text-sm">{storage.error} <button className="underline" onClick={() => void storage.copy(`${docName} (recuperado)`)}>Guardar como copia</button></div>}
       {/* Area de trabajo */}
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
-        {module === "document" ? (
+        {library ? <OfficeLibrary active={storage.active} onOpen={storage.open} onNew={newDocument} onClose={() => setLibrary(false)} onRestore={doc => storage.install(doc, doc)} onImported={doc => storage.install(doc, doc)} /> : module === "document" ? (
           <WriterEditor
+            key={storage.active?.id || "new"}
+            initialSettings={settings}
+            onSettingsChange={setSettings}
+            onSaveToPc={(kind) => void saveToPc(kind)}
             html={docHtml}
             documentName={docName}
             saving={saving}
             savedAt={savedAt}
             onChange={setDocHtml}
             onNew={newDocument}
-            onOpen={() => openRef.current?.click()}
+            onOpen={() => void openFromPc()}
             onSave={() => saveNow()}
             onSaveAs={(name) => saveNow(name)}
             onExport={exportDocument}
@@ -414,7 +344,7 @@ export function AcademicOfficeView({ newSignal = 0 }: { newSignal?: number }) {
 
       {module === "sheet" && (
         <footer className="relative z-10 flex flex-wrap items-center gap-x-4 border-t border-white/40 px-4 py-1.5 text-[10px] text-muted-foreground dark:border-white/10">
-          <span>Academic-Office · editor local sin servidores externos</span>
+          <span>Academic Office · biblioteca privada</span>
           <span className="ml-auto">{filledCells} celdas · CSV y Excel</span>
         </footer>
       )}

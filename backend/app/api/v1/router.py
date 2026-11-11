@@ -56,3 +56,6 @@ api_router.include_router(exports.router)
 api_router.include_router(realtime.router)
 
 __all__ = ["api_router"]
+
+from app.api.v1 import office
+api_router.include_router(office.router)

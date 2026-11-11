@@ -137,6 +137,9 @@ import { cn } from "@/lib/utils";
 export type WriterExportKind = "pdf" | "doc" | "html";
 
 export interface WriterEditorProps {
+  initialSettings?: Record<string, unknown>;
+  onSettingsChange?: (settings: Record<string, unknown>) => void;
+  onSaveToPc?: (kind: "html" | "txt") => void;
   html: string;
   documentName: string;
   saving: boolean;
@@ -427,6 +430,9 @@ export function WriterEditor({
   onOpen,
   onSave,
   onSaveAs,
+  initialSettings,
+  onSettingsChange,
+  onSaveToPc,
   onExport,
 }: WriterEditorProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -467,8 +473,8 @@ export function WriterEditor({
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("properties");
   const [zoom, setZoom] = useState(100);
   const [showRuler, setShowRuler] = useState(true);
-  const [orientation, setOrientation] = useState<Orientation>("portrait");
-  const [margins, setMargins] = useState<Margins>({ top: 20, right: 20, bottom: 20, left: 20 });
+  const [orientation, setOrientation] = useState<Orientation>(initialSettings?.orientation === "landscape" ? "landscape" : "portrait");
+  const [margins, setMargins] = useState<Margins>((initialSettings?.margins as Margins) || { top: 20, right: 20, bottom: 20, left: 20 });
   const [format, setFormat] = useState<FormatState>({
     heading: "paragraph",
     fontFamily: "",
@@ -496,6 +502,7 @@ export function WriterEditor({
   const immersive = nativeFullscreen || focusMode;
 
   latestHtmlRef.current = html;
+  useEffect(() => { onSettingsChange?.({ orientation, margins, paper: "A4" }); }, [orientation, margins, onSettingsChange]);
   marginsRef.current = margins;
   orientationRef.current = orientation;
 
@@ -985,8 +992,10 @@ export function WriterEditor({
       label: "Archivo",
       items: [
         { label: "Nuevo", shortcut: "Ctrl+N", action: onNew },
-        { label: "Abrir...", shortcut: "Ctrl+O", action: onOpen },
+        { label: "Abrir desde el PC...", shortcut: "Ctrl+O", action: onOpen },
         { label: "Guardar", shortcut: "Ctrl+S", action: onSave },
+        { label: "Guardar en el PC (.html)", action: () => onSaveToPc?.("html") },
+        { label: "Guardar en el PC (.txt)", action: () => onSaveToPc?.("txt") },
         { label: "Guardar como...", shortcut: "Ctrl+Mayus+S", action: saveAs },
         separator,
         { label: "Exportar a PDF...", action: () => onExport("pdf") },

@@ -80,3 +80,5 @@ __all__ = [
     "TaskPriority",
     "TaskStatus",
 ]
+
+from app.models.office import OfficeDocument, OfficeDocumentVersion

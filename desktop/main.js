@@ -323,8 +323,8 @@ function filePayload(payload) {
   else if (ArrayBuffer.isView(raw)) {
     buffer = Buffer.from(raw.buffer, raw.byteOffset, raw.byteLength);
   }
-  if (!buffer || buffer.byteLength === 0) {
-    throw new Error("El archivo está vacío o no se recibió completo.");
+  if (!buffer) {
+    throw new Error("No se recibió el archivo completo.");
   }
   if (buffer.byteLength > MAX_FILE_PAYLOAD_BYTES) {
     throw new Error("El archivo supera el límite de 120 MB.");
@@ -384,6 +384,16 @@ function registerFileControls() {
       return { ok: false, error: "Origen no autorizado." };
     }
     try {
+      if (payload?.mode === "pick-office") {
+        const win = BrowserWindow.fromWebContents(event.sender);
+        const options = { title: "Abrir desde el PC", properties: ["openFile"], filters: [{ name: "Documentos de texto", extensions: ["html", "htm", "txt", "md"] }] };
+        const selected = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options);
+        if (selected.canceled || !selected.filePaths.length) return { ok: false, canceled: true };
+        const selectedPath = selected.filePaths[0];
+        if (![".html", ".htm", ".txt", ".md"].includes(path.extname(selectedPath).toLowerCase())) return { ok: false, error: "Formato no admitido." };
+        if ((await fs.promises.stat(selectedPath)).size > 5 * 1024 * 1024) return { ok: false, error: "El archivo supera el límite de 5 MB." };
+        return { ok: true, name: path.basename(selectedPath), text: await fs.promises.readFile(selectedPath, "utf8") };
+      }
       const { buffer, name } = filePayload(payload);
       const directory = path.join(
         app.getPath("temp"),

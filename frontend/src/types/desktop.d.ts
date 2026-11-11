@@ -49,13 +49,16 @@ declare global {
           path?: string;
           error?: string;
         }>;
-        open: (payload: {
+        open: (payload: { mode: "pick-office" } | {
           name: string;
           data: ArrayBuffer;
           mimeType?: string;
         }) => Promise<{
           ok: boolean;
           path?: string;
+          name?: string;
+          text?: string;
+          canceled?: boolean;
           error?: string;
         }>;
       };
