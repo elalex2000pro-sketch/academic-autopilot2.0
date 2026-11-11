@@ -1,6 +1,6 @@
 import { apiBase, tokenStore } from "@/lib/api";
 export interface OfficeData { title: string; kind: "document" | "sheet"; content: string; schema_version: 1; settings: Record<string, unknown>; folder: string | null }
-export interface OfficeDocument extends OfficeData { id: string; revision: number; created_at: string; updated_at: string }
+export interface OfficeDocument extends OfficeData { excerpt?: string; id: string; revision: number; created_at: string; updated_at: string }
 export interface OfficeVersion extends OfficeData { id: string; revision: number; created_at: string }
 export class OfficeError extends Error { constructor(public status: number, message: string) { super(message); } }
 export async function officeRequest<T>(path = "", method = "GET", body?: unknown, keepalive = false): Promise<T> {

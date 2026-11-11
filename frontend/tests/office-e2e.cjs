@@ -17,23 +17,26 @@ async function main(){
   await page.evaluate(()=>localStorage.setItem('academic-office-document-v1',JSON.stringify({name:'Borrador auditado',html:'<h1>Álgebra</h1><p><strong>Texto recuperado</strong></p>'})));
   await page.reload();
   await page.getByRole('button',{name:'Guardar en la app',exact:true}).click();
-  await page.getByRole('button').filter({hasText:'Borrador auditado'}).first().waitFor();
+  await page.waitForURL(/office\/[a-f0-9-]+$/);
   assert.equal(await page.evaluate(()=>localStorage.getItem('academic-office-document-v1')),null);
-  await page.getByRole('button').filter({hasText:'Borrador auditado'}).first().click();
+
   const editor=page.locator('.ck-editor__editable[contenteditable=true]');await editor.waitFor({timeout:60000});
   assert.ok((await editor.innerHTML()).includes('<strong>Texto recuperado</strong>'));
   await editor.fill('Versión nueva para estudiar');
   await page.getByRole('status').filter({hasText:'Guardado'}).first().waitFor();
   await page.waitForTimeout(1800);
-  await page.getByRole('button',{name:'Mis documentos',exact:true}).click();
+  await page.getByRole('button',{name:'Volver a Office',exact:true}).click();
+  await page.locator('article').first().locator('summary').click();
   await page.getByRole('button',{name:'Duplicar',exact:true}).click();
   await page.getByRole('button').filter({hasText:'Borrador auditado (copia)'}).first().waitFor();
-  await page.locator('article').filter({has: page.locator('strong').filter({hasText:/^Borrador auditado$/})}).getByRole('button',{name:'Historial',exact:true}).click();
+  const original = page.locator('article').filter({has: page.locator('strong').filter({hasText:/^Borrador auditado$/})});
+  if (!await original.locator('details').evaluate(e => e.open)) await original.locator('summary').click();
+  await original.getByRole('button',{name:'Historial',exact:true}).click();
   await page.getByRole('button',{name:'Restaurar',exact:true}).last().click();
-  await page.getByRole('button',{name:'Volver al editor',exact:true}).click();
+
   await editor.waitFor(); assert.ok((await editor.innerText()).includes('Texto recuperado'));
   await page.reload();
-  await page.getByRole('button').filter({hasText:'Borrador auditado'}).first().click();
+
   await editor.waitFor();assert.ok((await editor.innerText()).includes('Texto recuperado'));
   await page.getByRole('button',{name:'Archivo',exact:true}).click();
   const downloadPromise=page.waitForEvent('download');
@@ -64,9 +67,9 @@ async function main(){
   await page.getByRole('button',{name:'Guardar como copia',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Guardado'}).waitFor();
   await page.setViewportSize({width:390,height:844});
-  await page.getByRole('button',{name:'Mis documentos',exact:true}).click();
+  await page.getByRole('button',{name:'Volver a Office',exact:true}).click();
   await page.getByRole('textbox',{name:'Buscar documentos'}).fill('Borrador');
-  await page.getByRole('button').filter({hasText:'Borrador auditado'}).first().waitFor();
+  await page.locator('article').first().waitFor();
   assert.deepEqual(errors,[]); console.log('PASS migration, create, autosave, close/reopen, copy, restore, HTML download/open, offline retry, conflict recovery and mobile library');
   await browser.close();
 }

@@ -1,4 +1,6 @@
 """Biblioteca privada, importación idempotente y guardado con revisión optimista."""
+import re
+import html
 import uuid
 import json
 from typing import Literal
@@ -62,7 +64,7 @@ async def listing(db: DbSession, user: CurrentUser, q: str = "", order: Literal[
         stmt = stmt.where(OfficeDocument.title.icontains(q, autoescape=True))
     sort = {"updated": OfficeDocument.updated_at.desc(), "created": OfficeDocument.created_at.desc(), "title": OfficeDocument.title.asc()}[order]
     docs = (await db.scalars(stmt.order_by(sort, OfficeDocument.id))).all()
-    return [{k: v for k, v in output(d).items() if k != "content"} for d in docs]
+    return [dict({k: v for k, v in output(d).items() if k != "content"}, excerpt=re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", d.content)))[:180]) for d in docs]
 
 @router.post("", status_code=201)
 async def create(body: Create, db: DbSession, user: CurrentUser):

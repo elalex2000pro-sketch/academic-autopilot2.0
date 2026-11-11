@@ -3,6 +3,7 @@ import {
   Brain,
   CalendarRange,
   Files,
+  FilePenLine,
   GraduationCap,
   Home,
   LayoutDashboard,
@@ -46,6 +47,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/library", label: "Biblioteca", icon: BookOpen },
       { href: "/academics", label: "Académico", icon: GraduationCap },
       { href: "/documents", label: "Documentos", icon: Files },
+      { href: "/office", label: "Academic Office", icon: FilePenLine },
       { href: "/review", label: "Repaso", icon: Brain },
     ],
   },
@@ -102,8 +104,7 @@ export function isActive(pathname: string, href: string): boolean {
   if (href === "/documents") {
     return (
       pathname.startsWith("/documents") ||
-      pathname.startsWith("/notebooks") ||
-      pathname.startsWith("/office")
+      pathname.startsWith("/notebooks")
     );
   }
   if (href === "/classes") {

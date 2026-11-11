@@ -1,10 +1,10 @@
 {
-  "version": "1.3.44",
-  "publishedAt": "2026-11-11T13:42:56.994953+00:00",
+  "version": "1.3.45",
+  "publishedAt": "2026-11-11T14:20:08.290919+00:00",
   "sizeBytes": 8388608,
   "notes": [
-    "Office: biblioteca privada, autoguardado, recuperación e historial de versiones.",
-    "Guardado y apertura HTML/TXT en el PC y control de conflictos entre sesiones."
+    "Academic Office con inicio propio, recientes, carpetas y navegación independiente.",
+    "Documentos con URL permanente, filtros y acciones desde la biblioteca."
   ],
-  "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases/tag/v1.3.44"
+  "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases/tag/v1.3.45"
 }

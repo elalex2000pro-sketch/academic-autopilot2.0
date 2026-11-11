@@ -1,7 +1,7 @@
-import { AcademicOfficeView } from "@/components/academic-office-view";
+import { OfficeHome } from "@/components/office/office-home";
 
 export const metadata = { title: "Academic-Office · Academic Autopilot" };
 
 export default function OfficePage() {
-  return <AcademicOfficeView />;
+  return <OfficeHome />;
 }

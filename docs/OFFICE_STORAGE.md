@@ -21,3 +21,7 @@ Aplicar `alembic upgrade head` en el backend antes de usar la biblioteca nueva. 
 - Suite completa del backend y `tests/test_office.py`: permisos entre usuarios, historial, restauración, conflictos, duplicado, límite e importación idempotente sin pérdida de HTML.
 - `node tests/office-e2e.cjs` desde `frontend/`: Chrome contra la API SQLite aislada `tests/chat_test_server.py`, migración, edición, cierre/reapertura, duplicado, restauración, descarga/apertura HTML, borrador sin conexión, reintento, conflicto y biblioteca móvil.
 - `node desktop/office-files.test.cjs`: handlers IPC con archivos temporales reales, diálogos simulados y regresión de adjuntos del chat. La interacción manual con ventanas nativas no forma parte de esta prueba automatizada.
+
+## Inicio de Office
+
+`/office` utiliza OfficeHome y OfficeLibrary como Dashboard con recientes, filtros por tipo, carpetas, orden y vistas de lista/cuadrícula. Las acciones están en el menú de cada documento. `/office/[id]` carga el documento privado desde la API y conserva el borrador local pendiente mediante el hook existente. Volver al inicio guarda una instantánea; el historial se restaura con control de revisión. La navegación de Office es independiente de Documentos tanto en escritorio como en los accesos secundarios móviles. El listado añade un extracto calculado, sin migración. Las pruebas `office-home-e2e.cjs` y `office-e2e.cjs` cubren rutas, biblioteca y regresiones de migración, desconexión y conflictos.

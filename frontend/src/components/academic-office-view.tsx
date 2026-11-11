@@ -4,6 +4,7 @@
 import { OfficeLibrary } from "@/components/office/office-library";
 import { useOfficeStorage } from "@/components/office/use-office-storage";
 import { OfficeData } from "@/lib/office-storage";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
@@ -114,7 +115,9 @@ function GlassButton({
   );
 }
 
-export function AcademicOfficeView({ newSignal = 0 }: { newSignal?: number }) {
+export function AcademicOfficeView({ newSignal = 0, documentId }: { newSignal?: number; documentId?: string }) {
+  const router = useRouter();
+  const [loadError, setLoadError] = useState("");
   const [module, setModule] = useState<OfficeModule>("document");
   const [docName, setDocName] = useState("Documento sin título");
   const [docHtml, setDocHtml] = useState(DEFAULT_DOC);
@@ -133,6 +136,9 @@ export function AcademicOfficeView({ newSignal = 0 }: { newSignal?: number }) {
     if (doc.kind === "document") { setDocName(doc.title); setDocHtml(doc.content); }
     else { setSheetName(doc.title); try { setCells(JSON.parse(doc.content)); } catch { setCells({}); } }
   });
+  const openDocument = storage.open;
+  useEffect(() => { if (documentId) void openDocument(documentId).then(() => setLibrary(false)).catch(e => setLoadError(e.message)); }, [documentId, openDocument]);
+  useEffect(() => { if (documentId && storage.active && storage.active.id !== documentId) router.replace(`/office/${storage.active.id}`); }, [documentId, storage.active, router]);
   const saving = storage.status === "Guardando";
   const savedAt = storage.savedAt;
   function saveNow(nameOverride?: string) { if (nameOverride) void storage.copy(nameOverride); else void storage.save(); }
@@ -143,7 +149,7 @@ export function AcademicOfficeView({ newSignal = 0 }: { newSignal?: number }) {
     await storage.fresh({ title: kind === "document" ? "Documento sin título" : "Hoja sin título", kind, content: kind === "document" ? DEFAULT_DOC : "{}", schema_version: 1, settings: {}, folder: null });
     setLibrary(false);
   }
-  async function showLibrary() { await storage.save(true); setLibrary(true); }
+  async function showLibrary() { await storage.save(true); if (documentId) router.push("/office"); else setLibrary(true); }
   async function openFromPc() {
     const bridge = window.autopilotDesktop?.files;
     if (!bridge || module === "sheet") { openRef.current?.click(); return; }
@@ -218,7 +224,7 @@ export function AcademicOfficeView({ newSignal = 0 }: { newSignal?: number }) {
       {/* Barra superior personalizada */}
       <header className="relative z-10 flex flex-wrap items-center gap-3 border-b border-white/50 px-3 py-2.5 dark:border-white/10 sm:px-4">
         <AcademicOfficeLogo />
-        <GlassButton label="Mis documentos" onClick={() => void showLibrary()}><FolderOpen className="h-4 w-4" /></GlassButton>
+        <GlassButton label={documentId ? "Volver a Office" : "Mis documentos"} onClick={() => void showLibrary()}><FolderOpen className="h-4 w-4" /></GlassButton>
         <span role="status" className="text-xs">{storage.status}</span>
 
         <div className="order-3 flex w-full gap-1 rounded-xl border border-white/50 bg-white/40 p-1 backdrop-blur sm:order-none sm:ml-3 sm:w-auto dark:border-white/10 dark:bg-white/5">
@@ -320,7 +326,7 @@ export function AcademicOfficeView({ newSignal = 0 }: { newSignal?: number }) {
       {storage.error && <div role="alert" className="relative z-10 bg-amber-400/10 p-2 text-sm">{storage.error} <button className="underline" onClick={() => void storage.copy(`${docName} (recuperado)`)}>Guardar como copia</button></div>}
       {/* Area de trabajo */}
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
-        {library ? <OfficeLibrary active={storage.active} onOpen={storage.open} onNew={newDocument} onClose={() => setLibrary(false)} onRestore={doc => storage.install(doc, doc)} onImported={doc => storage.install(doc, doc)} /> : module === "document" ? (
+        {documentId && library ? <p role="status" className="p-6">{loadError || "Cargando documento…"}</p> : library ? <OfficeLibrary active={storage.active} onOpen={storage.open} onNew={newDocument} onClose={() => setLibrary(false)} onRestore={doc => storage.install(doc, doc)} onImported={doc => storage.install(doc, doc)} /> : module === "document" ? (
           <WriterEditor
             key={storage.active?.id || "new"}
             initialSettings={settings}
