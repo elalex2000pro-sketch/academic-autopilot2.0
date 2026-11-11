@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,7 +21,7 @@ jobs:
       - run: python -m pytest tests -q
         working-directory: backend
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
       NEXT_TELEMETRY_DISABLED: '1'
