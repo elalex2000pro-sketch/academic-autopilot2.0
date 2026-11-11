@@ -29,6 +29,8 @@ const vm = require('node:vm');
   assert.equal(fs.readFileSync(output, 'utf8'), opened.text);
   selected = path.join(directory, 'entrada.txt'); fs.writeFileSync(selected, 'Texto plano');
   assert.equal((await handlers['files:open'](event, { mode: 'pick-office' })).text, 'Texto plano');
+  selected = path.join(directory, 'entrada.docx'); fs.writeFileSync(selected, Buffer.from('PK-test'));
+  assert.equal(Buffer.from((await handlers['files:open'](event, { mode: 'pick-office' })).data).toString(), 'PK-test');
   assert.ok((await handlers['files:open'](event, { name: 'adjunto.pdf', data: Buffer.from('%PDF-test') })).ok);
   assert.equal((await handlers['files:open']({ trusted: false }, { mode: 'pick-office' })).ok, false);
   selected = path.join(directory, 'rechazado.exe'); fs.writeFileSync(selected, 'x');

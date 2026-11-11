@@ -58,6 +58,7 @@ declare global {
           path?: string;
           name?: string;
           text?: string;
+          data?: ArrayBuffer;
           canceled?: boolean;
           error?: string;
         }>;

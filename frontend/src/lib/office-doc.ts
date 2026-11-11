@@ -1,4 +1,4 @@
-// Exportacion de documentos de Academic-Office: HTML, Word (.doc) y PDF.
+// Exportacion de documentos de Academic-Office: HTML y PDF; DOCX nativo en office-docx.ts.
 
 function escapeHtml(value: string): string {
   return value
@@ -70,12 +70,6 @@ export function downloadFile(filename: string, blob: Blob): void {
   anchor.click();
   anchor.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
-}
-
-export function exportDocumentAsDoc(title: string, bodyHtml: string): void {
-  const html = buildDocumentHtml(title, bodyHtml);
-  // application/msword: Word y LibreOffice lo abren conservando el formato.
-  downloadFile(`${title}.doc`, new Blob([html], { type: "application/msword" }));
 }
 
 export function exportDocumentAsHtml(title: string, bodyHtml: string): void {

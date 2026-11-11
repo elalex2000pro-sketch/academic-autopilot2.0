@@ -7,6 +7,7 @@
 // El motor es local (no hay iframe ni servidor Collabora/OnlyOffice): funciona
 // en la web, en Electron y sin claves de API. La paginacion es visual (guias
 // A4 + saltos de pagina); el PDF se obtiene con el dialogo de impresion.
+import { OfficeFind } from "./office-find";
 import {
   useCallback,
   useEffect,
@@ -32,7 +33,6 @@ import {
   Code,
   CodeBlock,
   Essentials,
-  FindAndReplace,
   Font,
   GeneralHtmlSupport,
   Heading,
@@ -134,7 +134,7 @@ import {
 
 import { cn } from "@/lib/utils";
 
-export type WriterExportKind = "pdf" | "doc" | "html";
+export type WriterExportKind = "pdf" | "docx" | "html";
 
 export interface WriterEditorProps {
   initialSettings?: Record<string, unknown>;
@@ -292,8 +292,7 @@ const EDITOR_CONFIG = {
     Highlight,
     RemoveFormat,
     SpecialCharacters,
-    FindAndReplace,
-    PasteFromOffice,
+      PasteFromOffice,
     WordCount,
     SourceEditing,
     GeneralHtmlSupport,
@@ -492,7 +491,7 @@ export function WriterEditor({
   });
   const [stats, setStats] = useState<WriterStats>({ words: 0, chars: 0, pages: 1, current: 1 });
   const [findOpen, setFindOpen] = useState(false);
-  const [findQuery, setFindQuery] = useState("");
+
   const [specialOpen, setSpecialOpen] = useState(false);
   const [paintActive, setPaintActive] = useState(false);
   const [lang, setLang] = useState("es-ES");
@@ -874,28 +873,6 @@ export function WriterEditor({
     }
   }
 
-  function findNext(backwards = false) {
-    if (!findQuery.trim()) return;
-    editorRef.current?.focus();
-    const win = window as unknown as {
-      find?: (
-        search: string,
-        caseSensitive?: boolean,
-        backwards?: boolean,
-        wrapAround?: boolean,
-        wholeWord?: boolean,
-        searchInFrames?: boolean,
-        showDialog?: boolean,
-      ) => boolean;
-    };
-    if (!win.find) {
-      setStatusMessage("La busqueda no esta disponible en este navegador.");
-      return;
-    }
-    const found = win.find(findQuery, false, backwards, true, false, false, false);
-    setStatusMessage(found ? `Coincidencia encontrada: ${findQuery}` : "No se encontro el texto.");
-  }
-
   async function toggleFullscreen() {
     setOpenMenu(null);
 
@@ -976,7 +953,7 @@ export function WriterEditor({
       } else if (key === "n") {
         event.preventDefault();
         actionsRef.current.onNew();
-      } else if (key === "f") {
+      } else if (key === "f" || key === "h") {
         event.preventDefault();
         setFindOpen(true);
       }
@@ -999,7 +976,7 @@ export function WriterEditor({
         { label: "Guardar como...", shortcut: "Ctrl+Mayus+S", action: saveAs },
         separator,
         { label: "Exportar a PDF...", action: () => onExport("pdf") },
-        { label: "Exportar a Word (.doc)", action: () => onExport("doc") },
+        { label: "Exportar a Word (.docx)", action: () => onExport("docx") },
         { label: "Exportar a HTML", action: () => onExport("html") },
         { label: "Imprimir...", shortcut: "Ctrl+P", action: () => onExport("pdf") },
         separator,
@@ -1584,38 +1561,7 @@ export function WriterEditor({
         </ToolButton>
       </div>
 
-      {findOpen && (
-        <div className="office-find-bar">
-          <Search className="h-3.5 w-3.5 text-[var(--ow-muted)]" />
-          <input
-            className="office-find-input"
-            value={findQuery}
-            autoFocus
-            placeholder="Buscar en el documento..."
-            onChange={(event) => setFindQuery(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                findNext(event.shiftKey);
-              }
-            }}
-          />
-          <button type="button" className="office-find-button" onClick={() => findNext(true)}>
-            Anterior
-          </button>
-          <button type="button" className="office-find-button" onClick={() => findNext(false)}>
-            Siguiente
-          </button>
-          <button
-            type="button"
-            className="office-find-button"
-            onClick={() => setFindOpen(false)}
-            aria-label="Cerrar busqueda"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
+      {findOpen && <OfficeFind editor={editorRef.current} onClose={() => setFindOpen(false)} />}
 
       <div className="office-body">
         <div className="office-canvas" onClick={() => setOpenMenu(null)}>

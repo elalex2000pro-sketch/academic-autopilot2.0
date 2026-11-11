@@ -21,7 +21,6 @@ import {
 import { SheetEditor } from "@/components/office/sheet-editor";
 import {
   buildDocumentHtml,
-  exportDocumentAsDoc,
   exportDocumentAsHtml,
   printDocumentAsPdf,
   safeFileName,
@@ -155,7 +154,7 @@ export function AcademicOfficeView({ newSignal = 0, documentId }: { newSignal?: 
     if (!bridge || module === "sheet") { openRef.current?.click(); return; }
     const result = await bridge.open({ mode: "pick-office" });
     if (!result.ok) { if (result.error) window.alert(result.error); return; }
-    if (result.name && result.text !== undefined) await openFile(new File([result.text], result.name));
+    if (result.name && (result.data || result.text !== undefined)) await openFile(new File([result.data || result.text!], result.name));
   }
   async function saveToPc(kind: "html" | "txt") {
     const element = document.createElement("div"); element.innerHTML = docHtml;
@@ -174,15 +173,15 @@ export function AcademicOfficeView({ newSignal = 0, documentId }: { newSignal?: 
 
   async function openFile(file: File) {
     if (file.size > 5 * 1024 * 1024) { window.alert("El archivo supera el límite de 5 MB."); return; }
-    const text = await file.text();
-    const baseName = file.name.replace(/\.[^.]+$/, "");
-    await storage.fresh({ title: baseName || "Archivo importado", kind: module, content: module === "document" ? (/\.html?$/i.test(file.name) ? text : textToHtml(text)) : JSON.stringify(parseCsv(text)), schema_version: 1, settings: {}, folder: null });
-    setLibrary(false);
+    if (module === "document") {
+      try { const { readOfficeFile } = await import("@/lib/office-docx"); const result = await readOfficeFile(file); if (!result) return; await storage.fresh({ title:file.name.replace(/\.[^.]+$/,""),kind:"document",content:result.html,schema_version:1,settings:result.settings,folder:null }); setLibrary(false); }
+      catch(e) { window.alert(e instanceof Error?e.message:"No se pudo importar el documento"); }
+    } else { const text=await file.text(); await storage.fresh({title:file.name,kind:"sheet",content:JSON.stringify(parseCsv(text)),schema_version:1,settings:{},folder:null});setLibrary(false); }
   }
 
-  function exportDocument(kind: "doc" | "html" | "pdf") {
+  function exportDocument(kind: "docx" | "html" | "pdf") {
     const name = safeFileName(docName);
-    if (kind === "doc") exportDocumentAsDoc(name, docHtml);
+    if (kind === "docx") void import("@/lib/office-docx").then(m=>m.saveDocx(name,docHtml,settings)).catch(e=>window.alert(e.message));
     else if (kind === "html") exportDocumentAsHtml(name, docHtml);
     else printDocumentAsPdf(name, docHtml);
   }
@@ -283,7 +282,7 @@ export function AcademicOfficeView({ newSignal = 0, documentId }: { newSignal?: 
           type="file"
           className="hidden"
           accept={
-            module === "document" ? ".html,.htm,.txt,.md" : ".csv,.txt"
+            module === "document" ? ".docx,.html,.htm,.txt,.md" : ".csv,.txt"
           }
           onChange={(event) => {
             const file = event.target.files?.[0];

@@ -386,12 +386,13 @@ function registerFileControls() {
     try {
       if (payload?.mode === "pick-office") {
         const win = BrowserWindow.fromWebContents(event.sender);
-        const options = { title: "Abrir desde el PC", properties: ["openFile"], filters: [{ name: "Documentos de texto", extensions: ["html", "htm", "txt", "md"] }] };
+        const options = { title: "Abrir desde el PC", properties: ["openFile"], filters: [{ name: "Documentos de texto", extensions: ["docx", "html", "htm", "txt", "md"] }] };
         const selected = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options);
         if (selected.canceled || !selected.filePaths.length) return { ok: false, canceled: true };
         const selectedPath = selected.filePaths[0];
-        if (![".html", ".htm", ".txt", ".md"].includes(path.extname(selectedPath).toLowerCase())) return { ok: false, error: "Formato no admitido." };
+        if (![".docx", ".html", ".htm", ".txt", ".md"].includes(path.extname(selectedPath).toLowerCase())) return { ok: false, error: "Formato no admitido." };
         if ((await fs.promises.stat(selectedPath)).size > 5 * 1024 * 1024) return { ok: false, error: "El archivo supera el límite de 5 MB." };
+        if (path.extname(selectedPath).toLowerCase() === ".docx") { const data = await fs.promises.readFile(selectedPath); return { ok: true, name: path.basename(selectedPath), data: data.buffer.slice(data.byteOffset,data.byteOffset+data.byteLength) }; }
         return { ok: true, name: path.basename(selectedPath), text: await fs.promises.readFile(selectedPath, "utf8") };
       }
       const { buffer, name } = filePayload(payload);
