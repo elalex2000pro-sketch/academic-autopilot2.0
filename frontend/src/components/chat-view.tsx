@@ -1,11 +1,8 @@
 "use client";
 
+import { readError, nameOf, conversationTitle, conversationSubtitle, initials, formatClock, messagePreview, formatDay, isImage, formatSize, presenceLabel } from "@/lib/chat-format";
 import { createPortal } from "react-dom";
 import "./chat-workspace.css";
-
-// Vista de chat: conversaciones privadas y grupales, @usuarios, adjuntos
-// (PDF/imagenes) y enlaces clickeables. Los mensajes nuevos llegan por el
-// WebSocket compartido de la app (`useRealtime`, evento "chat").
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -30,7 +27,6 @@ import {
   Users,
   X,
 } from "lucide-react";
-
 import { useAuth } from "@/components/auth-provider";
 import { ChatBackgroundPicker } from "@/components/chat-background-picker";
 import { ChatExtrasPicker } from "@/components/chat-extras-picker";
@@ -42,13 +38,8 @@ import { useRealtime } from "@/components/realtime-provider";
 import { setActiveChatConversation } from "@/lib/chat-active";
 import { Button } from "@/components/ui/button";
 import { VerifiedTick } from "@/components/verified-tick";
-
 import { chatApi } from "@/lib/api";
-import {
-  isChatMuted,
-  setChatMuted,
-  subscribeChatMutes,
-} from "@/lib/chat-mutes";
+import { setChatMuted, subscribeChatMutes } from "@/lib/chat-mutes";
 import {
   DEFAULT_CHAT_BACKGROUND,
   backgroundStyle,
@@ -56,82 +47,13 @@ import {
   saveChatBackground,
   type ChatBackground,
 } from "@/lib/chat-background";
-import {
-  XP_EVENT,
-  getGamification,
-  getLevelInfo,
-  parseStickerMessage,
-  stickerMessage,
-  type ChatSticker,
-} from "@/lib/gamification";
+import { XP_EVENT, getGamification, getLevelInfo, parseStickerMessage, stickerMessage } from "@/lib/gamification";
 import { openFileWithSystem, saveFileAs } from "@/lib/native-files";
 import type { ChatConversation, ChatMessage, ChatUser } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { lockBodyScroll } from "@/lib/scroll-lock";
 
 const URL_PATTERN = /(https?:\/\/[^\s<]+)/g;
-
-function readError(error: unknown): string {
-  return error instanceof Error ? error.message : "Algo salio mal";
-}
-
-function nameOf(user: {
-  display_name: string;
-  username: string | null;
-}): string {
-  return user.username ? `@${user.username}` : user.display_name;
-}
-
-function conversationTitle(
-  conversation: ChatConversation,
-  meId: string,
-): string {
-  if (conversation.kind === "group") return conversation.title || "Grupo";
-  const other = conversation.members.find((member) => member.user.id !== meId);
-  return other ? other.user.display_name : "Chat privado";
-}
-
-function conversationSubtitle(
-  conversation: ChatConversation,
-  meId: string,
-): string {
-  if (conversation.kind === "group") {
-    return `${conversation.members.length} miembros`;
-  }
-  const other = conversation.members.find((member) => member.user.id !== meId);
-  return other?.user.username ? `@${other.user.username}` : "Privado";
-}
-
-function initials(value: string): string {
-  const parts = value.trim().split(/\s+/).slice(0, 2);
-  return parts.map((part) => part.charAt(0).toUpperCase()).join("") || "?";
-}
-
-function formatClock(iso: string): string {
-  return new Date(iso).toLocaleTimeString("es-ES", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function messagePreview(message: ChatMessage): string {
-  const sticker = parseStickerMessage(message.content);
-  return sticker ? `${sticker.emoji} ${sticker.name}` : message.content;
-}
-
-function formatDay(iso: string): string {
-  const date = new Date(iso);
-  const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(today.getDate() - 1);
-  const sameDay = (a: Date, b: Date) =>
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate();
-  if (sameDay(date, today)) return "Hoy";
-  if (sameDay(date, yesterday)) return "Ayer";
-  return date.toLocaleDateString("es-ES", { day: "2-digit", month: "long" });
-}
 
 function timeValue(item: { created_at: string }): number {
   const value = new Date(item.created_at).getTime();
@@ -175,18 +97,6 @@ function reconcileSentMessage(
     (message) => message.id !== tempId && message.id !== created.id,
   );
   return sortByCreatedAt([...withoutStale, created]);
-}
-
-function isImage(contentType: string, name: string): boolean {
-  return (
-    contentType.startsWith("image/") || /\.(png|jpe?g|gif|webp)$/i.test(name)
-  );
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 /** Texto con enlaces clickeables (y vista previa si el enlace es una imagen). */
@@ -476,13 +386,6 @@ function mergeMessages(
     });
   }
   return sortByCreatedAt([...byId.values()]);
-}
-
-function presenceLabel(peer: ChatUser | undefined): string {
-  if (peer?.online) return "En línea";
-  if (!peer?.last_seen_at) return "Sin conexión";
-  const date = new Date(peer.last_seen_at);
-  return `Última vez ${formatDay(peer.last_seen_at).toLowerCase()} a las ${formatClock(date.toISOString())}`;
 }
 
 function Avatar({
