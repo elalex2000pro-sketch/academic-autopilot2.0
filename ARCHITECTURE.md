@@ -7,6 +7,7 @@ App de estudio entre alumnos. Frontend Next.js/React, API FastAPI y escritorio E
 - `frontend/src/app/`: rutas públicas. Dashboard en `page.tsx`; Clases en `classes/`; Chat en `chat/`; documentos en `documents/` y `office/`.
 - `frontend/src/components/`: vistas. Dashboard en `dashboard/`; Clases en `class/` y `class-detail-view.tsx`; Chat en `chat-view.tsx`; Office en `office/` y `academic-office-view.tsx`.
 - `frontend/src/lib/` y `hooks/`: API, tipos, utilidades y coordinación de estado. `office-storage.ts` conecta el guardado; `office-docx.ts` importa/exporta DOCX.
+- Office: `office-library.tsx` coordina la biblioteca; `office-document-card.tsx` y `office-version-history.tsx` presentan sus datos. `writer-editor.tsx` conserva el motor; `writer-config.ts` y `writer-*-toolbar.tsx` separan configuración y barras. `lib/office-file-actions.ts` comparte archivos nativos/descargas.
 - `backend/app/`: endpoints en `api/v1/`, modelos en `models/` y lógica en `services/`. Office usa `/office/documents`, `OfficeDocument` y `OfficeDocumentVersion`.
 - `backend/alembic/`: migraciones. `desktop/`: IPC de archivos, OAuth y actualizaciones.
 - `docs/`: inventarios y verificaciones. `.github/workflows/ci.yml`: controles de calidad.

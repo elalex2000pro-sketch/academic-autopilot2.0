@@ -13,3 +13,7 @@ Se conservan los siguientes candidatos y sus dependencias; esta fase no decide s
 | Parámetro `title` de `exportDocx` | No se lee actualmente, pero se conserva la firma pública y sus llamadas. |
 
 No se eliminan estilos globales ni se reorganizan Dashboard, Clases, Chat o backend. El inventario amplio previo continúa en `docs/cleanup-plan.md`.
+
+## Incidencia inicial fuera del refactor
+
+`frontend/tests/office-e2e.cjs:53` falla antes y después de esta fase al esperar «Sin conexión». La inspección inicial mostró «Conflicto de versión» (409) tras su secuencia de restauración/recarga/importación, antes de bloquear peticiones. Ni el test ni `use-office-storage.ts` se modifican para ocultarlo. Requiere una tarea funcional de diagnóstico de concurrencia independiente; no se cambia el comportamiento en esta limpieza.
