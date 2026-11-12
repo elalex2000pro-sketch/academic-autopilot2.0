@@ -1,13 +1,14 @@
 "use client";
 
+import { ChatThreadHeader } from "@/components/chat/chat-thread-header";
 import { ChatConversationList } from "@/components/chat/chat-conversation-list";
 import { ChatProfilePanel } from "@/components/chat/chat-profile-panel";
-import { MessageText, MessageTicks, Avatar } from "@/components/chat/chat-message-content";
-import { readError, nameOf, conversationTitle, conversationSubtitle, initials, formatClock, messagePreview, formatDay, isImage, formatSize, presenceLabel } from "@/lib/chat-format";
+import { MessageText, MessageTicks } from "@/components/chat/chat-message-content";
+import { readError, nameOf, conversationTitle, conversationSubtitle, initials, formatClock, messagePreview, formatDay, isImage, formatSize } from "@/lib/chat-format";
 import { createPortal } from "react-dom";
 import "./chat-workspace.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, AtSign, Bell, BellOff, Check, FileText, FolderOpen, Forward, Loader2, MessageSquarePlus, Palette, Paperclip, Plus, Save, Search, Send, SmilePlus, UserPlus, X } from "lucide-react";
+import { AtSign, Check, FileText, FolderOpen, Forward, Loader2, MessageSquarePlus, Paperclip, Plus, Save, Search, Send, SmilePlus, UserPlus, X } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { ChatBackgroundPicker } from "@/components/chat-background-picker";
 import { ChatExtrasPicker } from "@/components/chat-extras-picker";
@@ -20,7 +21,7 @@ import { setActiveChatConversation } from "@/lib/chat-active";
 import { Button } from "@/components/ui/button";
 import { VerifiedTick } from "@/components/verified-tick";
 import { chatApi } from "@/lib/api";
-import { setChatMuted, subscribeChatMutes } from "@/lib/chat-mutes";
+import { subscribeChatMutes } from "@/lib/chat-mutes";
 import {
   DEFAULT_CHAT_BACKGROUND,
   backgroundStyle,
@@ -848,77 +849,17 @@ export function ChatView() {
       >
         {active ? (
           <>
-            <header className="chat-thread-header">
-              <button
-                className="chat-icon-button chat-back"
-                onClick={() => setMobileThread(false)}
-                aria-label="Volver a los chats"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </button>
-              <Avatar
-                name={conversationTitle(active, meId)}
-                group={active.kind === "group"}
-                online={active.kind === "direct" && !!peer?.online}
-              />
-              <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-1 truncate text-sm font-semibold">
-                  {conversationTitle(active, meId)}
-                  {peer?.is_verified && active.kind === "direct" ? (
-                    <VerifiedTick />
-                  ) : null}
-                </p>
-                <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                  {conversationSubtitle(active, meId)}
-                  {active.kind === "direct" ? (
-                    <span
-                      className={cn(
-                        "ml-2",
-                        peer?.online &&
-                          "text-emerald-700 dark:text-emerald-300",
-                      )}
-                    >
-                      {presenceLabel(peer)}
-                    </span>
-                  ) : null}
-                </p>
-              </div>
-              <button
-                onClick={() =>
-                  setMutedChats(setChatMuted(active.id, !activeMuted))
-                }
-                className="chat-icon-button"
-                aria-label={
-                  activeMuted
-                    ? "Activar notificaciones"
-                    : "Silenciar conversación"
-                }
-                aria-pressed={activeMuted}
-                title={activeMuted ? "Activar notificaciones" : "Silenciar"}
-              >
-                {activeMuted ? (
-                  <BellOff className="h-4 w-4" />
-                ) : (
-                  <Bell className="h-4 w-4" />
-                )}
-              </button>
-              <button
-                onClick={() => setBackgroundOpen(true)}
-                className="chat-icon-button"
-                aria-label="Cambiar fondo del chat"
-                title="Fondo del chat"
-              >
-                <Palette className="h-4 w-4" />
-              </button>
-              {active.kind === "group" &&
-              active.members.find((member) => member.user.id === meId)?.role ===
-                "owner" ? (
-                <InviteButton
-                  conversation={active}
-                  onInvited={() => void refreshList()}
-                />
-              ) : null}
-            </header>
+            <ChatThreadHeader
+          setMobileThread={setMobileThread}
+          active={active}
+          meId={meId}
+          peer={peer}
+          setMutedChats={setMutedChats}
+          activeMuted={activeMuted}
+          setBackgroundOpen={setBackgroundOpen}
+          InviteButton={InviteButton}
+          refreshList={refreshList}
+        />
             <div
               ref={threadRef}
               className="chat-messages"
