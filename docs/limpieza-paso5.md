@@ -164,3 +164,26 @@ Los siguientes defectos se registraron antes de P1 y quedan fuera de esta limpie
 - PLAN-03: la misma precarga produce error de consola en móvil. Pendiente de diagnóstico y corrección aparte.
 
 Baseline y resultado P1–P8 coinciden en estos tres casos. No se consideran superados porque el smoke general pase. Chat C1–C5 queda aprobado; se detendrá antes de C6 y no se tocarán estados, efectos, eventos WebSocket, realtime-provider ni class-detail-view.
+
+## Resultado de Chat C1–C5: parada antes de C6
+
+Aprobado C1–C5, con C3 dividido en perfil y lista tal como contemplaba el plan. Se completan seis extracciones pequeñas; C6 no se inicia. Fuente inicial: ebff036, 2043 líneas. Fuente final: **1458 líneas**. Se conserva el export ChatView y la importación CSS en el coordinador.
+
+| Bloque | Commit | Líneas antes → después | Artefactos Chat / Clases (en Temp) |
+|---|---|---|---|
+| C1 formatos | 89e6691 | 2043 → 1946 | autopilot-chat-browser-9Pf75U / class-tabs-YLm8Z7 |
+| C2 MessageText/MessageTicks/Avatar | de80bb2 | 1946 → 1811 | autopilot-chat-browser-q7kuAk / class-tabs-gTNt7r |
+| C3 perfil, búsqueda y @usuario | 79e5a6d | 1811 → 1727 | autopilot-chat-browser-kUsBn1 / class-tabs-3WLYeb |
+| C3 lista | 2a550a6 | 1727 → 1629 | autopilot-chat-browser-QXmSUq / class-tabs-kMAKy6 |
+| C4 cabecera del hilo | 669e8cf | 1629 → 1570 | autopilot-chat-browser-nAykx5 / class-tabs-h46zEo |
+| C5 chat-thread-composer | 737f20b | 1570 → 1458 | autopilot-chat-browser-ZZADWJ / class-tabs-PqKHO8 |
+
+Antes de C1 pasan los dos tests de navegador existentes (artefactos autopilot-chat-browser-DTfo7X / class-tabs-4IPvSn). Tras CADA extracción pasan build, typecheck, lint, **97 tests backend**, tests/chat-e2e.cjs y tests/class-tabs-e2e.cjs. Los scripts y sus aserciones permanecen idénticos, así como realtime-provider, class-detail-view, backend, dependencias y datos de producción. Se sirven builds nuevos con una API SQLite aislada y dos cuentas temporales por prueba. Los tests cubren @usuario, búsqueda/conversación directa, envío y estados sent/delivered/read por WS real, recepción fuera de Chat, presencia/desconexión, imagen/PDF, validación, borrador offline y móvil; en Clases, publicaciones/respuestas por WS real, fijados, recarga y pestañas no vacías.
+
+Lint mantiene siete avisos existentes: el aviso del img de preview se traslada a chat-thread-composer.tsx con su JSX. No se corrige ni se silencia. Se conserva la limitación del runner next start con output standalone ya existente. La revisión React se limita a contratos y referencias, sin aplicar mejoras de lógica.
+
+Comparación AST normalizando CRLF: todas las instrucciones de ChatView anteriores al return, incluidos efectos, dependencias, useRealtime, handlers y refs, son idénticas al punto de partida. También son idénticas las definiciones de AttachmentCard, InviteButton, NewConversationDialog y las funciones de reconciliación. Los paneles extraídos no tienen hooks de estado/efecto/realtime. El JSX completo del log chat-messages (incluidas las burbujas de C6) coincide literalmente con el original. La cabecera recibe InviteButton como función estable de componente: no se mueve su definición ni se introduce un import circular.
+
+Los defectos PLAN-01/02/03 quedan registrados para una tarea aparte y no se tocan. Se conserva como trabajo pendiente extraer C6 y, después de nueva aprobación, ampliar los casos de reconexión/cambio rápido de hilo si se aborda su lógica. No se extraen blobs/adjuntos, diálogos con efectos ni callbacks WebSocket para reducir más líneas.
+
+Se eliminó el script temporal de extracción y se cerraron los servidores de prueba propios. Se sube únicamente limpieza/paso5, sin fusionar, sin PR y sin versión/tag. Antes de cualquier trabajo en C6 se espera aprobación explícita del usuario.
