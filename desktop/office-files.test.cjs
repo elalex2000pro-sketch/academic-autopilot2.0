@@ -8,7 +8,7 @@ const vm = require('node:vm');
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'office-ipc-'));
   const handlers = {};
   const source = fs.readFileSync(path.join(__dirname, 'main.js'), 'utf8');
-  const section = source.slice(source.indexOf('const MAX_FILE_PAYLOAD_BYTES'), source.indexOf('function registerSpotifyAuth'));
+  const section = source.slice(source.indexOf('const MAX_FILE_PAYLOAD_BYTES'), source.indexOf('function normalizeReleaseNotes'));
   let selected = path.join(directory, 'entrada.html');
   fs.writeFileSync(selected, '<h1>Álgebra</h1>');
   const output = path.join(directory, 'salida.html');

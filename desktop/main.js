@@ -34,7 +34,6 @@ const ICON_PATH = path.join(__dirname, "assets", "icon.png");
 const CHROME_UA = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${process.versions.chrome} Safari/537.36 AcademicAutopilotDesktop/${app.getVersion()}`;
 
 let mainWindow = null;
-let spotifyAuthWindow = null;
 let smokeFinished = false;
 let smokeTimer = null;
 
@@ -74,7 +73,6 @@ if (!gotTheLock) {
     configureSession(session.fromPartition(PARTITION));
     registerWindowControls();
     registerFileControls();
-    registerSpotifyAuth();
     registerUpdaterControls();
     configureAutoUpdater();
     createWindow();
@@ -419,147 +417,6 @@ function registerFileControls() {
   });
 }
 
-function registerSpotifyAuth() {
-  ipcMain.handle("spotify:start-auth", (event, payload) => {
-    if (!isTrustedRenderer(event)) {
-      return { ok: false, error: "Origen no autorizado." };
-    }
-
-    const parent = BrowserWindow.fromWebContents(event.sender);
-    if (!parent || parent.isDestroyed()) {
-      return { ok: false, error: "La ventana principal no está disponible." };
-    }
-
-    let authUrl;
-    let redirectUri;
-    try {
-      authUrl = new URL(String(payload?.url ?? ""));
-      const redirect = new URL(String(payload?.redirectUri ?? ""));
-      if (
-        authUrl.protocol !== "https:" ||
-        authUrl.hostname !== "accounts.spotify.com" ||
-        authUrl.pathname !== "/authorize"
-      ) {
-        return { ok: false, error: "URL de autorización no válida." };
-      }
-      if (redirect.origin !== APP_ORIGIN || redirect.pathname !== "/spotify") {
-        return { ok: false, error: "Redirect URI no válida." };
-      }
-      redirectUri = redirect.toString();
-      if (authUrl.searchParams.get("redirect_uri") !== redirectUri) {
-        return { ok: false, error: "La Redirect URI no coincide." };
-      }
-    } catch {
-      return { ok: false, error: "Datos de autorización no válidos." };
-    }
-
-    if (spotifyAuthWindow && !spotifyAuthWindow.isDestroyed()) {
-      spotifyAuthWindow.close();
-    }
-
-    const authWindow = new BrowserWindow({
-      parent,
-      modal: true,
-      width: 520,
-      height: 760,
-      show: false,
-      title: "Conectar Spotify",
-      autoHideMenuBar: true,
-      icon: ICON_PATH,
-      webPreferences: {
-        partition: PARTITION,
-        contextIsolation: true,
-        nodeIntegration: false,
-        sandbox: true,
-        backgroundThrottling: false,
-      },
-    });
-    spotifyAuthWindow = authWindow;
-    authWindow.setMenuBarVisibility(false);
-    authWindow.webContents.setUserAgent(CHROME_UA);
-    authWindow.webContents.setWindowOpenHandler(({ url }) => {
-      openExternal(url);
-      return { action: "deny" };
-    });
-
-    let settled = false;
-    const finish = (result) => {
-      if (settled) return;
-      settled = true;
-      if (spotifyAuthWindow === authWindow) spotifyAuthWindow = null;
-      if (!parent.isDestroyed()) {
-        parent.webContents.send("spotify:oauth-callback", result);
-        parent.focus();
-      }
-      if (!authWindow.isDestroyed()) authWindow.close();
-    };
-
-    const expectedRedirect = new URL(redirectUri);
-    const handleCallback = (targetUrl) => {
-      let target;
-      try {
-        target = new URL(targetUrl);
-      } catch {
-        return false;
-      }
-      if (
-        target.origin !== expectedRedirect.origin ||
-        target.pathname !== expectedRedirect.pathname
-      ) {
-        return false;
-      }
-      finish({
-        code: target.searchParams.get("code") ?? undefined,
-        state: target.searchParams.get("state") ?? undefined,
-        error: target.searchParams.get("error") ?? undefined,
-        error_description:
-          target.searchParams.get("error_description") ?? undefined,
-      });
-      return true;
-    };
-
-    authWindow.webContents.on("will-redirect", (redirectEvent, targetUrl) => {
-      if (handleCallback(targetUrl)) redirectEvent.preventDefault();
-    });
-    authWindow.webContents.on("will-navigate", (navigateEvent, targetUrl) => {
-      if (handleCallback(targetUrl)) navigateEvent.preventDefault();
-    });
-    authWindow.webContents.on(
-      "did-fail-load",
-      (_event, errorCode, errorDescription, _validatedURL, isMainFrame) => {
-        if (!isMainFrame || errorCode === -3 || settled) return;
-        finish({
-          error: "No se pudo cargar el inicio de sesión de Spotify.",
-          error_description: errorDescription,
-        });
-      },
-    );
-    authWindow.on("closed", () => {
-      if (spotifyAuthWindow === authWindow) spotifyAuthWindow = null;
-      if (settled) return;
-      settled = true;
-      if (!parent.isDestroyed()) {
-        parent.webContents.send("spotify:oauth-callback", { cancelled: true });
-        parent.focus();
-      }
-    });
-    authWindow.once("ready-to-show", () => {
-      if (!authWindow.isDestroyed()) authWindow.show();
-    });
-
-    void authWindow.loadURL(authUrl.toString()).catch((error) => {
-      if (!settled) {
-        finish({
-          error: "No se pudo abrir Spotify.",
-          error_description: error?.message || "Error de red",
-        });
-      }
-    });
-
-    return { ok: true };
-  });
-}
-
 function normalizeReleaseNotes(value) {
   if (!value) return "";
   if (typeof value === "string") return value;
@@ -751,7 +608,6 @@ function configureSession(appSession) {
     "clipboard-sanitized-write",
     "fullscreen",
     "media",
-    "mediaKeySystem",
   ]);
 
   appSession.setPermissionCheckHandler((_webContents, permission, requestingOrigin) => {
