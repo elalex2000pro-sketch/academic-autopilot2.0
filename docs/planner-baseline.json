@@ -1,0 +1,125 @@
+[
+  {
+    "viewport": 1440,
+    "name": "P1 rutas, aviso y acceso rápido",
+    "status": "passed"
+  },
+  {
+    "viewport": 1440,
+    "name": "P3 alta y persistencia Tarea",
+    "status": "passed"
+  },
+  {
+    "viewport": 1440,
+    "name": "P3 alta y persistencia Examen",
+    "status": "passed"
+  },
+  {
+    "viewport": 1440,
+    "name": "P3 alta y persistencia Fecha importante",
+    "status": "passed"
+  },
+  {
+    "viewport": 1440,
+    "name": "P2 resumen y agenda seleccionada",
+    "status": "passed"
+  },
+  {
+    "viewport": 1440,
+    "name": "P4 editar y mover tarea",
+    "status": "passed"
+  },
+  {
+    "viewport": 1440,
+    "name": "P5 crear horario local y recargar",
+    "status": "passed"
+  },
+  {
+    "viewport": 1440,
+    "name": "P6-P8 periodo, mes, semana, día y Hoy",
+    "status": "passed"
+  },
+  {
+    "viewport": 1440,
+    "name": "P4 completar y borrar con confirmación",
+    "status": "passed"
+  },
+  {
+    "viewport": 1440,
+    "name": "P5 editar, cancelar e importar horario",
+    "status": "passed"
+  },
+  {
+    "viewport": 1440,
+    "name": "P6 celdas contiguas y P4 tarea en su fecha nueva",
+    "status": "passed"
+  },
+  {
+    "viewport": 1440,
+    "name": "Ausencia de errores de consola y render",
+    "status": "pending",
+    "reason": "browser errors\n+ actual - expected\n\n+ [\n+   'Failed to fetch RSC payload for http://localhost:3000/documents. Falling back to browser navigation. TypeError: network error'\n+ ]\n- []\n"
+  },
+  {
+    "viewport": 390,
+    "name": "P1 rutas, aviso y acceso rápido",
+    "status": "passed"
+  },
+  {
+    "viewport": 390,
+    "name": "P3 alta y persistencia Tarea",
+    "status": "passed"
+  },
+  {
+    "viewport": 390,
+    "name": "P3 alta y persistencia Examen",
+    "status": "passed"
+  },
+  {
+    "viewport": 390,
+    "name": "P3 alta y persistencia Fecha importante",
+    "status": "passed"
+  },
+  {
+    "viewport": 390,
+    "name": "P2 resumen y agenda seleccionada",
+    "status": "passed"
+  },
+  {
+    "viewport": 390,
+    "name": "P4 editar y mover tarea",
+    "status": "passed"
+  },
+  {
+    "viewport": 390,
+    "name": "P5 crear horario local y recargar",
+    "status": "passed"
+  },
+  {
+    "viewport": 390,
+    "name": "P6-P8 periodo, mes, semana, día y Hoy",
+    "status": "passed"
+  },
+  {
+    "viewport": 390,
+    "name": "P4 completar y borrar con confirmación",
+    "status": "passed"
+  },
+  {
+    "viewport": 390,
+    "name": "P5 editar, cancelar e importar horario",
+    "status": "pending",
+    "reason": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /Editar Franja local de prueba de/ })\u001b[22m\n\u001b[2m    - locator resolved to <button type=\"button\" title=\"Editar Franja local de prueba\" aria-label=\"Editar Franja local de prueba de Jueves\" class=\"rounded-[4px] bg-black/15 p-1 text-white/80 transition-colors hover:bg-black/30 hover:text-white focus:opacity-100\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not stable\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is not stable\u001b[22m\n\u001b[2m  2 × retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m      - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - element is outside of the viewport\u001b[22m\n\u001b[2m  58 × retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\u001b[2m       - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is visible, enabled and stable\u001b[22m\n\u001b[2m       - scrolling into view if needed\u001b[22m\n\u001b[2m       - done scrolling\u001b[22m\n\u001b[2m       - element is outside of the viewport\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting 500ms\u001b[22m\n"
+  },
+  {
+    "viewport": 390,
+    "name": "P6 celdas contiguas y P4 tarea en su fecha nueva",
+    "status": "passed"
+  },
+  {
+    "viewport": 390,
+    "name": "Ausencia de errores de consola y render",
+    "status": "pending",
+    "reason": "browser errors\n+ actual - expected\n\n+ [\n+   'Failed to fetch RSC payload for http://localhost:3000/academics. Falling back to browser navigation. TypeError: Failed to fetch\\n' +\n+     '    at f (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:45577)\\n' +\n+     '    at http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:59128\\n' +\n+     '    at Object.u [as task] (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:31932)\\n' +\n+     '    at c.s (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:32637)\\n' +\n+     '    at c.enqueue (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:32062)\\n' +\n+     '    at s (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:59091)\\n' +\n+     '    at i (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:58631)\\n' +\n+     '    at a (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:65457)\\n' +\n+     '    at f (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:75371)\\n' +\n+     '    at Object.action (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:2:7102)',\n+   'Failed to fetch RSC payload for http://localhost:3000/office. Falling back to browser navigation. TypeError: Failed to fetch\\n' +\n+     '    at f (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:45577)\\n' +\n+     '    at http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:59128\\n' +\n+     '    at Object.u [as task] (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:31932)\\n' +\n+     '    at c.s (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:32637)\\n' +\n+     '    at c.enqueue (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:32062)\\n' +\n+     '    at s (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:59091)\\n' +\n+     '    at i (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:58631)\\n' +\n+     '    at a (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:65457)\\n' +\n+     '    at f (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:75371)\\n' +\n+     '    at Object.action (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:2:7102)',\n+   'Failed to fetch RSC payload for http://localhost:3000/. Falling back to browser navigation. TypeError: Failed to fetch\\n' +\n+     '    at f (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:45577)\\n' +\n+     '    at http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:59128\\n' +\n+     '    at Object.u [as task] (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:31932)\\n' +\n+     '    at c.s (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:32637)\\n' +\n+     '    at c.enqueue (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:32062)\\n' +\n+     '    at s (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:59091)\\n' +\n+     '    at i (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:58631)\\n' +\n+     '    at a (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:65457)\\n' +\n+     '    at f (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:75371)\\n' +\n+     '    at Object.action (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:2:7102)',\n+   'Failed to fetch RSC payload for http://localhost:3000/focus. Falling back to browser navigation. TypeError: Failed to fetch\\n' +\n+     '    at f (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:45577)\\n' +\n+     '    at http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:59128\\n' +\n+     '    at Object.u [as task] (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:31932)\\n' +\n+     '    at c.s (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:32637)\\n' +\n+     '    at c.enqueue (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:32062)\\n' +\n+     '    at s (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:59091)\\n' +\n+     '    at i (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:58631)\\n' +\n+     '    at a (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:65457)\\n' +\n+     '    at f (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:75371)\\n' +\n+     '    at Object.action (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:2:7102)',\n+   'Failed to fetch RSC payload for http://localhost:3000/library. Falling back to browser navigation. TypeError: Failed to fetch\\n' +\n+     '    at f (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:45577)\\n' +\n+     '    at http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:59128\\n' +\n+     '    at Object.u [as task] (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:31932)\\n' +\n+     '    at c.s (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:32637)\\n' +\n+     '    at c.enqueue (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:32062)\\n' +\n+     '    at s (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:59091)\\n' +\n+     '    at i (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:58631)\\n' +\n+     '    at a (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:65457)\\n' +\n+     '    at f (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:1:75371)\\n' +\n+     '    at Object.action (http://localhost:3000/_next/static/chunks/2117-ff56c714d806c6b4.js:2:7102)'\n+ ]\n- []\n"
+  }
+]
