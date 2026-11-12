@@ -154,3 +154,13 @@ Pendientes previos conservados: (1) control de edición/importación del horario
 El coordinador queda en **1168 líneas** frente a 2493. La guía de arquitectura refleja los ocho módulos. Las referencias a blobs y suscripciones, los temporizadores, la persistencia local del horario y los cálculos temporales siguen en el coordinador; su extracción sería otra tarea con pruebas y aprobación propias.
 
 Cierre adicional: smoke general `npm run test:smoke` correcto después de P8, con 56 comprobaciones de rutas/tamaños y los recorridos de Studio (artefactos `C:/Users/elale/AppData/Local/Temp/academic-smoke-DY0WwR`). El éxito del smoke general no sustituye ni convierte en correctos los tres pendientes del smoke específico del Planificador. Lint final correcto con siete avisos existentes. Se retiró el script temporal de extracción; se conserva únicamente el script reutilizable de pruebas solicitado. Los commits de esta fase siguen locales, sin fusión a main, sin Pull Request, versión ni tag.
+
+## Defectos previos del Planificador: tarea aparte
+
+Los siguientes defectos se registraron antes de P1 y quedan fuera de esta limpieza. No se corrigen ni se ocultan en los tests:
+
+- PLAN-01: el recorrido de editar/cancelar/importar horario en móvil se detiene por timeout del control de edición. Pendiente de diagnosticar interacción/selector y corregir en una tarea aparte.
+- PLAN-02: precarga RSC hacia /documents produce error de consola en el recorrido de escritorio. Pendiente de diagnóstico y corrección aparte.
+- PLAN-03: la misma precarga produce error de consola en móvil. Pendiente de diagnóstico y corrección aparte.
+
+Baseline y resultado P1–P8 coinciden en estos tres casos. No se consideran superados porque el smoke general pase. Chat C1–C5 queda aprobado; se detendrá antes de C6 y no se tocarán estados, efectos, eventos WebSocket, realtime-provider ni class-detail-view.
