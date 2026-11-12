@@ -7,6 +7,8 @@
 // El motor es local (no hay iframe ni servidor Collabora/OnlyOffice): funciona
 // en la web, en Electron y sin claves de API. La paginacion es visual (guias
 // A4 + saltos de pagina); el PDF se obtiene con el dialogo de impresion.
+import { WriterFormatToolbar, type FormatState } from "./writer-format-toolbar";
+import { WriterStandardToolbar } from "./writer-standard-toolbar";
 import { OfficeFind } from "./office-find";
 import {
   useCallback,
@@ -16,119 +18,31 @@ import {
   useState,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
-  type ReactNode,
 } from "react";
 import { CKEditor } from "@ckeditor/ckeditor5-react";
 
 import { lockBodyScroll } from "@/lib/scroll-lock";
-import {
-  Alignment,
-  AutoLink,
-  Autoformat,
-  Base64UploadAdapter,
-  BlockQuote,
-  Bold,
-  Bookmark,
-  ClassicEditor,
-  Code,
-  CodeBlock,
-  Essentials,
-  Font,
-  GeneralHtmlSupport,
-  Heading,
-  Highlight,
-  HorizontalLine,
-  HtmlEmbed,
-  Image,
-  ImageCaption,
-  ImageInsert,
-  ImageInsertViaUrl,
-  ImageResize,
-  ImageStyle,
-  ImageTextAlternative,
-  ImageToolbar,
-  ImageUpload,
-  Indent,
-  IndentBlock,
-  Italic,
-  Link,
-  List,
-  ListProperties,
-  MediaEmbed,
-  PageBreak,
-  Paragraph,
-  PasteFromOffice,
-  PictureEditing,
-  RemoveFormat,
-  ShowBlocks,
-  SourceEditing,
-  SpecialCharacters,
-  Strikethrough,
-  Style,
-  Subscript,
-  Superscript,
-  Table,
-  TableCaption,
-  TableCellProperties,
-  TableColumnResize,
-  TableProperties,
-  TableSelection,
-  TableToolbar,
-  TextTransformation,
-  TodoList,
-  Underline,
-  WordCount,
-} from "ckeditor5";
-import type { Editor, EditorConfig } from "ckeditor5";
+import { ClassicEditor } from "ckeditor5";
+import type { Editor } from "ckeditor5";
+import { EDITOR_CONFIG, SPECIAL_CHARACTERS } from "./writer-config";
 import "ckeditor5/ckeditor5.css";
 import "./writer-editor.css";
 import {
-  AlignCenter,
-  AlignJustify,
-  AlignLeft,
-  AlignRight,
-  Bold as BoldIcon,
   Check,
-  ClipboardPaste,
   Compass,
-  Copy,
-  Eraser,
-  FileDown,
-  FilePlus2,
   FileText,
-  FolderOpen,
   ImagePlus,
   Images,
-  IndentDecrease,
-  IndentIncrease,
-  Italic as ItalicIcon,
   Languages,
-  Link2,
-  List as ListIcon,
-  ListChecks,
-  ListOrdered,
   Loader2,
   Maximize2,
   Minimize2,
   Minus,
-  Palette,
   PanelRight,
   PanelRightClose,
-  Paintbrush,
   Plus,
-  Printer,
-  Redo2,
-  Save,
-  Scissors,
-  Search,
   Settings2,
-  Strikethrough as StrikethroughIcon,
-  Subscript as SubscriptIcon,
-  Superscript as SuperscriptIcon,
-  Table2,
   Type,
-  Underline as UnderlineIcon,
-  Undo2,
   X,
 } from "lucide-react";
 
@@ -162,21 +76,6 @@ interface Margins {
   left: number;
 }
 
-interface FormatState {
-  heading: string;
-  fontFamily: string;
-  fontSize: string;
-  bold: boolean;
-  italic: boolean;
-  underline: boolean;
-  strike: boolean;
-  sub: boolean;
-  sup: boolean;
-  alignment: string;
-  listType: string;
-  fontColor: string;
-  highlight: string;
-}
 
 interface WriterStats {
   words: number;
@@ -200,175 +99,6 @@ interface MenuDefinition {
   items: MenuItem[];
 }
 
-const SPECIAL_CHARACTERS = [
-  "á", "é", "í", "ó", "ú", "ñ", "ü", "Á",
-  "É", "Í", "Ó", "Ú", "Ñ", "Ü", "¿", "¡",
-  "€", "£", "¥", "©", "®", "™", "°", "±",
-  "×", "÷", "—", "–", "…", "“", "”", "‘",
-  "’", "«", "»", "§", "¶", "µ", "·", "•",
-];
-
-const FONT_FAMILIES = [
-  { label: "Liberation Serif", value: "Liberation Serif" },
-  { label: "Liberation Sans", value: "Liberation Sans" },
-  { label: "DejaVu Serif", value: "DejaVu Serif" },
-  { label: "DejaVu Sans", value: "DejaVu Sans" },
-  { label: "Times New Roman", value: "Times New Roman" },
-  { label: "Arial", value: "Arial" },
-  { label: "Georgia", value: "Georgia" },
-  { label: "Calibri", value: "Calibri" },
-  { label: "Courier New", value: "Courier New" },
-];
-
-const FONT_SIZES = [
-  "8pt", "9pt", "10pt", "11pt", "12pt", "14pt", "16pt", "18pt",
-  "20pt", "22pt", "24pt", "28pt", "32pt", "36pt", "48pt", "72pt",
-];
-
-const HEADING_OPTIONS = [
-  { model: "paragraph", title: "Texto de parrafo", class: "ck-heading_paragraph" },
-  { model: "heading1", view: "h1", title: "Titulo 1", class: "ck-heading_heading1" },
-  { model: "heading2", view: "h2", title: "Titulo 2", class: "ck-heading_heading2" },
-  { model: "heading3", view: "h3", title: "Titulo 3", class: "ck-heading_heading3" },
-  { model: "heading4", view: "h4", title: "Titulo 4", class: "ck-heading_heading4" },
-] as const;
-
-const ALIGNMENT_OPTIONS: Array<"left" | "center" | "right" | "justify"> = [
-  "left",
-  "center",
-  "right",
-  "justify",
-];
-
-const LINE_SPACINGS = [
-  { label: "Sencillo", value: "1", styleName: "Interlineado sencillo" },
-  { label: "1,15", value: "1.15", styleName: "Interlineado 1,15" },
-  { label: "1,5", value: "1.5", styleName: "Interlineado 1,5" },
-  { label: "Doble", value: "2", styleName: "Interlineado doble" },
-];
-
-const EDITOR_CONFIG = {
-  licenseKey: "GPL",
-  plugins: [
-    Essentials,
-    Paragraph,
-    Heading,
-    Bold,
-    Italic,
-    Underline,
-    Strikethrough,
-    Subscript,
-    Superscript,
-    Font,
-    Alignment,
-    List,
-    ListProperties,
-    TodoList,
-    Indent,
-    IndentBlock,
-    Link,
-    AutoLink,
-    Table,
-    TableToolbar,
-    TableProperties,
-    TableCellProperties,
-    TableColumnResize,
-    TableCaption,
-    TableSelection,
-    Image,
-    ImageToolbar,
-    ImageCaption,
-    ImageStyle,
-    ImageResize,
-    ImageUpload,
-    ImageInsert,
-    ImageInsertViaUrl,
-    ImageTextAlternative,
-    Base64UploadAdapter,
-    PictureEditing,
-    BlockQuote,
-    HorizontalLine,
-    PageBreak,
-    Highlight,
-    RemoveFormat,
-    SpecialCharacters,
-      PasteFromOffice,
-    WordCount,
-    SourceEditing,
-    GeneralHtmlSupport,
-    HtmlEmbed,
-    MediaEmbed,
-    CodeBlock,
-    Code,
-    Autoformat,
-    TextTransformation,
-    Bookmark,
-    ShowBlocks,
-    Style,
-  ],
-  toolbar: [],
-  placeholder: "Empieza a escribir tu documento...",
-  heading: {
-    options: [...HEADING_OPTIONS],
-  },
-  fontFamily: {
-    supportAllValues: true,
-    options: FONT_FAMILIES.map((font) => ({ title: font.label, model: font.value })),
-  },
-  fontSize: {
-    supportAllValues: true,
-    options: FONT_SIZES,
-  },
-  alignment: { options: ALIGNMENT_OPTIONS },
-  list: {
-    properties: {
-      styles: true,
-      startIndex: true,
-      reversed: true,
-    },
-  },
-  table: {
-    contentToolbar: [
-      "tableColumn",
-      "tableRow",
-      "mergeTableCells",
-      "tableProperties",
-      "tableCellProperties",
-    ],
-  },
-  image: {
-    toolbar: [
-      "imageStyle:inline",
-      "imageStyle:block",
-      "imageStyle:side",
-      "|",
-      "toggleImageCaption",
-      "imageTextAlternative",
-      "|",
-      "resizeImage",
-    ],
-    resizeOptions: [
-      { name: "resizeImage:original", value: null, label: "Tamano original" },
-      { name: "resizeImage:50", value: "50", label: "50 %" },
-      { name: "resizeImage:75", value: "75", label: "75 %" },
-    ],
-  },
-  link: {
-    addTargetToExternalLinks: true,
-    defaultProtocol: "https://",
-  },
-  htmlSupport: {
-    allow: [{ name: /.*/, attributes: true, classes: true, styles: true }],
-  },
-  style: {
-    definitions: [
-      { name: "Interlineado sencillo", element: "p", styles: { "line-height": "1" } },
-      { name: "Interlineado 1,15", element: "p", styles: { "line-height": "1.15" } },
-      { name: "Interlineado 1,5", element: "p", styles: { "line-height": "1.5" } },
-      { name: "Interlineado doble", element: "p", styles: { "line-height": "2" } },
-    ],
-  },
-} as unknown as EditorConfig;
 
 function toHex(value: unknown, fallback: string): string {
   if (typeof value !== "string" || !value.trim()) return fallback;
@@ -390,34 +120,6 @@ function toHex(value: unknown, fallback: string): string {
   return fallback;
 }
 
-function ToolButton({
-  label,
-  onClick,
-  active = false,
-  disabled = false,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  active?: boolean;
-  disabled?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      className={cn("office-tool", active && "is-active")}
-      title={label}
-      aria-label={label}
-      aria-pressed={active}
-      disabled={disabled}
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  );
-}
 
 export function WriterEditor({
   html,
@@ -1333,233 +1035,25 @@ export function WriterEditor({
         </button>
       </div>
 
-      <div className="office-toolbar" role="toolbar" aria-label="Barra estandar">
-        <ToolButton label="Nuevo documento" onClick={onNew}>
-          <FilePlus2 className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Abrir documento" onClick={onOpen}>
-          <FolderOpen className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Guardar" onClick={onSave}>
-          <Save className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Exportar a PDF" onClick={() => onExport("pdf")}>
-          <FileDown className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Imprimir" onClick={() => onExport("pdf")}>
-          <Printer className="h-4 w-4" />
-        </ToolButton>
-        <span className="office-sep" />
-        <ToolButton label="Cortar" onClick={() => runClipboard("cut")}>
-          <Scissors className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Copiar" onClick={() => runClipboard("copy")}>
-          <Copy className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Pegar" onClick={() => runClipboard("paste")}>
-          <ClipboardPaste className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton
-          label="Clonar formato"
-          active={paintActive}
-          onClick={startFormatPainter}
-        >
-          <Paintbrush className="h-4 w-4" />
-        </ToolButton>
-        <span className="office-sep" />
-        <ToolButton label="Deshacer" onClick={() => exec("undo")}>
-          <Undo2 className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Rehacer" onClick={() => exec("redo")}>
-          <Redo2 className="h-4 w-4" />
-        </ToolButton>
-        <span className="office-sep" />
-        <ToolButton label="Buscar y reemplazar" onClick={() => setFindOpen(true)}>
-          <Search className="h-4 w-4" />
-        </ToolButton>
-      </div>
+      <WriterStandardToolbar
+        onNew={onNew}
+        onOpen={onOpen}
+        onSave={onSave}
+        onExport={onExport}
+        runClipboard={runClipboard}
+        paintActive={paintActive}
+        startFormatPainter={startFormatPainter}
+        exec={exec}
+        onFind={() => setFindOpen(true)}
+      />
 
-      <div className="office-toolbar" role="toolbar" aria-label="Barra de formato">
-        <select
-          className="office-select office-select-style"
-          value={format.heading}
-          title="Estilo de párrafo"
-          aria-label="Estilo de párrafo"
-          onChange={(event) => exec("heading", { value: event.target.value })}
-        >
-          <option value="paragraph">Texto de párrafo</option>
-          <option value="heading1">Título 1</option>
-          <option value="heading2">Título 2</option>
-          <option value="heading3">Título 3</option>
-          <option value="heading4">Título 4</option>
-        </select>
-        <select
-          className="office-select office-select-font"
-          value={format.fontFamily || "Liberation Serif"}
-          title="Fuente"
-          aria-label="Fuente"
-          onChange={(event) => exec("fontFamily", { value: event.target.value })}
-        >
-          {format.fontFamily && !FONT_FAMILIES.some((font) => font.value === format.fontFamily) && (
-            <option value={format.fontFamily}>{format.fontFamily}</option>
-          )}
-          {FONT_FAMILIES.map((font) => (
-            <option key={font.value} value={font.value}>
-              {font.label}
-            </option>
-          ))}
-        </select>
-        <select
-          className="office-select office-select-size"
-          value={format.fontSize}
-          title="Tamaño de fuente"
-          aria-label="Tamaño de fuente"
-          onChange={(event) => exec("fontSize", { value: event.target.value })}
-        >
-          {!FONT_SIZES.includes(format.fontSize) && (
-            <option value={format.fontSize}>{format.fontSize}</option>
-          )}
-          {FONT_SIZES.map((size) => (
-            <option key={size} value={size}>
-              {size.replace("pt", "")}
-            </option>
-          ))}
-        </select>
-        <span className="office-sep" />
-        <ToolButton label="Negrita" active={format.bold} onClick={() => exec("bold")}>
-          <BoldIcon className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Cursiva" active={format.italic} onClick={() => exec("italic")}>
-          <ItalicIcon className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Subrayado" active={format.underline} onClick={() => exec("underline")}>
-          <UnderlineIcon className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Tachado" active={format.strike} onClick={() => exec("strikethrough")}>
-          <StrikethroughIcon className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Superindice" active={format.sup} onClick={() => exec("superscript")}>
-          <SuperscriptIcon className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Subindice" active={format.sub} onClick={() => exec("subscript")}>
-          <SubscriptIcon className="h-4 w-4" />
-        </ToolButton>
-        <span className="office-sep" />
-        <label className="office-status-item" title="Color de letra">
-          <Palette className="h-4 w-4" style={{ color: format.fontColor }} />
-          <input
-            type="color"
-            className="office-color"
-            value={format.fontColor}
-            aria-label="Color de letra"
-            onChange={(event) => exec("fontColor", { value: event.target.value })}
-          />
-        </label>
-        <label className="office-status-item" title="Color de resaltado">
-          <span
-            className="inline-block h-4 w-4 rounded-sm border border-black/20"
-            style={{ background: format.highlight }}
-          />
-          <input
-            type="color"
-            className="office-color"
-            value={format.highlight}
-            aria-label="Color de resaltado"
-            onChange={(event) => exec("fontBackgroundColor", { value: event.target.value })}
-          />
-        </label>
-        <span className="office-sep" />
-        <ToolButton
-          label="Alinear a la izquierda"
-          active={format.alignment === "left"}
-          onClick={() => exec("alignment", { value: "left" })}
-        >
-          <AlignLeft className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton
-          label="Centrar"
-          active={format.alignment === "center"}
-          onClick={() => exec("alignment", { value: "center" })}
-        >
-          <AlignCenter className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton
-          label="Alinear a la derecha"
-          active={format.alignment === "right"}
-          onClick={() => exec("alignment", { value: "right" })}
-        >
-          <AlignRight className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton
-          label="Justificar"
-          active={format.alignment === "justify"}
-          onClick={() => exec("alignment", { value: "justify" })}
-        >
-          <AlignJustify className="h-4 w-4" />
-        </ToolButton>
-        <span className="office-sep" />
-        <ToolButton
-          label="Vineta"
-          active={format.listType === "bulleted"}
-          onClick={() => exec("bulletedList")}
-        >
-          <ListIcon className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton
-          label="Numeracion"
-          active={format.listType === "numbered"}
-          onClick={() => exec("numberedList")}
-        >
-          <ListOrdered className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton
-          label="Lista de tareas"
-          active={format.listType === "todo"}
-          onClick={() => exec("todoList")}
-        >
-          <ListChecks className="h-4 w-4" />
-        </ToolButton>
-        <span className="office-sep" />
-        <select
-          className="office-select office-select-spacing"
-          defaultValue=""
-          title="Espaciado entre líneas"
-          aria-label="Espaciado entre líneas"
-          onChange={(event) => {
-            const spacing = LINE_SPACINGS.find((item) => item.value === event.target.value);
-            if (spacing) exec("style", { styleName: spacing.styleName });
-            event.target.value = "";
-          }}
-        >
-          <option value="" disabled>
-            Interlineado
-          </option>
-          {LINE_SPACINGS.map((spacing) => (
-            <option key={spacing.value} value={spacing.value}>
-              {spacing.label}
-            </option>
-          ))}
-        </select>
-        <ToolButton label="Aumentar sangria" onClick={() => exec("indent")}>
-          <IndentIncrease className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Disminuir sangria" onClick={() => exec("outdent")}>
-          <IndentDecrease className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Limpiar formato" onClick={() => exec("removeFormat")}>
-          <Eraser className="h-4 w-4" />
-        </ToolButton>
-        <span className="office-sep" />
-        <ToolButton label="Insertar tabla" onClick={insertTable}>
-          <Table2 className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Insertar imagen" onClick={() => imageInputRef.current?.click()}>
-          <ImagePlus className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Insertar enlace" onClick={insertLink}>
-          <Link2 className="h-4 w-4" />
-        </ToolButton>
-      </div>
+      <WriterFormatToolbar
+        format={format}
+        exec={exec}
+        insertTable={insertTable}
+        insertLink={insertLink}
+        onInsertImage={() => imageInputRef.current?.click()}
+      />
 
       {findOpen && <OfficeFind editor={editorRef.current} onClose={() => setFindOpen(false)} />}
 

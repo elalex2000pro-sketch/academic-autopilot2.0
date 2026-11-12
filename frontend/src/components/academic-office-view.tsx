@@ -1,6 +1,7 @@
 "use client";
 
 // Academic Office conserva la edición local y sincroniza documentos privados con la API.
+import { pickOfficeFile, saveOfficeFile } from "@/lib/office-file-actions";
 import { OfficeLibrary } from "@/components/office/office-library";
 import { useOfficeStorage } from "@/components/office/use-office-storage";
 import { OfficeData } from "@/lib/office-storage";
@@ -21,10 +22,10 @@ import {
 import { SheetEditor } from "@/components/office/sheet-editor";
 import {
   buildDocumentHtml,
+  downloadFile,
   exportDocumentAsHtml,
   printDocumentAsPdf,
   safeFileName,
-  textToHtml,
 } from "@/lib/office-doc";
 import {
   SHEET_COLS,
@@ -150,20 +151,19 @@ export function AcademicOfficeView({ newSignal = 0, documentId }: { newSignal?: 
   }
   async function showLibrary() { await storage.save(true); if (documentId) router.push("/office"); else setLibrary(true); }
   async function openFromPc() {
-    const bridge = window.autopilotDesktop?.files;
-    if (!bridge || module === "sheet") { openRef.current?.click(); return; }
-    const result = await bridge.open({ mode: "pick-office" });
+    if (module === "sheet") { openRef.current?.click(); return; }
+    const result = await pickOfficeFile();
+    if (!result) { openRef.current?.click(); return; }
     if (!result.ok) { if (result.error) window.alert(result.error); return; }
-    if (result.name && (result.data || result.text !== undefined)) await openFile(new File([result.data || result.text!], result.name));
+    if (result.file) await openFile(result.file);
   }
   async function saveToPc(kind: "html" | "txt") {
     const element = document.createElement("div"); element.innerHTML = docHtml;
     const text = kind === "html" ? buildDocumentHtml(docName, docHtml) : element.innerText || element.textContent || "";
     const name = `${safeFileName(docName)}.${kind}`;
     const blob = new Blob([text], { type: kind === "html" ? "text/html;charset=utf-8" : "text/plain;charset=utf-8" });
-    const bridge = window.autopilotDesktop?.files;
-    if (bridge) { const result = await bridge.save({ name, data: await blob.arrayBuffer() }); if (!result.ok && !result.canceled) window.alert(result.error || "No se pudo guardar el archivo"); }
-    else triggerDownload(name, blob);
+    const result = await saveOfficeFile(name, blob);
+    if (!result.ok && !result.canceled) window.alert(result.error || "No se pudo guardar el archivo");
   }
 
   const computed = evaluateSheet(cells);
@@ -190,7 +190,7 @@ export function AcademicOfficeView({ newSignal = 0, documentId }: { newSignal?: 
     const name = safeFileName(sheetName);
     if (kind === "csv") {
       const csv = `\uFEFF${sheetToCsv(computed, SHEET_ROWS, SHEET_COLS)}`;
-      triggerDownload(
+      downloadFile(
         `${name}.csv`,
         new Blob([csv], { type: "text/csv;charset=utf-8" }),
       );
@@ -201,7 +201,7 @@ export function AcademicOfficeView({ newSignal = 0, documentId }: { newSignal?: 
         SHEET_ROWS,
         SHEET_COLS,
       );
-      triggerDownload(
+      downloadFile(
         `${name}.xls`,
         new Blob([xml], { type: "application/vnd.ms-excel" }),
       );
@@ -355,15 +355,4 @@ export function AcademicOfficeView({ newSignal = 0, documentId }: { newSignal?: 
       )}
     </div>
   );
-}
-
-function triggerDownload(filename: string, blob: Blob) {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 4000);
 }

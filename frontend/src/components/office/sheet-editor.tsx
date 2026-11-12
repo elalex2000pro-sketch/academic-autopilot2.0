@@ -25,7 +25,6 @@ export function SheetEditor({ cells, onChange }: SheetEditorProps) {
   const [focused, setFocused] = useState<string | null>(null);
   const computed = useMemo(() => evaluateSheet(cells), [cells]);
   const stats = useMemo(() => sheetStats(computed), [computed]);
-  const activeCell = computed[active];
 
   function update(reference: string, value: string) {
     const next = { ...cells };
