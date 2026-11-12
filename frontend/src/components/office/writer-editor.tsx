@@ -7,6 +7,8 @@
 // El motor es local (no hay iframe ni servidor Collabora/OnlyOffice): funciona
 // en la web, en Electron y sin claves de API. La paginacion es visual (guias
 // A4 + saltos de pagina); el PDF se obtiene con el dialogo de impresion.
+import { WriterStandardToolbar } from "./writer-standard-toolbar";
+import { ToolButton } from "./writer-tool-button";
 import { OfficeFind } from "./office-find";
 import {
   useCallback,
@@ -16,7 +18,6 @@ import {
   useState,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
-  type ReactNode,
 } from "react";
 import { CKEditor } from "@ckeditor/ckeditor5-react";
 
@@ -33,14 +34,9 @@ import {
   AlignRight,
   Bold as BoldIcon,
   Check,
-  ClipboardPaste,
   Compass,
-  Copy,
   Eraser,
-  FileDown,
-  FilePlus2,
   FileText,
-  FolderOpen,
   ImagePlus,
   Images,
   IndentDecrease,
@@ -58,13 +54,7 @@ import {
   Palette,
   PanelRight,
   PanelRightClose,
-  Paintbrush,
   Plus,
-  Printer,
-  Redo2,
-  Save,
-  Scissors,
-  Search,
   Settings2,
   Strikethrough as StrikethroughIcon,
   Subscript as SubscriptIcon,
@@ -72,7 +62,6 @@ import {
   Table2,
   Type,
   Underline as UnderlineIcon,
-  Undo2,
   X,
 } from "lucide-react";
 
@@ -165,34 +154,6 @@ function toHex(value: unknown, fallback: string): string {
   return fallback;
 }
 
-function ToolButton({
-  label,
-  onClick,
-  active = false,
-  disabled = false,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  active?: boolean;
-  disabled?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      className={cn("office-tool", active && "is-active")}
-      title={label}
-      aria-label={label}
-      aria-pressed={active}
-      disabled={disabled}
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  );
-}
 
 export function WriterEditor({
   html,
@@ -1108,51 +1069,17 @@ export function WriterEditor({
         </button>
       </div>
 
-      <div className="office-toolbar" role="toolbar" aria-label="Barra estandar">
-        <ToolButton label="Nuevo documento" onClick={onNew}>
-          <FilePlus2 className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Abrir documento" onClick={onOpen}>
-          <FolderOpen className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Guardar" onClick={onSave}>
-          <Save className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Exportar a PDF" onClick={() => onExport("pdf")}>
-          <FileDown className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Imprimir" onClick={() => onExport("pdf")}>
-          <Printer className="h-4 w-4" />
-        </ToolButton>
-        <span className="office-sep" />
-        <ToolButton label="Cortar" onClick={() => runClipboard("cut")}>
-          <Scissors className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Copiar" onClick={() => runClipboard("copy")}>
-          <Copy className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Pegar" onClick={() => runClipboard("paste")}>
-          <ClipboardPaste className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton
-          label="Clonar formato"
-          active={paintActive}
-          onClick={startFormatPainter}
-        >
-          <Paintbrush className="h-4 w-4" />
-        </ToolButton>
-        <span className="office-sep" />
-        <ToolButton label="Deshacer" onClick={() => exec("undo")}>
-          <Undo2 className="h-4 w-4" />
-        </ToolButton>
-        <ToolButton label="Rehacer" onClick={() => exec("redo")}>
-          <Redo2 className="h-4 w-4" />
-        </ToolButton>
-        <span className="office-sep" />
-        <ToolButton label="Buscar y reemplazar" onClick={() => setFindOpen(true)}>
-          <Search className="h-4 w-4" />
-        </ToolButton>
-      </div>
+      <WriterStandardToolbar
+        onNew={onNew}
+        onOpen={onOpen}
+        onSave={onSave}
+        onExport={onExport}
+        runClipboard={runClipboard}
+        paintActive={paintActive}
+        startFormatPainter={startFormatPainter}
+        exec={exec}
+        onFind={() => setFindOpen(true)}
+      />
 
       <div className="office-toolbar" role="toolbar" aria-label="Barra de formato">
         <select
