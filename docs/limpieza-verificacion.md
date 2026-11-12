@@ -31,4 +31,3 @@ Rama `limpieza/base`, punto de partida `6ebe3dc`. Sin cambios de backend, depend
 - Se abrió una instancia Electron de desarrollo con perfil temporal y cuenta de la API SQLite aislada. Se pudo leer su interfaz, pero los controles Windows no proporcionaron captura/acciones fiables (incluido «no screenshot targets found»). No se confirma como superada una prueba manual completa ni el guardado con diálogo nativo real. La app instalada y los datos de usuario no se usaron. Queda esa comprobación interactiva pendiente; no se confunde con los tests automatizados.
 - Backend, migraciones, CSS, dependencias/lockfiles, versiones, rutas públicas, esquema y claves de guardado sin cambios. `writer-editor.tsx`: 1.963 → 1.457 líneas, con configuración comprobada literalmente contra la referencia y estado/efectos conservados.
 - La fase se limita a los pasos 1–4: no se reorganizan otras secciones ni se inicia la fase posterior.
-
