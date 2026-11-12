@@ -20,6 +20,7 @@ from app.models.ai_output import AiOutput
 from app.models.document import Document
 from app.models.user import User
 from app.services.ai_service import resolve_profile
+from app.services.ai_errors import AiProviderError, provider_error_message
 from app.services.pdf_service import build_infographic_pdf, build_mindmap_pdf, build_summary_pdf
 
 try:
@@ -228,6 +229,8 @@ async def generate(
     try:
         data = await call_llm(text, kind, user)
     except Exception as exc:  # noqa: BLE001
+        if resolve_profile(user).provider == "gemini":
+            raise AiProviderError(provider_error_message(exc)) from None
         logger.warning("AI Studio usando heuristico: %s", exc)
         source = "heuristic"
         if kind == "summary":

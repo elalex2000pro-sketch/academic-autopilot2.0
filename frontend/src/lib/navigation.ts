@@ -14,12 +14,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { SpotifyLogo } from "@/components/icons/spotify-logo";
-
-// El isotipo de Spotify es un SVG propio; el rail solo usa className y strokeWidth,
-// así que se adapta al tipo de icono que ya consumen el resto de enlaces.
-const SpotifyNavIcon = SpotifyLogo as unknown as LucideIcon;
-
 export interface NavItem {
   href: string;
   label: string;
@@ -57,10 +51,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/classes", label: "Aulas", icon: Users },
       { href: "/chat", label: "Chat", icon: MessageCircle },
     ],
-  },
-  {
-    label: "Escucha",
-    items: [{ href: "/spotify", label: "Spotify", icon: SpotifyNavIcon }],
   },
 ];
 

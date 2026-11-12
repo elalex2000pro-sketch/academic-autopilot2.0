@@ -30,6 +30,7 @@ from app.models.task import Task
 from app.models.timetable_entry import TimetableEntry
 from app.models.user import User
 from app.services import ai_tools
+from app.services.ai_errors import provider_error_message
 
 logger = get_logger(__name__)
 
@@ -446,8 +447,7 @@ async def generate_reply(
                     )
                 except Exception as exc:  # noqa: BLE001 - se intenta la ruta OpenAI
                     logger.warning(
-                        "Gemini nativo no disponible (%s); probando la API compatible con OpenAI",
-                        exc,
+                        "Gemini nativo no disponible; probando la API compatible con OpenAI",
                     )
                     result = await _run_model(
                         db, user, profile, system, history, prompt, images
@@ -460,6 +460,9 @@ async def generate_reply(
                 return result
             logger.warning("El modelo devolvio una respuesta vacia; usando heuristico")
         except Exception as exc:  # noqa: BLE001 - degradacion controlada
+            if profile.provider == "gemini":
+                logger.warning("Gemini no pudo completar la solicitud (%s)", type(exc).__name__)
+                return AiResult(reply=provider_error_message(exc), source="error")
             logger.warning(
                 "IA Studio (%s) no disponible (%s); usando heuristico",
                 profile.provider,
@@ -800,10 +803,6 @@ async def _post_gemini(
     if response.status_code == 400 and tools:
         logger.info("Gemini no acepta herramientas; reintentando sin ellas")
         response = await _send(False)
-    if response.is_error:
-        logger.warning(
-            "Gemini devolvio %s: %s", response.status_code, response.text[:500]
-        )
     response.raise_for_status()
     data = response.json()
     candidates = data.get("candidates") or []

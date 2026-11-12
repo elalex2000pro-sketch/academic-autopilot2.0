@@ -95,6 +95,7 @@ export function recognitionConstructor(): SpeechRecognitionConstructor | null {
 }
 
 export function errorMessage(error: unknown): string {
+  if (error instanceof TypeError) return "No se pudo conectar con la IA. Comprueba tu conexión e inténtalo de nuevo.";
   if (error instanceof ApiError) return error.message;
   if (error instanceof Error) return error.message;
   return "Error inesperado";

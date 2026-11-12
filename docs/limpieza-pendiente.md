@@ -17,3 +17,7 @@ No se eliminan estilos globales ni se reorganizan Dashboard, Clases, Chat o back
 ## Incidencia inicial fuera del refactor
 
 `frontend/tests/office-e2e.cjs:53` falla antes y después de esta fase al esperar «Sin conexión». La inspección inicial mostró «Conflicto de versión» (409) tras su secuencia de restauración/recarga/importación, antes de bloquear peticiones. Ni el test ni `use-office-storage.ts` se modifican para ocultarlo. Requiere una tarea funcional de diagnóstico de concurrencia independiente; no se cambia el comportamiento en esta limpieza.
+
+## Integración musical retirada
+
+Se conserva el respaldo local `respaldo/spotify-antes-retirada` y las antiguas claves de conexión en localStorage; no se borran datos del usuario. No se han encontrado tablas, migraciones, endpoints, variables de entorno de ejemplo ni dependencias de paquete exclusivas de esa integración. Enfoque, audio ambiental, archivos nativos y los puentes compartidos se conservan.

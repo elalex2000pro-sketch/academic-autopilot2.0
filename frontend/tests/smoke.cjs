@@ -59,7 +59,7 @@ async function main() {
     await freePort(API); await freePort(WEB);
     const localPython = path.join(ROOT, '.venv311', 'Scripts', 'python.exe');
     const python = process.env.SMOKE_PYTHON || (process.platform === 'win32' ? localPython : 'python3');
-    const apiServer = start(python, ['-m', 'uvicorn', 'chat_test_server:app', '--app-dir', 'tests', '--host', '0.0.0.0', '--port', new URL(API).port], path.join(ROOT, 'backend'), { AUTOPILOT_TEST_DIR: path.join(output, 'database') });
+    const apiServer = start(python, ['-m', 'uvicorn', 'chat_test_server:app', '--app-dir', 'tests', '--host', '0.0.0.0', '--port', new URL(API).port], path.join(ROOT, 'backend'), { AUTOPILOT_TEST_DIR: path.join(output, 'database'), AI_ENABLED: 'false' });
     await until(async () => { if (apiServer.child.exitCode !== null) throw new Error(apiServer.log); try { return (await fetch(API + '/health')).ok; } catch { return false; } }, 'API startup');
     const mode = process.env.SMOKE_WEB_MODE || 'dev';
     assert.ok(['start', 'dev'].includes(mode));
@@ -73,10 +73,10 @@ async function main() {
   const office = await request('/office/documents', token, 'POST', { title: 'Documento de humo', content: '<h1>Documento de humo</h1><p>Contenido persistente.</p>' });
   await request('/notebooks', token, 'POST', { title: 'Cuaderno de humo' });
   const channel = process.env.SMOKE_BROWSER_CHANNEL || 'chrome';
-  browser = await chromium.launch({ headless: true, ...(channel === 'chromium' ? {} : { channel }) });
+  browser = await chromium.launch({ headless: true, args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'], ...(channel === 'chromium' ? {} : { channel }) });
   const reports = [];
   for (const viewport of [{ width: 1440, height: 960 }, { width: 390, height: 844 }]) {
-    const context = await browser.newContext({ viewport, serviceWorkers: 'block' });
+    const context = await browser.newContext({ viewport, serviceWorkers: 'block', permissions: ['microphone'] });
     await context.addInitScript(({ token, user }) => { localStorage.setItem('autopilot_token', token); localStorage.setItem('autopilot_user', JSON.stringify(user)); localStorage.setItem('hasCompletedOnboarding_v1', 'true'); }, { token, user });
     const page = await context.newPage(); const errors = []; let current = 'startup';
     page.on('console', message => { if (message.type() === 'error') errors.push(`${current}: console ${message.text()}`); });
@@ -99,13 +99,66 @@ async function main() {
       reports.push({ viewport: viewport.width, route, ok: true }); console.log(`PASS ${viewport.width} ${route}`);
     }
     try {
-      for (const route of ['/', '/planner', '/calendar', '/schedule', '/academics', '/classes', `/classes/${group.id}`, '/chat', '/review', '/notebooks', '/documents', '/office', `/office/${office.id}`, '/focus', '/spotify', '/settings', '/files', '/studio', '/studio?mode=audio', '/studio?mode=document', '/library']) await visit(route);
+      if (!process.argv.includes('--studio-only')) {
+      for (const route of ['/', '/planner', '/calendar', '/schedule', '/academics', '/classes', `/classes/${group.id}`, '/chat', '/review', '/notebooks', '/documents', '/office', `/office/${office.id}`, '/focus', '/settings', '/files', '/studio', '/studio?mode=audio', '/studio?mode=document', '/library']) await visit(route);
       // The reader is local IndexedDB, not /books. Import an actual PDF through its UI.
       await page.locator('input[type=file]').setInputFiles({ name: 'smoke-reader.pdf', mimeType: 'application/pdf', buffer: pdfFixture() });
       const link = page.locator('a[href^="/library/"]:visible').first(); await link.waitFor({ timeout: 30000 });
       const reader = await link.getAttribute('href'); await visit(reader);
       await page.locator('.pdf-reader canvas').first().waitFor({ timeout: 30000 });
       for (const [route, target] of [['/assistant', '/studio?mode=chat'], ['/transcribe', '/studio?mode=audio'], ['/subjects', '/academics'], ['/exams', '/academics']]) await visit(route, target);
+      }
+      // Persist the model through the real test API; simulate provider replies only.
+      await request('/assistant/profile', token, 'PUT', { provider: 'gemini', model: 'gemini-2.5-flash' });
+      await visit('/studio');
+      const model = page.getByLabel('Modelo de Gemini');
+      await model.selectOption('gemini-3.1-pro-preview');
+      await page.getByText('Modelo de IA actualizado:', { exact: false }).waitFor();
+      await page.reload();
+      await page.waitForFunction(() => document.querySelector('select[aria-label="Modelo de Gemini"]')?.value === 'gemini-3.1-pro-preview');
+      let providerReplied = false;
+      const reply = 'Este modelo no está disponible con tu clave. Puedes volver al modelo por defecto.';
+      await page.route('**/api/v1/assistant/messages?*', route => route.fulfill({ json: providerReplied ? [{ id: 'mock-provider-error', role: 'assistant', content: reply, source: 'error', created_at: new Date().toISOString(), document_id: null }] : [] }));
+      await page.route('**/api/v1/assistant/chat', route => {
+        providerReplied = true;
+        return route.fulfill({ json: { reply, source: 'error', created_at: new Date().toISOString(), document_id: null, pending_action: null } });
+      });
+      await page.getByLabel('Mensaje para la IA').fill('Consulta de prueba');
+      await page.getByRole('button', { name: 'Enviar mensaje', exact: true }).click();
+      await page.getByText('Este modelo no está disponible con tu clave.', { exact: false }).waitFor();
+      await page.getByRole('button', { name: 'Modelo por defecto', exact: true }).click();
+      await page.waitForFunction(() => document.querySelector('select[aria-label="Modelo de Gemini"]')?.value === 'gemini-2.5-flash');
+      await page.unroute('**/api/v1/assistant/chat');
+      await page.unroute('**/api/v1/assistant/messages?*');
+      await request('/assistant/profile', token, 'PUT', { provider: 'local', model: '' });
+      console.log(`PASS ${viewport.width} Gemini model persistence, error and default recovery`);
+      await visit('/studio?mode=audio');
+      let recordedBytes = 0;
+      await page.route('**/api/v1/transcribe', route => {
+        recordedBytes = route.request().postDataBuffer()?.length || 0;
+        return route.fulfill({ json: { text: 'Transcripción de la grabación de prueba.', filename: 'grabacion.webm' } });
+      });
+      await page.getByRole('button', { name: 'Grabar clase', exact: true }).click();
+      await page.getByText('Grabando', { exact: true }).waitFor();
+      await page.waitForTimeout(1200); // Capture a real MediaRecorder audio chunk.
+      await page.getByRole('button', { name: 'Detener y transcribir', exact: true }).click();
+      await page.getByText('Transcripción de la grabación de prueba.', { exact: true }).waitFor();
+      assert.ok(recordedBytes > 0, 'Recording must send actual bytes');
+      await page.getByRole('button', { name: 'Guardar como cuaderno', exact: true }).click();
+      await page.getByRole('button', { name: 'Guardado en Cuadernos', exact: true }).waitFor();
+      await page.unroute('**/api/v1/transcribe');
+      console.log(`PASS ${viewport.width} Studio record, stop and save notebook`);
+      await visit('/studio?mode=document');
+      await page.locator('aside input[type=file]').setInputFiles({ name: 'studio-source.pdf', mimeType: 'application/pdf', buffer: pdfFixture() });
+      await page.getByText('«studio-source.pdf» listo.', { exact: false }).waitFor();
+      await page.getByRole('button', { name: 'Resumen', exact: true }).click();
+      await page.getByText('Generado:', { exact: false }).waitFor();
+      const downloadPromise = page.waitForEvent('download');
+      await page.getByRole('button', { name: 'PDF', exact: true }).first().click();
+      const download = await downloadPromise;
+      assert.equal(await download.failure(), null);
+      assert.ok((await fs.stat(await download.path())).size > 0);
+      console.log(`PASS ${viewport.width} Studio open source, generate and save PDF`);
       assert.deepEqual(errors, [], 'Late errors must also fail');
     } catch (error) {
       await page.screenshot({ path: path.join(output, `failure-${viewport.width}.png`), fullPage: true }).catch(() => {});

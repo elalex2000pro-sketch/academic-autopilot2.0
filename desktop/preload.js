@@ -2,8 +2,6 @@
 
 const { contextBridge, ipcRenderer } = require("electron");
 
-let spotifyAuthListener = null;
-
 // Superficie mínima para los semáforos y el marco de la ventana.
 contextBridge.exposeInMainWorld("autopilotDesktop", {
   minimize: () => ipcRenderer.send("window:minimize"),
@@ -15,24 +13,6 @@ contextBridge.exposeInMainWorld("autopilotDesktop", {
   // Alias explícito para integraciones que llaman a setFrameless.
   setFrameless: (enabled) => ipcRenderer.invoke("window:set-frameless", Boolean(enabled)),
   getWindowPreferences: () => ipcRenderer.invoke("window:get-preferences"),
-
-  // OAuth de Spotify: el proceso principal abre una ventana hija y devuelve
-  // aquí el code/state de la redirección para canjearlo en el renderer.
-  startSpotifyAuth: (url, redirectUri) =>
-    ipcRenderer.invoke("spotify:start-auth", { url, redirectUri }),
-  onSpotifyAuth: (callback) => {
-    if (typeof callback !== "function") return;
-    if (spotifyAuthListener) {
-      ipcRenderer.removeListener("spotify:oauth-callback", spotifyAuthListener);
-    }
-    spotifyAuthListener = (_event, payload) => callback(payload);
-    ipcRenderer.on("spotify:oauth-callback", spotifyAuthListener);
-  },
-  offSpotifyAuth: () => {
-    if (!spotifyAuthListener) return;
-    ipcRenderer.removeListener("spotify:oauth-callback", spotifyAuthListener);
-    spotifyAuthListener = null;
-  },
 
   // Archivos del chat: diálogo nativo «Guardar como…» y apertura con la app
   // predeterminada del sistema operativo.

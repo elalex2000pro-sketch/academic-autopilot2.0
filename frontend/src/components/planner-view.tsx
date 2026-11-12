@@ -1,40 +1,21 @@
 "use client";
 
+import { PlannerDayView } from "@/components/planner/planner-day-view";
+import { PlannerWeekView } from "@/components/planner/planner-week-view";
+import { PlannerMonthView } from "@/components/planner/planner-month-view";
+import { PlannerTimetableTools } from "@/components/planner/planner-timetable-tools";
+import { PlannerQuickEventForm, type QuickEventType } from "@/components/planner/planner-quick-event-form";
+import { PlannerOverview } from "@/components/planner/planner-overview";
+import { PlannerHeader } from "@/components/planner/planner-header";
 import { motion } from "framer-motion";
 import { EditablePanels } from "@/components/layout/editable-panels";
 import { pageItem, pageStagger } from "@/components/page-animated-wrapper";
-
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  AlertCircle,
-  CalendarClock,
-  CalendarDays,
-  CalendarRange,
-  Check,
-  CheckCircle2,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  FileUp,
-  Loader2,
-  MapPin,
-  Pencil,
-  Plus,
-  RefreshCw,
-  Sparkles,
-  Trash2,
-  X,
-} from "lucide-react";
-
-import { ExamCard } from "@/components/exam-card";
+import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { ExamDialog, type ExamDialogMode } from "@/components/exam-dialog";
 import { TaskDialog } from "@/components/task-dialog";
 import { useRealtime } from "@/components/realtime-provider";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { WeeklyTimetable } from "@/components/weekly-timetable";
 import { useTaskManager } from "@/hooks/use-task-manager";
 import { api } from "@/lib/api";
 import {
@@ -52,42 +33,9 @@ import {
   GRADE_CHANGE_STORAGE_KEY,
   notifyGradeChange,
 } from "@/lib/grade-events";
-import { formatDueLabel } from "@/lib/task-utils";
 import type { Course, Grade, ImportantDate, Task, TimetableEntry } from "@/lib/types";
-import { cn, formatMinutes } from "@/lib/utils";
-import {
-  DAYS_LONG,
-  MONTHS,
-  PRIORITY_COLOR,
-  PRIORITY_LABEL,
-  WEEKDAYS,
-  courseColor,
-  dayKey,
-  durationMinutes,
-  errorMessage,
-  formatEventRange,
-  keyOf,
-  longDate,
-  pad,
-  parseKey,
-  selectClass,
-  subjectName,
-  subjectSubtitle,
-  timeLabel,
-  timeToMinutes,
-  weekdayIndex,
-  type EnrichedClassEvent,
-  type Notice,
-} from "@/lib/planner";
-import { MonthEmpty } from "@/components/planner/month-empty";
-
-type QuickEventType = "exam" | "task" | "important_date";
-
-const QUICK_EVENT_TABS: { id: QuickEventType; label: string }[] = [
-  { id: "exam", label: "Examen" },
-  { id: "task", label: "Tarea" },
-  { id: "important_date", label: "Fecha importante" },
-];
+import { cn } from "@/lib/utils";
+import { DAYS_LONG, MONTHS, dayKey, errorMessage, keyOf, longDate, pad, parseKey, subjectName, timeToMinutes, weekdayIndex, type EnrichedClassEvent, type Notice } from "@/lib/planner";
 
 export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: boolean }) {
   const today = useMemo(() => new Date(), []);
@@ -917,72 +865,14 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
 
   return (
     <motion.div variants={pageStagger} className="mx-auto max-w-[1800px] px-4 pb-10 pt-5 sm:px-6 lg:pt-7 xl:px-8">
-      <motion.header variants={pageItem} className="flex flex-wrap items-end justify-between gap-5">
-        <div className="min-w-0">
-          <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-white/35">
-            <CalendarRange className="h-3.5 w-3.5" strokeWidth={1.9} />
-            Planificador
-          </p>
-          <h1 className="mt-2 text-[28px] font-light leading-[1.05] tracking-[-0.035em] text-slate-800 dark:text-white/90 sm:text-[33px]">
-            Tu calendario, <span className="font-semibold">en orden.</span>
-          </h1>
-          <p className="mt-2 max-w-xl text-[12px] leading-5 text-slate-500 dark:text-white/45">
-            Calendario, horario y entregas en una sola vista. Toca un día para ver su detalle.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-1.5">
-          {monthPendingExamCount > 0 && (
-            <span className="inline-flex h-9 items-center gap-2 rounded-full border border-rose-400/20 bg-white/35 px-3.5 text-[11.5px] font-medium text-[#c92f28] shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] backdrop-blur-md dark:border-rose-300/15 dark:bg-white/[0.045] dark:text-[#ff9a91] dark:shadow-none">
-              <CalendarClock className="h-3.5 w-3.5" />
-              {monthPendingExamCount === 1
-                ? "1 examen pendiente"
-                : `${monthPendingExamCount} exámenes pendientes`}
-            </span>
-          )}
-          <span className="inline-flex h-9 items-center gap-2 rounded-full border border-[#AF52DE]/20 bg-white/35 px-3.5 text-[11.5px] font-medium text-[#8e3fb8] shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] backdrop-blur-md dark:border-[#AF52DE]/20 dark:bg-white/[0.045] dark:text-[#d8b4fe] dark:shadow-none">
-            <Sparkles className="h-3.5 w-3.5 text-[#AF52DE]" strokeWidth={1.8} />
-            {monthPending} tarea{monthPending === 1 ? "" : "s"} pendiente
-            {monthPending === 1 ? "" : "s"} este mes
-          </span>
-          <Button variant="outline" size="sm" onClick={goToday}>
-            <CalendarDays className="h-4 w-4" /> Hoy
-          </Button>
-          <Button size="sm" onClick={() => openQuickAdd("exam")} aria-label="Añadir evento al calendario">
-            <Plus className="h-4 w-4" /> Nuevo Evento
-          </Button>
-        </div>
-      </motion.header>
-
-      {notice && (
-        <motion.div variants={pageItem}
-          role="status"
-          aria-live="polite"
-          className={cn(
-            "mt-4 flex items-start gap-2.5 rounded-2xl border px-4 py-3 text-[12.5px] shadow-sm",
-            notice.tone === "error"
-              ? "border-rose-300/70 bg-rose-50/75 text-rose-700 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-200"
-              : notice.tone === "success"
-                ? "border-emerald-300/70 bg-emerald-50/75 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-200"
-                : "border-white/60 bg-white/35 text-slate-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-white/60",
-          )}
-        >
-          {notice.tone === "error" ? (
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          ) : (
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-          )}
-          <span className="min-w-0 flex-1">{notice.text}</span>
-          <button
-            type="button"
-            onClick={() => setNotice(null)}
-            className="rounded-lg p-0.5 opacity-60 transition-opacity hover:opacity-100"
-            aria-label="Cerrar aviso"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </motion.div>
-      )}
+      <PlannerHeader
+          monthPendingExamCount={monthPendingExamCount}
+          monthPending={monthPending}
+          goToday={goToday}
+          openQuickAdd={openQuickAdd}
+          notice={notice}
+          setNotice={setNotice}
+        />
 
       <EditablePanels
         section="planner"
@@ -997,285 +887,40 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
             node: (
       <motion.div variants={pageItem} className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:gap-6">
         <aside className="order-2 space-y-4 xl:max-h-[calc(100dvh-6rem)] xl:overflow-y-auto xl:pr-1">
-          <section ref={quickFormRef} className="app-glass rounded-[26px] p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
-                  Alta rápida
-                </p>
-                <h2 className="mt-1 text-[18px] font-semibold tracking-[-0.03em] text-slate-800 dark:text-white/90">
-                  Añadir al calendario
-                </h2>
-              </div>
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[#0066FF]/10 text-[#0066FF] dark:bg-[#0066FF]/15 dark:text-[#8ab9ff]">
-                <Plus className="h-4 w-4" />
-              </span>
-            </div>
+          <PlannerQuickEventForm
+          quickFormRef={quickFormRef}
+          setQuickType={setQuickType}
+          quickType={quickType}
+          addQuickEvent={addQuickEvent}
+          quickTitleRef={quickTitleRef}
+          quickTitle={quickTitle}
+          setQuickTitle={setQuickTitle}
+          quickDate={quickDate}
+          setQuickDate={setQuickDate}
+          quickTime={quickTime}
+          setQuickTime={setQuickTime}
+          quickCourseId={quickCourseId}
+          setQuickCourseId={setQuickCourseId}
+          courses={courses}
+          quickNotes={quickNotes}
+          setQuickNotes={setQuickNotes}
+          quickBusy={quickBusy}
+        />
 
-            <div className="mt-3 grid grid-cols-3 gap-1 rounded-2xl bg-slate-900/[0.04] p-1 dark:bg-white/[0.05]">
-              {QUICK_EVENT_TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setQuickType(tab.id)}
-                  aria-pressed={quickType === tab.id}
-                  className={cn(
-                    "rounded-xl px-1.5 py-2 text-[10px] font-semibold transition-all",
-                    quickType === tab.id
-                      ? "bg-white text-slate-800 shadow-sm dark:bg-white/15 dark:text-white"
-                      : "text-slate-500 hover:text-slate-800 dark:text-white/45 dark:hover:text-white/80",
-                  )}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            <form onSubmit={addQuickEvent} className="mt-3 space-y-2.5">
-              <div className="space-y-1.5">
-                <Label htmlFor="quick-event-title">Título</Label>
-                <Input
-                  id="quick-event-title"
-                  ref={quickTitleRef}
-                  value={quickTitle}
-                  onChange={(event) => setQuickTitle(event.target.value)}
-                  placeholder={
-                    quickType === "exam"
-                      ? "Examen de Redes"
-                      : quickType === "task"
-                        ? "Entregar práctica"
-                        : "Matrícula, defensa, aviso..."
-                  }
-                  maxLength={300}
-                />
-              </div>
-
-              <div className={cn("grid gap-2", quickType === "task" && "grid-cols-2")}>
-                <div className="space-y-1.5">
-                  <Label htmlFor="quick-event-date">Fecha</Label>
-                  <Input
-                    id="quick-event-date"
-                    type="date"
-                    value={quickDate}
-                    onChange={(event) => setQuickDate(event.target.value)}
-                    required
-                    className="tabular"
-                  />
-                </div>
-                {quickType === "task" && (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="quick-event-time">Hora</Label>
-                    <Input
-                      id="quick-event-time"
-                      type="time"
-                      value={quickTime}
-                      onChange={(event) => setQuickTime(event.target.value)}
-                      className="tabular"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {quickType !== "important_date" && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="quick-event-course">Asignatura</Label>
-                  <select
-                    id="quick-event-course"
-                    className={selectClass}
-                    value={quickCourseId}
-                    onChange={(event) => setQuickCourseId(event.target.value)}
-                  >
-                    <option value="">Sin asignatura</option>
-                    {courses.map((course) => (
-                      <option key={course.id} value={course.id}>
-                        {course.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <Label htmlFor="quick-event-notes">Notas</Label>
-                <Input
-                  id="quick-event-notes"
-                  value={quickNotes}
-                  onChange={(event) => setQuickNotes(event.target.value)}
-                  placeholder="Opcional"
-                  maxLength={500}
-                />
-              </div>
-
-              <Button type="submit" className="w-full" disabled={!quickTitle.trim() || quickBusy}>
-                {quickBusy ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Plus className="h-3.5 w-3.5" />
-                )}
-                {quickType === "exam"
-                  ? "Añadir examen"
-                  : quickType === "task"
-                    ? "Añadir tarea"
-                    : "Guardar fecha"}
-              </Button>
-            </form>
-
-            <p className="mt-3 flex items-start gap-2 rounded-xl bg-[#0066FF]/[0.055] px-2.5 py-2 text-[10px] leading-4 text-slate-500 dark:bg-[#0066FF]/10 dark:text-white/40">
-              <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-[#0066FF] dark:text-[#8ab9ff]" />
-              También puedes pedírselo a la IA: «Tengo un examen de Redes el 15 de noviembre».
-            </p>
-          </section>
-
-          <section className="app-glass-soft rounded-[26px] p-4">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
-                  Día seleccionado
-                </p>
-                <h3 className="mt-1 truncate text-[14px] font-semibold text-slate-800 dark:text-white/90">
-                  {longDate(selectedDay)}
-                </h3>
-              </div>
-              <Button variant="outline" size="sm" className="h-7 shrink-0 px-2" onClick={() => setViewMode("day")}>
-                Ver agenda
-              </Button>
-            </div>
-            <div className="mt-3 grid grid-cols-3 gap-1.5 text-center">
-              <div className="rounded-xl bg-[#FF3B30]/[0.07] px-1 py-2 dark:bg-[#FF3B30]/10">
-                <p className="text-[15px] font-semibold tabular-nums text-[#d92b22] dark:text-[#ff8a80]">{selectedExams.length}</p>
-                <p className="mt-0.5 text-[8.5px] font-medium uppercase tracking-[0.06em] text-slate-400 dark:text-white/30">Exámenes</p>
-              </div>
-              <div className="rounded-xl bg-[#0066FF]/[0.07] px-1 py-2 dark:bg-[#0066FF]/10">
-                <p className="text-[15px] font-semibold tabular-nums text-[#0066FF] dark:text-[#8ab9ff]">{selectedTasks.length}</p>
-                <p className="mt-0.5 text-[8.5px] font-medium uppercase tracking-[0.06em] text-slate-400 dark:text-white/30">Tareas</p>
-              </div>
-              <div className="rounded-xl bg-amber-500/[0.08] px-1 py-2 dark:bg-amber-400/10">
-                <p className="text-[15px] font-semibold tabular-nums text-amber-600 dark:text-amber-300">{selectedImportantDates.length}</p>
-                <p className="mt-0.5 text-[8.5px] font-medium uppercase tracking-[0.06em] text-slate-400 dark:text-white/30">Fechas</p>
-              </div>
-            </div>
-          </section>
-
-          <section className="app-glass-soft rounded-[26px] p-4">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-600/80 dark:text-amber-300/70">
-                  Fechas importantes
-                </p>
-                <h3 className="mt-1 text-[14px] font-semibold text-slate-800 dark:text-white/90">No se te pasen</h3>
-              </div>
-              <span className="rounded-full bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
-                {importantDates.length}
-              </span>
-            </div>
-            {importantDates.length === 0 ? (
-              <p className="mt-3 rounded-xl bg-slate-900/[0.025] px-2.5 py-3 text-[10.5px] leading-4 text-slate-400 dark:bg-white/[0.025] dark:text-white/30">
-                Aún no hay fechas señaladas. Añade una desde el formulario de arriba.
-              </p>
-            ) : (
-              <ul className="mt-2.5 space-y-1">
-                {importantDates.slice(0, 5).map((event) => (
-                  <li key={event.id} className="group flex items-center gap-2 rounded-xl px-1.5 py-2 hover:bg-white/35 dark:hover:bg-white/[0.03]">
-                    <span className="flex h-7 w-7 shrink-0 flex-col items-center justify-center rounded-lg bg-amber-500/10 text-[8px] font-semibold uppercase leading-none text-amber-700 dark:bg-amber-400/10 dark:text-amber-300">
-                      <span className="text-[11px] tabular-nums">{event.date.slice(8, 10)}</span>
-                      <span>{MONTHS[Number(event.date.slice(5, 7)) - 1]?.slice(0, 3)}</span>
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-[11.5px] font-medium text-slate-700 dark:text-white/75">
-                      {event.title}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => void removeImportantDate(event.id)}
-                      disabled={deletingImportantId === event.id}
-                      aria-label={`Eliminar ${event.title}`}
-                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-slate-400 opacity-70 transition-colors hover:bg-rose-500/10 hover:text-rose-500 disabled:opacity-30 dark:text-white/30 dark:hover:text-rose-300"
-                    >
-                      {deletingImportantId === event.id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-3 w-3" />
-                      )}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          {/* Próximos exámenes: sustituye al mini calendario, que ya vive en la
-              columna principal del calendario mensual. */}
-          <section className="app-glass-soft rounded-[26px] p-4">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#d92b22]/80 dark:text-[#ff8a80]/80">
-                  Próximos exámenes
-                </p>
-                <h3 className="mt-1 text-[14px] font-semibold text-slate-800 dark:text-white/90">
-                  Lo que viene
-                </h3>
-              </div>
-              <span className="rounded-full bg-[#FF3B30]/10 px-2 py-1 text-[10px] font-semibold text-[#d92b22] dark:bg-[#FF3B30]/15 dark:text-[#ff8a80]">
-                {upcomingExams.length}
-              </span>
-            </div>
-
-            {upcomingExams.length === 0 ? (
-              <p className="mt-3 rounded-xl bg-slate-900/[0.025] px-2.5 py-3 text-[10.5px] leading-4 text-slate-400 dark:bg-white/[0.025] dark:text-white/30">
-                No hay exámenes próximos. Añade uno desde el formulario de arriba o desde Académico.
-              </p>
-            ) : (
-              <ul className="mt-2.5 space-y-1">
-                {upcomingExams.map((exam) => {
-                  const key = examDateKey(exam) ?? "";
-                  const date = parseKey(key);
-                  const days = date
-                    ? Math.round(
-                        (new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() -
-                          new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) /
-                          86400000,
-                      )
-                    : null;
-                  const when =
-                    days === null
-                      ? ""
-                      : days <= 0
-                        ? "Hoy"
-                        : days === 1
-                          ? "Mañana"
-                          : `En ${days} días`;
-                  const course = exam.course_id ? courseById.get(exam.course_id) : undefined;
-                  return (
-                    <li key={exam.id}>
-                      <button
-                        type="button"
-                        onClick={() => openExamDialog("edit", exam)}
-                        className="group flex w-full items-center gap-2 rounded-xl px-1.5 py-2 text-left transition-colors hover:bg-white/35 dark:hover:bg-white/[0.03]"
-                      >
-                        <span className="flex h-8 w-8 shrink-0 flex-col items-center justify-center rounded-lg bg-[#FF3B30]/10 text-[8px] font-semibold uppercase leading-none text-[#d92b22] dark:bg-[#FF3B30]/12 dark:text-[#ff8a80]">
-                          <span className="text-[12px] tabular-nums">{key.slice(8, 10)}</span>
-                          <span>{MONTHS[Number(key.slice(5, 7)) - 1]?.slice(0, 3)}</span>
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[11.5px] font-medium text-slate-700 dark:text-white/75">
-                            {exam.title}
-                          </span>
-                          <span className="block truncate text-[9.5px] text-slate-400 dark:text-white/30">
-                            {[course?.name, when].filter(Boolean).join(" · ")}
-                          </span>
-                        </span>
-                        {exam.score === null ? (
-                          <span className="shrink-0 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[8.5px] font-semibold uppercase tracking-[0.05em] text-amber-700 dark:text-amber-300">
-                            Sin nota
-                          </span>
-                        ) : null}
-                        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 dark:text-white/20" />
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
+          <PlannerOverview
+          selectedDay={selectedDay}
+          setViewMode={setViewMode}
+          selectedExams={selectedExams}
+          selectedTasks={selectedTasks}
+          selectedImportantDates={selectedImportantDates}
+          importantDates={importantDates}
+          removeImportantDate={removeImportantDate}
+          deletingImportantId={deletingImportantId}
+          upcomingExams={upcomingExams}
+          today={today}
+          courseById={courseById}
+          openExamDialog={openExamDialog}
+        />
         </aside>
 
 
@@ -1371,833 +1016,76 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
           </div>
 
           {viewMode === "month" ? (
-            <div className="animate-planner-in mt-5 pb-1">
-              <div className="grid min-w-0 grid-cols-7 gap-1 sm:gap-1.5">
-                {WEEKDAYS.map((day) => (
-                  <div
-                    key={day}
-                    className="pb-1 text-center text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-white/30"
-                  >
-                    {day}
-                  </div>
-                ))}
-                {monthCells.map((cell, index) => {
-                  if (!cell) {
-                    return (
-                      <div
-                        key={`empty-${index}`}
-                        className="min-h-[58px] rounded-2xl border border-transparent sm:min-h-[112px] md:min-h-[128px]"
-                      />
-                    );
-                  }
-                  const dayTasks = tasksByDay.get(cell.key) ?? [];
-                  const dayEvents = eventsByDay.get(cell.key) ?? [];
-                  const dayExams = examsByDay.get(cell.key) ?? [];
-                  const dayImportant = importantByDay.get(cell.key) ?? [];
-                  const dayClasses = entries.filter(
-                    (entry) =>
-                      entry.day_of_week ===
-                      weekdayIndex(new Date(cursor.getFullYear(), cursor.getMonth(), cell.day)),
-                  );
-                  const chips = [
-                    ...dayExams.map((exam) => ({
-                      id: `exam-${exam.id}`,
-                      label: exam.title,
-                      color: "#FF3B30",
-                    })),
-                    ...dayImportant.map((event) => ({
-                      id: `important-${event.id}`,
-                      label: event.title,
-                      color: "#C77700",
-                    })),
-                    ...dayTasks.map((task) => ({
-                      id: `task-${task.id}`,
-                      label: task.title,
-                      color: PRIORITY_COLOR[task.priority] ?? "#0066FF",
-                    })),
-                    ...dayEvents.map((event) => ({
-                      id: `class-event-${event.id}`,
-                      label: event.title,
-                      color: event.is_exam ? "#FF3B30" : "#30B0C7",
-                    })),
-                  ];
-                  const visible = chips.slice(0, 3);
-                  const extra = chips.length - visible.length;
-                  const selected = cell.key === selectedDay;
-                  const todayCell = cell.key === todayKey;
-                  const weekendCell =
-                    weekdayIndex(new Date(cursor.getFullYear(), cursor.getMonth(), cell.day)) >= 5;
-                  return (
-                    <button
-                      key={cell.key}
-                      type="button"
-                      onClick={() => selectDay(cell.key)}
-                      aria-pressed={selected}
-                      aria-current={todayCell ? "date" : undefined}
-                      aria-label={`${longDate(cell.key)}: ${dayExams.length} exámenes, ${dayTasks.length} tareas, ${dayImportant.length} fechas importantes`}
-                      title={
-                        chips.length > 0
-                          ? chips.map((chip) => chip.label).join(" · ")
-                          : undefined
-                      }
-                      className={cn(
-                        "group flex min-h-[58px] min-w-0 flex-col rounded-2xl border p-1.5 text-left transition-all duration-200 ease-mac sm:min-h-[112px] sm:p-2.5 md:min-h-[128px]",
-                        selected
-                          ? "border-[#0066FF] bg-[#0066FF]/[0.055] shadow-[0_0_0_1px_rgba(0,102,255,0.14)] dark:bg-[#0066FF]/[0.08]"
-                          : todayCell
-                            ? "border-[#0066FF]/30 bg-[#0066FF]/[0.035] hover:bg-[#0066FF]/[0.06] dark:border-[#0066FF]/25 dark:bg-[#0066FF]/[0.055]"
-                            : weekendCell
-                              ? "border-white/35 bg-slate-900/[0.018] hover:border-white/60 hover:bg-white/30 dark:border-white/[0.05] dark:bg-white/[0.012] dark:hover:border-white/10 dark:hover:bg-white/[0.03]"
-                              : "border-white/50 bg-white/25 hover:border-white/70 hover:bg-white/40 dark:border-white/[0.06] dark:bg-white/[0.018] dark:hover:border-white/10 dark:hover:bg-white/[0.04]",
-                      )}
-                    >
-                      <span className="flex items-center justify-between gap-1.5">
-                        <span
-                          className={cn(
-                            "flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-[11px] font-semibold tabular-nums sm:h-7 sm:min-w-7 sm:text-[12px]",
-                            todayCell
-                              ? "bg-[#0066FF] text-white"
-                              : selected
-                                ? "bg-[#0066FF]/12 text-[#0066FF] dark:bg-[#0066FF]/20 dark:text-[#8ab9ff]"
-                                : "text-slate-600 dark:text-white/60",
-                          )}
-                        >
-                          {cell.day}
-                        </span>
-                        {todayCell && (
-                          <span className="hidden rounded-full bg-[#0066FF]/10 px-1.5 py-0.5 text-[7.5px] font-semibold uppercase tracking-[0.08em] text-[#0066FF] dark:bg-[#0066FF]/15 dark:text-[#8ab9ff] sm:inline">
-                            Hoy
-                          </span>
-                        )}
-                      </span>
-                      <span className="mt-1.5 hidden min-h-0 flex-1 flex-col gap-1 sm:flex">
-                        {visible.map((chip) => (
-                          <span
-                            key={chip.id}
-                            className="flex min-w-0 items-center gap-1 rounded-md px-1.5 py-1 text-[9.5px] font-medium leading-3"
-                            style={{
-                              backgroundColor: `color-mix(in srgb, ${chip.color} 11%, transparent)`,
-                              color: chip.color,
-                            }}
-                          >
-                            <span
-                              className="h-1.5 w-1.5 shrink-0 rounded-full"
-                              style={{ backgroundColor: chip.color }}
-                            />
-                            <span className="truncate">{chip.label}</span>
-                          </span>
-                        ))}
-                        {extra > 0 && (
-                          <span className="px-1.5 text-[8.5px] font-medium text-slate-400 dark:text-white/30">
-                            +{extra} más
-                          </span>
-                        )}
-                        {chips.length === 0 && (
-                          <span className="px-1 text-[9px] text-slate-300 dark:text-white/15">—</span>
-                        )}
-                      </span>
-                      {chips.length > 0 && (
-                        <span
-                          aria-hidden="true"
-                          className="mt-1 flex flex-wrap items-center gap-0.5 sm:hidden"
-                        >
-                          {chips.slice(0, 4).map((chip) => (
-                            <span
-                              key={chip.id}
-                              className="h-1.5 w-1.5 rounded-full"
-                              style={{ backgroundColor: chip.color }}
-                            />
-                          ))}
-                          {chips.length > 4 && (
-                            <span className="text-[7px] font-semibold text-slate-400 dark:text-white/30">
-                              +{chips.length - 4}
-                            </span>
-                          )}
-                        </span>
-                      )}
-                      {dayClasses.length > 0 && (
-                        <span className="mt-1 hidden items-center gap-1 truncate border-t border-slate-900/[0.045] pt-1 text-[8.5px] font-medium text-slate-400 dark:border-white/[0.05] dark:text-white/30 sm:flex">
-                          <Clock className="h-2.5 w-2.5 shrink-0" />
-                          {dayClasses.length} clase{dayClasses.length === 1 ? "" : "s"}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <PlannerMonthView
+          monthCells={monthCells}
+          tasksByDay={tasksByDay}
+          eventsByDay={eventsByDay}
+          examsByDay={examsByDay}
+          importantByDay={importantByDay}
+          entries={entries}
+          cursor={cursor}
+          selectedDay={selectedDay}
+          todayKey={todayKey}
+          selectDay={selectDay}
+        />
           ) : viewMode === "week" ? (
-            <div className="animate-planner-in mt-5 overflow-x-auto pb-1">
-              <div className="grid min-w-[680px] grid-cols-5 gap-2 sm:min-w-0 sm:gap-2.5 xl:gap-3">
-                {weekDays.map((day) => {
-                  const dayTasks = tasksByDay.get(day.key) ?? [];
-                  const dayEvents = eventsByDay.get(day.key) ?? [];
-                  const dayExams = examsByDay.get(day.key) ?? [];
-                  const dayImportant = importantByDay.get(day.key) ?? [];
-                  const hasClassExam = dayEvents.some((event) => event.is_exam);
-                  const dayClasses = entries
-                    .filter((entry) => entry.day_of_week === day.weekday)
-                    .sort((a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time));
-                  const dayIsToday = day.key === todayKey;
-                  return (
-                    <button
-                      key={day.key}
-                      type="button"
-                                            aria-current={dayIsToday ? "date" : undefined}
-                      onClick={() => {
-                        selectDay(day.key);
-                        setViewMode("day");
-                      }}
-                      className={cn(
-                        "group relative flex min-h-[360px] min-w-0 flex-col rounded-2xl border p-2 text-left backdrop-blur-sm transition-all duration-200 ease-mac sm:min-h-[410px] sm:p-2.5",
-                        dayIsToday
-                          ? "border-[#0066FF]/30 bg-[#0066FF]/[0.065] ring-1 ring-[#0066FF]/15 shadow-[0_0_38px_-18px_rgba(0,102,255,0.7)] dark:border-[#0066FF]/25 dark:bg-[#0066FF]/[0.09]"
-                          : "border-white/50 bg-white/25 hover:border-white/70 hover:bg-white/40 dark:border-white/[0.06] dark:bg-white/[0.018] dark:hover:border-white/10 dark:hover:bg-white/[0.04]",
-                        dayExams.length > 0 && !dayIsToday && "ring-1 ring-inset ring-[#FF3B30]/25",
-                      )}
-                    >
-                      <span className="flex items-center justify-between gap-1.5 px-0.5">
-                        <span className="flex min-w-0 items-center gap-1.5">
-                          <span className="text-[8.5px] font-semibold uppercase tracking-[0.1em] text-slate-400 dark:text-white/35">
-                            {WEEKDAYS[day.weekday]}
-                          </span>
-                          {dayIsToday && (
-                            <span className="rounded-full border border-[#0066FF]/20 bg-[#0066FF]/10 px-1.5 py-0.5 text-[7.5px] font-semibold uppercase tracking-[0.08em] text-[#0066FF] dark:border-[#0066FF]/25 dark:bg-[#0066FF]/15 dark:text-[#8ab9ff]">
-                              Hoy
-                            </span>
-                          )}
-                        </span>
-                        <span
-                          className={cn(
-                            "flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-[11px] font-semibold tabular-nums",
-                            dayIsToday
-                              ? "bg-[#0066FF] text-white"
-                              : dayExams.length > 0
-                                ? "bg-[#FF3B30]/12 text-[#d92b22] dark:bg-[#FF3B30]/15 dark:text-[#ff8a80]"
-                                : "text-slate-500 dark:text-white/45",
-                          )}
-                        >
-                          {day.date.getDate()}
-                        </span>
-                      </span>
-                      {dayExams.length > 0 && (
-                        <span className="mt-1 flex min-w-0 items-center gap-1 rounded-full bg-[#FF3B30]/10 px-1.5 py-0.5 text-[8.5px] font-semibold text-[#d92b22] dark:bg-[#FF3B30]/15 dark:text-[#ff8a80]">
-                          <CalendarClock className="h-2.5 w-2.5 shrink-0" />
-                          <span className="truncate">
-                            {dayExams.length === 1 ? dayExams[0].title : `${dayExams.length} exámenes`}
-                          </span>
-                        </span>
-                      )}
-                      {dayImportant.length > 0 && (
-                        <span className="mt-1 flex min-w-0 items-center gap-1 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[8.5px] font-semibold text-amber-700 dark:bg-amber-400/10 dark:text-amber-300">
-                          <Sparkles className="h-2.5 w-2.5 shrink-0" />
-                          <span className="truncate">
-                            {dayImportant.length === 1 ? dayImportant[0].title : `${dayImportant.length} fechas`}
-                          </span>
-                        </span>
-                      )}
-                      <span className="mt-2 flex min-h-0 flex-1 flex-col gap-1.5">
-                        {dayClasses.length === 0 ? (
-                          <span className="rounded-lg border border-dashed border-slate-900/[0.06] bg-white/20 px-1.5 py-2.5 text-center text-[9px] leading-3 text-slate-400 dark:border-white/[0.07] dark:bg-white/[0.018] dark:text-white/25">
-                            Sin clases
-                          </span>
-                        ) : (
-                          dayClasses.map((entry) => {
-                            const course = entry.course_id
-                              ? courseById.get(entry.course_id)
-                              : undefined;
-                            const color = courseColor(entry, course);
-                            const name = subjectName(entry, course);
-                            return (
-                              <span
-                                key={entry.id}
-                                title={`${name} · ${timeLabel(entry.start_time)}–${timeLabel(entry.end_time)}`}
-                                className="min-w-0 overflow-hidden rounded-xl border border-white/60 bg-white/55 px-2 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] backdrop-blur-md transition-colors group-hover:bg-white/65 dark:border-white/10 dark:bg-white/[0.055] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] dark:group-hover:bg-white/[0.075]"
-                                style={{ borderLeftColor: color, borderLeftWidth: 3 }}
-                              >
-                                <span className="block text-[9px] font-semibold tabular-nums text-slate-400 dark:text-white/35">
-                                  {timeLabel(entry.start_time)}
-                                </span>
-                                <span className="mt-0.5 line-clamp-2 block break-words text-[10.5px] font-semibold leading-4 text-slate-700 dark:text-white/80">
-                                  {name}
-                                </span>
-                              </span>
-                            );
-                          })
-                        )}
-                      </span>
-                      {(dayTasks.length > 0 || dayEvents.length > 0 || dayExams.length > 0 || dayImportant.length > 0) && (
-                        <span className="mt-1 flex flex-wrap items-center gap-1 pt-1 text-[8.5px] font-medium text-slate-500 dark:text-white/35">
-                          {dayExams.length > 0 && (
-                            <span className="rounded-full bg-[#FF3B30]/10 px-1.5 py-0.5 text-[#d92b22] dark:bg-[#FF3B30]/15 dark:text-[#ff8a80]">
-                              {dayExams.length === 1 ? "1 examen" : `${dayExams.length} exámenes`}
-                            </span>
-                          )}
-                          {dayImportant.length > 0 && (
-                            <span className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300">
-                              {dayImportant.length} fecha{dayImportant.length === 1 ? "" : "s"}
-                            </span>
-                          )}
-                          {dayTasks.length > 0 && (
-                            <span className="rounded-full bg-[#0066FF]/10 px-1.5 py-0.5 text-[#0066FF] dark:bg-[#0066FF]/20 dark:text-[#8ab9ff]">
-                              {dayTasks.length} tarea{dayTasks.length === 1 ? "" : "s"}
-                            </span>
-                          )}
-                          {dayEvents.length > 0 && (
-                            <span
-                              className={cn(
-                                "rounded-full px-1.5 py-0.5",
-                                hasClassExam
-                                  ? "bg-[#FF3B30]/10 text-[#d92b22] dark:bg-[#FF3B30]/15 dark:text-[#ff8a80]"
-                                  : "bg-[#30B0C7]/10 text-[#1f8fa3] dark:bg-[#30B0C7]/15 dark:text-[#6ed4e5]",
-                              )}
-                            >
-                              {dayEvents.length} evento{dayEvents.length === 1 ? "" : "s"}
-                            </span>
-                          )}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <PlannerWeekView
+          weekDays={weekDays}
+          tasksByDay={tasksByDay}
+          eventsByDay={eventsByDay}
+          examsByDay={examsByDay}
+          importantByDay={importantByDay}
+          entries={entries}
+          todayKey={todayKey}
+          selectDay={selectDay}
+          setViewMode={setViewMode}
+          courseById={courseById}
+        />
           ) : (
-          <div key={selectedDay} className="animate-planner-in mt-5">
-            {isWeekend ? (
-              <MonthEmpty weekend />
-            ) : loading ? (
-              <div className="space-y-3">
-                {[0, 1, 2].map((item) => (
-                  <div key={item} className="flex animate-pulse items-center gap-3">
-                    <span className="h-3 w-10 rounded-full bg-slate-900/[0.06] dark:bg-white/[0.07]" />
-                    <span className="h-2.5 w-2.5 rounded-full bg-slate-900/[0.08] dark:bg-white/[0.09]" />
-                    <span className="h-14 flex-1 rounded-2xl bg-slate-900/[0.04] dark:bg-white/[0.05]" />
-                  </div>
-                ))}
-              </div>
-            ) : selectedClasses.length === 0 ? (
-              selectedExams.length > 0 ? (
-                <div className="flex items-center gap-2.5 rounded-xl bg-[#FF3B30]/[0.05] px-3 py-4 text-[11.5px] text-slate-500 dark:bg-[#FF3B30]/[0.06] dark:text-white/40">
-                  <CalendarClock className="h-4 w-4 shrink-0 text-[#d92b22] dark:text-[#ff8a80]" />
-                  Sin clases lectivas, pero tienes{" "}
-                  {selectedExams.length === 1
-                    ? "1 examen"
-                    : `${selectedExams.length} exámenes`}{" "}
-                  este día.
-                </div>
-              ) : (
-                <MonthEmpty weekend={false} />
-              )
-            ) : (
-              <div className="relative">
-                <span className="absolute bottom-4 left-[65px] top-4 w-px bg-slate-200/80 dark:bg-white/10" />
-                <div className="space-y-2.5">
-                  {selectedClasses.map((entry) => {
-                    const course = entry.course_id ? courseById.get(entry.course_id) : undefined;
-                    const color = courseColor(entry, course);
-                    const name = subjectName(entry, course);
-                    const subtitle = subjectSubtitle(entry, course);
-                    const current =
-                      isToday &&
-                      nowMinutes >= timeToMinutes(entry.start_time) &&
-                      nowMinutes <= timeToMinutes(entry.end_time);
-                    const selected = selectedClassId === entry.id;
-                    const confirming = confirmDeleteClassId === entry.id;
-                    return (
-                      <div
-                        key={entry.id}
-                        className="group grid grid-cols-[44px_18px_minmax(0,1fr)] items-start gap-x-3"
-                      >
-                        <div className="pt-1.5 text-right">
-                          <p className="text-[11px] font-semibold tabular-nums text-slate-700 dark:text-white/80">
-                            {timeLabel(entry.start_time)}
-                          </p>
-                          <p className="mt-0.5 text-[9.5px] tabular-nums text-slate-400 dark:text-white/30">
-                            {timeLabel(entry.end_time)}
-                          </p>
-                        </div>
-                        <div className="relative flex justify-center pt-2.5">
-                          <span
-                            className="relative z-10 h-2.5 w-2.5 rounded-full ring-4 ring-white/80 dark:ring-[#0b0f18]"
-                            style={{ backgroundColor: color }}
-                          />
-                        </div>
-                        <div
-                          onClick={() => {
-                            setSelectedClassId(selected ? null : entry.id);
-                            setConfirmDeleteClassId(null);
-                          }}
-                          className={cn(
-                            "min-w-0 cursor-pointer rounded-xl border border-white/60 bg-white/45 p-3 backdrop-blur-md transition-colors dark:border-white/10 dark:bg-white/[0.045]",
-                            current
-                              ? "border-[#0066FF]/25 bg-[#0066FF]/[0.08] dark:bg-[#0066FF]/10"
-                              : "hover:border-white/80 hover:bg-white/60 dark:hover:border-white/15 dark:hover:bg-white/[0.065]",
-                            selected && "ring-2 ring-[#0066FF]/30",
-                          )}
-                          style={{
-                            borderLeftColor: color,
-                            borderLeftWidth: 3,
-                          }}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <div className="flex min-w-0 items-center gap-2">
-                                <p title={name} className="truncate text-[13px] font-semibold tracking-[-0.01em] text-slate-800 dark:text-white/90">
-                                  {name}
-                                </p>
-                                {current && (
-                                  <span className="shrink-0 rounded-full bg-[#30d158]/15 px-2 py-0.5 text-[9px] font-semibold text-[#1a9e3a] dark:text-[#5be07c]">
-                                    Ahora
-                                  </span>
-                                )}
-                              </div>
-                              {subtitle && (
-                                <p className="mt-0.5 truncate text-[10.5px] text-slate-500 dark:text-white/35">
-                                  {subtitle}
-                                </p>
-                              )}
-                            </div>
-                            <div
-                              className="flex shrink-0 items-center gap-1"
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              <span
-                                className="rounded-full px-2 py-0.5 text-[9.5px] font-semibold"
-                                style={{
-                                  backgroundColor: `color-mix(in srgb, ${color} 13%, transparent)`,
-                                  color,
-                                }}
-                              >
-                                {formatMinutes(durationMinutes(entry.start_time, entry.end_time))}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => startEditClass(entry)}
-                                aria-label={`Editar ${name}`}
-                                title="Editar asignatura"
-                                className="flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 opacity-100 transition-colors hover:bg-[#0066FF]/10 hover:text-[#0066FF] disabled:opacity-40 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 dark:text-white/30 dark:hover:text-[#8ab9ff]"
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setConfirmDeleteClassId(confirming ? null : entry.id)}
-                                disabled={deletingClassId === entry.id}
-                                aria-label={`Quitar ${name}`}
-                                title="Quitar clase"
-                                className="flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 opacity-100 transition-colors hover:bg-rose-500/10 hover:text-rose-500 disabled:opacity-40 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 dark:text-white/30 dark:hover:text-rose-300"
-                              >
-                                {deletingClassId === entry.id ? (
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10.5px] text-slate-500 dark:text-white/35">
-                            <span className="inline-flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {timeLabel(entry.start_time)}–{timeLabel(entry.end_time)}
-                            </span>
-                            {entry.location && (
-                              <span className="inline-flex items-center gap-1">
-                                <MapPin className="h-3 w-3" />
-                                {entry.location}
-                              </span>
-                            )}
-                          </div>
-                          {selected && (
-                            <div
-                              className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-slate-900/[0.05] pt-2 dark:border-white/[0.06]"
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 px-2 text-[11px]"
-                                onClick={() => startEditClass(entry)}
-                              >
-                                <Pencil className="h-3.5 w-3.5" /> Editar
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 px-2 text-[11px] text-rose-600 hover:bg-rose-500/10 hover:text-rose-600 dark:text-rose-300 dark:hover:text-rose-200"
-                                onClick={() => setConfirmDeleteClassId(entry.id)}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" /> Eliminar
-                              </Button>
-                            </div>
-                          )}
-                          {confirming && (
-                            <div
-                              className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-200/70 bg-rose-50/70 px-2.5 py-2 dark:border-rose-400/20 dark:bg-rose-500/10"
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              <p className="text-[11px] font-medium text-rose-700 dark:text-rose-200">
-                                ¿Eliminar esta asignatura del horario?
-                              </p>
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="destructive"
-                                  className="h-7 px-2 text-[11px]"
-                                  onClick={() => void removeClass(entry.id)}
-                                  disabled={deletingClassId === entry.id}
-                                >
-                                  Eliminar
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 px-2 text-[11px]"
-                                  onClick={() => setConfirmDeleteClassId(null)}
-                                >
-                                  Cancelar
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div className="mt-5 border-t border-slate-900/[0.05] pt-4 dark:border-white/[0.06]">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#d92b22] dark:text-[#ff8a80]">
-                    Evaluaciones
-                  </p>
-                  <h3 className="mt-0.5 text-[15px] font-semibold tracking-[-0.01em] text-slate-800 dark:text-white/90">
-                    Exámenes del día
-                  </h3>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10.5px] text-slate-400 dark:text-white/30">
-                    {selectedExams.length}
-                  </span>
-                  <Button variant="outline" size="sm" onClick={openCreateExam} className="h-8">
-                    <Plus className="h-3.5 w-3.5" /> Añadir examen
-                  </Button>
-                </div>
-              </div>
-              {selectedExams.length === 0 ? (
-                <div className="mt-3 flex items-center gap-2.5 rounded-xl bg-slate-900/[0.025] px-3 py-4 text-[11.5px] text-slate-500 dark:bg-white/[0.025] dark:text-white/35">
-                  <CalendarClock className="h-4 w-4 shrink-0 text-[#FF3B30]" />
-                  Sin exámenes este día. Pulsa «Añadir examen» para vincularlo a una asignatura.
-                </div>
-              ) : (
-                <div className="mt-2 space-y-2">
-                  {selectedExams.map((exam) => (
-                    <ExamCard
-                      key={exam.id}
-                      exam={exam}
-                      course={exam.course_id ? courseById.get(exam.course_id) : undefined}
-                      busy={deletingExamId === exam.id}
-                      onEdit={() => openExamDialog("edit", exam)}
-                      onGrade={() => openExamDialog("grade", exam)}
-                      onDelete={() => removeExam(exam)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {selectedImportantDates.length > 0 && (
-              <div className="mt-5 border-t border-slate-900/[0.05] pt-4 dark:border-white/[0.06]">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-600/80 dark:text-amber-300/70">
-                    Fechas importantes
-                  </p>
-                  <span className="text-[10px] text-slate-400 dark:text-white/30">
-                    {selectedImportantDates.length}
-                  </span>
-                </div>
-                <div className="mt-2 space-y-1.5">
-                  {selectedImportantDates.map((event) => (
-                    <div
-                      key={event.id}
-                      className="flex items-start gap-2.5 rounded-xl border border-amber-500/15 bg-amber-500/[0.055] p-2.5 dark:border-amber-400/15 dark:bg-amber-400/[0.06]"
-                    >
-                      <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-300" />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[12.5px] font-medium text-slate-700 dark:text-white/80">
-                          {event.title}
-                        </p>
-                        {event.notes && (
-                          <p className="mt-0.5 truncate text-[10.5px] text-slate-500 dark:text-white/35">
-                            {event.notes}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {selectedEvents.length > 0 && (
-              <div className="mt-5 border-t border-slate-900/[0.05] pt-4 dark:border-white/[0.06]">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
-                    Eventos de clase
-                  </p>
-                  <span className="text-[10px] text-slate-400 dark:text-white/30">
-                    {selectedEvents.length}
-                  </span>
-                </div>
-                <div className="mt-2 space-y-2">
-                  {selectedEvents.map((event) => (
-                    <div
-                      key={event.id}
-                      className="flex items-start gap-2.5 rounded-xl bg-slate-900/[0.025] p-2.5 dark:bg-white/[0.025]"
-                    >
-                      <span
-                        className={cn(
-                          "mt-1.5 h-2 w-2 shrink-0 rounded-full",
-                          event.is_exam ? "bg-[#FF3B30]" : "bg-[#30B0C7]",
-                        )}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex min-w-0 items-center gap-2">
-                          <p className="truncate text-[12.5px] font-medium text-slate-700 dark:text-white/80">
-                            {event.title}
-                          </p>
-                          {event.is_exam && (
-                            <span className="shrink-0 rounded-full bg-[#FF3B30]/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.06em] text-[#d92b22] dark:text-[#ff8a80]">
-                              Examen
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-0.5 truncate text-[10.5px] text-slate-500 dark:text-white/35">
-                          {event.class_name ? `${event.class_name} · ` : ""}
-                          {formatEventRange(event)}
-                          {event.location ? ` · ${event.location}` : ""}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Tareas del día seleccionado */}
-            <div className="mt-5 border-t border-slate-900/[0.05] pt-4 dark:border-white/[0.06]">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
-                    Entregas
-                  </p>
-                  <h3 className="mt-0.5 text-[15px] font-semibold tracking-[-0.01em] text-slate-800 dark:text-white/90">
-                    Tareas del día
-                  </h3>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10.5px] text-slate-400 dark:text-white/30">
-                    {pendingSelected} pendiente{pendingSelected === 1 ? "" : "s"}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowTaskForm((value) => !value)}
-                    className="h-8"
-                  >
-                    {showTaskForm ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-                    {showTaskForm ? "Cerrar" : "Nueva"}
-                  </Button>
-                </div>
-              </div>
-
-              {showTaskForm && (
-                <form
-                  onSubmit={addTask}
-                  className="mt-3 space-y-2.5 rounded-2xl bg-slate-900/[0.025] p-3 dark:bg-white/[0.03]"
-                >
-                  <Input
-                    value={taskTitle}
-                    onChange={(event) => setTaskTitle(event.target.value)}
-                    placeholder="Título de la tarea o entrega"
-                    maxLength={500}
-                    aria-label="Título de la tarea"
-                  />
-                  <div className="grid gap-2 md:grid-cols-3">
-                    <select
-                      className={selectClass}
-                      value={taskCourseId}
-                      onChange={(event) => setTaskCourseId(event.target.value)}
-                      aria-label="Asignatura"
-                    >
-                      <option value="">Sin asignatura</option>
-                      {courses.map((course) => (
-                        <option key={course.id} value={course.id}>
-                          {course.name}
-                        </option>
-                      ))}
-                    </select>
-                    <Input
-                      type="time"
-                      value={taskTime}
-                      onChange={(event) => setTaskTime(event.target.value)}
-                      aria-label="Hora de entrega"
-                      className="tabular"
-                    />
-                    <Input
-                      type="number"
-                      min={5}
-                      step={5}
-                      value={taskMinutes}
-                      onChange={(event) => setTaskMinutes(Number(event.target.value))}
-                      aria-label="Minutos estimados"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-[10px] text-slate-400 dark:text-white/30">
-                      Se guarda para el {longDate(selectedDay).toLowerCase()}.
-                    </p>
-                    <Button type="submit" size="sm" disabled={!taskTitle.trim() || addingTask}>
-                      {addingTask ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Plus className="h-3.5 w-3.5" />
-                      )}
-                      Añadir
-                    </Button>
-                  </div>
-                </form>
-              )}
-
-              {selectedTasks.length === 0 ? (
-                <div className="mt-3 flex items-center gap-2.5 rounded-xl bg-slate-900/[0.025] px-3 py-4 text-[11.5px] text-slate-500 dark:bg-white/[0.025] dark:text-white/35">
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-[#34C759]" />
-                  Sin entregas para este día. Buen momento para adelantar trabajo.
-                </div>
-              ) : (
-                <div className="mt-2 space-y-1">
-                  {selectedTasks.map((task) => {
-                    const course = task.course_id ? courseById.get(task.course_id) : undefined;
-                    const completed = task.status === "completed";
-                    const busy = busyTaskId === task.id;
-                    const confirming = confirmDeleteId === task.id;
-                    return (
-                      <div key={task.id}>
-                        <div className="group flex items-start gap-2.5 rounded-2xl px-1.5 py-2.5 transition-colors hover:bg-white/30 dark:hover:bg-white/[0.03]">
-                          <button
-                            type="button"
-                            onClick={() => void completeTask(task.id)}
-                            disabled={completed || busy}
-                            aria-label={completed ? "Tarea completada" : `Completar ${task.title}`}
-                            title={completed ? "Completada" : "Completar tarea"}
-                            className={cn(
-                              "mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border transition-colors",
-                              completed
-                                ? "border-[#34C759]/60 bg-[#34C759]/15 text-[#1a9e3a] dark:text-[#5be07c]"
-                                : "border-slate-300 text-transparent hover:border-[#34C759]/70 hover:bg-[#34C759]/10 hover:text-[#1a9e3a] dark:border-white/20 dark:hover:text-[#5be07c]",
-                            )}
-                          >
-                            {busy ? (
-                              <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                            ) : (
-                              <Check className="h-2.5 w-2.5" strokeWidth={3} />
-                            )}
-                          </button>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex min-w-0 items-center gap-2">
-                              <p className="truncate text-[12.5px] font-medium text-slate-700 dark:text-white/80">
-                                {task.title}
-                              </p>
-                            </div>
-                            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10.5px] text-slate-500 dark:text-white/35">
-                              <span className="inline-flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {formatDueLabel(task.due_at)}
-                              </span>
-                              <span className="text-slate-300 dark:text-white/20">·</span>
-                              <span>{formatMinutes(task.estimated_minutes)}</span>
-                              {course && (
-                                <>
-                                  <span className="text-slate-300 dark:text-white/20">·</span>
-                                  <span className="inline-flex min-w-0 items-center gap-1">
-                                    <span
-                                      className="h-2 w-2 shrink-0 rounded-full"
-                                      style={{ backgroundColor: course.color ?? "#8E8E93" }}
-                                    />
-                                    <span className="max-w-[130px] truncate">{course.name}</span>
-                                  </span>
-                                </>
-                              )}
-                              <span className="text-slate-300 dark:text-white/20">·</span>
-                              <span style={{ color: PRIORITY_COLOR[task.priority] }}>
-                                {PRIORITY_LABEL[task.priority] ?? task.priority}
-                              </span>
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => setEditingTask(task)}
-                            disabled={busy}
-                            aria-label={`Editar ${task.title}`}
-                            title="Editar tarea"
-                            className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-[#0066FF]/10 hover:text-[#0066FF] disabled:opacity-40 dark:text-white/30 dark:hover:text-[#8ab9ff]"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => setConfirmDeleteId(confirming ? null : task.id)}
-                            disabled={busy}
-                            aria-label={`Quitar ${task.title}`}
-                            title="Quitar tarea"
-                            className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-rose-500/10 hover:text-rose-500 disabled:opacity-40 dark:text-white/30 dark:hover:text-rose-300"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                        {confirming && (
-                          <div className="ml-8 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-200/70 bg-rose-50/70 px-2.5 py-2 dark:border-rose-400/20 dark:bg-rose-500/10">
-                            <p className="text-[11px] font-medium text-rose-700 dark:text-rose-200">
-                              ¿Quitar esta tarea?
-                            </p>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                className="h-7 px-2 text-[11px]"
-                                onClick={() => void removeTask(task.id)}
-                                disabled={busy}
-                              >
-                                Quitar
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 px-2 text-[11px]"
-                                onClick={() => setConfirmDeleteId(null)}
-                              >
-                                Cancelar
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
+          <PlannerDayView
+          selectedDay={selectedDay}
+          isWeekend={isWeekend}
+          loading={loading}
+          selectedClasses={selectedClasses}
+          selectedExams={selectedExams}
+          courseById={courseById}
+          isToday={isToday}
+          nowMinutes={nowMinutes}
+          selectedClassId={selectedClassId}
+          confirmDeleteClassId={confirmDeleteClassId}
+          setSelectedClassId={setSelectedClassId}
+          setConfirmDeleteClassId={setConfirmDeleteClassId}
+          startEditClass={startEditClass}
+          deletingClassId={deletingClassId}
+          removeClass={removeClass}
+          openCreateExam={openCreateExam}
+          deletingExamId={deletingExamId}
+          openExamDialog={openExamDialog}
+          removeExam={removeExam}
+          selectedImportantDates={selectedImportantDates}
+          selectedEvents={selectedEvents}
+          pendingSelected={pendingSelected}
+          setShowTaskForm={setShowTaskForm}
+          showTaskForm={showTaskForm}
+          addTask={addTask}
+          taskTitle={taskTitle}
+          setTaskTitle={setTaskTitle}
+          taskCourseId={taskCourseId}
+          setTaskCourseId={setTaskCourseId}
+          courses={courses}
+          taskTime={taskTime}
+          setTaskTime={setTaskTime}
+          taskMinutes={taskMinutes}
+          setTaskMinutes={setTaskMinutes}
+          addingTask={addingTask}
+          selectedTasks={selectedTasks}
+          busyTaskId={busyTaskId}
+          confirmDeleteId={confirmDeleteId}
+          completeTask={completeTask}
+          setEditingTask={setEditingTask}
+          setConfirmDeleteId={setConfirmDeleteId}
+          removeTask={removeTask}
+        />
           )}
         </section>
       </motion.div>
@@ -2207,257 +1095,44 @@ export function PlannerView({ defaultOpenTools = false }: { defaultOpenTools?: b
       />
 
       {/* Gestión del horario: añadir, editar, importar y quitar clases */}
-      <motion.section variants={pageItem} className="mt-5 rounded-3xl bg-white/35 p-4 backdrop-blur-xl dark:bg-white/[0.025] sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <button
-            type="button"
-            onClick={() => setShowTools((value) => !value)}
-            aria-expanded={showTools}
-            className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
-          >
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
-                Horario semanal
-              </p>
-              <h2 className="mt-1 text-[17px] font-semibold tracking-[-0.02em] text-slate-800 dark:text-white/90">
-                Gestionar clases
-              </h2>
-              <p className="mt-1 text-[11.5px] text-slate-500 dark:text-white/40">
-                Añade una asignatura, edita una franja existente o importa una foto o un PDF de tu
-                horario.
-              </p>
-            </div>
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-300/40 bg-slate-100/65 text-slate-500 dark:border-white/10 dark:bg-white/[0.05] dark:text-white/50">
-              <ChevronDown
-                className={cn(
-                  "h-4 w-4 transition-transform duration-200",
-                  showTools && "rotate-180",
-                )}
-              />
-            </span>
-          </button>
-          <Button
-            type="button"
-            size="sm"
-            onClick={startAddClass}
-            className="h-auto shrink-0 whitespace-normal py-2 text-left"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Añadir Asignatura al Horario
-          </Button>
-        </div>
-
-        {showTools && (
-          <div className="mt-5 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-            <form
-              ref={classFormRef}
-              onSubmit={saveClass}
-              className="rounded-2xl bg-slate-900/[0.025] p-3.5 dark:bg-white/[0.03]"
-            >
-              <div className="flex items-center gap-2">
-                {editingClassId ? (
-                  <Pencil className="h-4 w-4 text-[#0066FF]" />
-                ) : (
-                  <Plus className="h-4 w-4 text-[#0066FF]" />
-                )}
-                <p className="text-[13px] font-semibold text-slate-800 dark:text-white/90">
-                  {editingClassId ? "Editar asignatura" : "Añadir asignatura al horario"}
-                </p>
-              </div>
-              {editingClassId && (
-                <p className="mt-1 text-[11px] leading-4 text-slate-500 dark:text-white/40">
-                  Los cambios se guardan en este dispositivo y sustituyen a la franja actual.
-                </p>
-              )}
-              <div className="mt-3 grid gap-2.5 md:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="planner-class-course">Asignatura</Label>
-                  <select
-                    id="planner-class-course"
-                    className={selectClass}
-                    value={classCourseId}
-                    onChange={(event) => setClassCourseId(event.target.value)}
-                  >
-                    <option value="">Sin asignatura</option>
-                    {courses.map((course) => (
-                      <option key={course.id} value={course.id}>
-                        {course.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="planner-class-day">Día</Label>
-                  <select
-                    id="planner-class-day"
-                    className={selectClass}
-                    value={classDay}
-                    onChange={(event) => setClassDay(Number(event.target.value))}
-                  >
-                    {DAYS_LONG.map((day, index) => (
-                      <option key={day} value={index}>
-                        {day}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="planner-class-start">Desde</Label>
-                  <Input
-                    id="planner-class-start"
-                    type="time"
-                    value={classStart}
-                    onChange={(event) => setClassStart(event.target.value)}
-                    className="tabular"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="planner-class-end">Hasta</Label>
-                  <Input
-                    id="planner-class-end"
-                    type="time"
-                    value={classEnd}
-                    onChange={(event) => setClassEnd(event.target.value)}
-                    className="tabular"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="planner-class-title">Etiqueta</Label>
-                  <Input
-                    id="planner-class-title"
-                    value={classTitle}
-                    onChange={(event) => setClassTitle(event.target.value)}
-                    placeholder="Teoría / Práctica"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="planner-class-location">Aula</Label>
-                  <Input
-                    id="planner-class-location"
-                    value={classLocation}
-                    onChange={(event) => setClassLocation(event.target.value)}
-                    placeholder="B3"
-                  />
-                </div>
-              </div>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <Button
-                  type="submit"
-                  size="sm"
-                  className="h-auto whitespace-normal py-2 text-left"
-                  disabled={savingClass}
-                >
-                  {savingClass ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : editingClassId ? (
-                    <Check className="h-3.5 w-3.5" />
-                  ) : (
-                    <Plus className="h-3.5 w-3.5" />
-                  )}
-                  {editingClassId ? "Guardar cambios" : "Añadir Asignatura al Horario"}
-                </Button>
-                {editingClassId && (
-                  <Button type="button" size="sm" variant="ghost" onClick={cancelEditClass}>
-                    <X className="h-3.5 w-3.5" /> Cancelar
-                  </Button>
-                )}
-              </div>
-            </form>
-
-            <div className="rounded-2xl bg-slate-900/[0.02] p-3.5 dark:bg-white/[0.02]">
-              <div className="flex items-center gap-2">
-                <FileUp className="h-4 w-4 text-[#0066FF]" />
-                <p className="text-[13px] font-semibold text-slate-800 dark:text-white/90">
-                  Importar horario
-                </p>
-              </div>
-              <p className="mt-1.5 text-[11px] leading-5 text-slate-500 dark:text-white/40">
-                Sube una foto, PDF o Word. La IA detecta días, horas y asignaturas; sin IA se usa un
-                lector de líneas.
-              </p>
-              <p className="mt-1 text-[10.5px] leading-4 text-slate-400 dark:text-white/30">
-                El resultado se guarda como tu horario personalizado en este dispositivo.
-              </p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,.xlsx"
-                onChange={(event) => setImportFile(event.target.files?.[0] ?? null)}
-                className="mt-3 block w-full text-[11.5px] text-slate-500 file:mr-3 file:rounded-xl file:border file:border-slate-300/45 file:bg-slate-100/60 file:px-3 file:py-1.5 file:text-[11px] file:font-medium file:text-slate-700 hover:file:bg-slate-100/80 dark:text-white/40 dark:file:border-white/10 dark:file:bg-white/[0.06] dark:file:text-white/70"
-              />
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                <label className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-white/40">
-                  <input
-                    type="checkbox"
-                    checked={replace}
-                    onChange={(event) => setReplace(event.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 accent-[#0066FF] dark:border-white/20"
-                  />
-                  Reemplazar el horario actual
-                </label>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => void importSchedule()}
-                  disabled={importing || !importFile}
-                >
-                  {importing ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <FileUp className="h-3.5 w-3.5" />
-                  )}
-                  {importing ? "Leyendo..." : "Importar"}
-                </Button>
-              </div>
-            </div>
-
-            <div className="rounded-2xl bg-slate-900/[0.02] p-3.5 lg:col-span-2 dark:bg-white/[0.02]">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
-                    Vista completa
-                  </p>
-                  <p className="mt-1 text-[11.5px] leading-5 text-slate-500 dark:text-white/40">
-                    Pulsa una asignatura para seleccionarla. Usa el lápiz para editarla o la
-                    papelera para quitarla del horario.
-                  </p>
-                </div>
-                <span className="inline-flex h-7 items-center rounded-full bg-slate-200/60 px-2.5 text-[10px] font-semibold text-slate-500 dark:bg-white/10 dark:text-white/45">
-                  {entries.length} franja{entries.length === 1 ? "" : "s"}
-                </span>
-              </div>
-              <div className="mt-3">
-                {entries.length === 0 ? (
-                  <p className="rounded-xl bg-slate-900/[0.025] px-3 py-4 text-center text-[11.5px] text-slate-500 dark:bg-white/[0.025] dark:text-white/35">
-                    No hay asignaturas en el horario. Añade la primera con el formulario de arriba.
-                  </p>
-                ) : (
-                  <WeeklyTimetable
-                    entries={entries}
-                    courses={courses}
-                    selectedId={selectedClassId}
-                    onSelect={(id) => {
-                      setSelectedClassId(id);
-                      setConfirmDeleteClassId(null);
-                    }}
-                    onEdit={startEditClass}
-                    onDelete={(id) => {
-                      const entry = entriesRef.current.find((item) => item.id === id);
-                      const course = entry?.course_id
-                        ? courseById.get(entry.course_id)
-                        : undefined;
-                      const label = entry ? subjectName(entry, course) : "esta asignatura";
-                      if (window.confirm(`¿Eliminar ${label} del horario?`)) {
-                        void removeClass(id);
-                      }
-                    }}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </motion.section>
+      <PlannerTimetableTools
+          setShowTools={setShowTools}
+          showTools={showTools}
+          startAddClass={startAddClass}
+          classFormRef={classFormRef}
+          saveClass={saveClass}
+          editingClassId={editingClassId}
+          classCourseId={classCourseId}
+          setClassCourseId={setClassCourseId}
+          courses={courses}
+          classDay={classDay}
+          setClassDay={setClassDay}
+          classStart={classStart}
+          setClassStart={setClassStart}
+          classEnd={classEnd}
+          setClassEnd={setClassEnd}
+          classTitle={classTitle}
+          setClassTitle={setClassTitle}
+          classLocation={classLocation}
+          setClassLocation={setClassLocation}
+          savingClass={savingClass}
+          cancelEditClass={cancelEditClass}
+          fileInputRef={fileInputRef}
+          setImportFile={setImportFile}
+          replace={replace}
+          setReplace={setReplace}
+          importSchedule={importSchedule}
+          importing={importing}
+          importFile={importFile}
+          entries={entries}
+          selectedClassId={selectedClassId}
+          setSelectedClassId={setSelectedClassId}
+          setConfirmDeleteClassId={setConfirmDeleteClassId}
+          startEditClass={startEditClass}
+          entriesRef={entriesRef}
+          courseById={courseById}
+          removeClass={removeClass}
+        />
 
       {loading && (
         <motion.div variants={pageItem} className="mt-4 flex items-center justify-center gap-2 text-[11.5px] text-slate-400 dark:text-white/30">

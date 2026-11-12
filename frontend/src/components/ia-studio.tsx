@@ -1,76 +1,19 @@
 "use client";
 
+import { StudioDocumentPanel } from "@/components/studio/studio-document-panel";
+import { StudioAudioPanel } from "@/components/studio/studio-audio-panel";
+import { StudioChatPanel } from "@/components/studio/studio-chat-panel";
+import { StudioHeader } from "@/components/studio/studio-header";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  BookOpen,
-  Check,
-  Copy,
-  Cpu,
-  Download,
-  ExternalLink,
-  FileAudio,
-  FileText,
-  GraduationCap,
-  Loader2,
-  Mic,
-  Network,
-  NotebookPen,
-  Sparkles,
-  Square,
-  Trash2,
-  Upload,
-  UploadCloud,
-  Wand2,
-  X,
-} from "lucide-react";
-
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { NotificationBell } from "@/components/notification-center";
-import { GEMINI_MODEL_OPTIONS, GEMINI_RETIRED_NOTE } from "@/lib/ai-models";
+import { Sparkles, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { getOpenBook, subscribeOpenBook, type OpenBookContext } from "@/lib/book-context";
-import {
-  MAX_ATTACHMENTS,
-  MAX_PDF_PAGES,
-  isSupportedAttachment,
-  prepareAttachmentFile,
-} from "@/lib/pdf-to-images";
-import type {
-  AiOutput,
-  AssistantMessage,
-  AssistantStatus,
-  ChatAttachment,
-  DocumentFile,
-  PendingAction,
-} from "@/lib/types";
+import { MAX_ATTACHMENTS, MAX_PDF_PAGES, isSupportedAttachment, prepareAttachmentFile } from "@/lib/pdf-to-images";
+import type { AiOutput, AssistantMessage, AssistantStatus, ChatAttachment, DocumentFile, PendingAction } from "@/lib/types";
 import { cn } from "@/lib/utils";
-
 import { ModeTabs } from "@/components/studio/mode-tabs";
-import { ChatComposer } from "@/components/studio/chat-composer";
-import { MessageBubble, TypingBubble } from "@/components/studio/message-bubble";
-import { PendingActionCard } from "@/components/studio/pending-action-card";
-import {
-  CHAT_SUGGESTIONS,
-  DEMO_DURATION_SECONDS,
-  DEMO_TRANSCRIPT,
-  DOCUMENT_SUGGESTIONS,
-  KIND_LABEL,
-  attachmentPreviews,
-  buildSegments,
-  clock,
-  dateLabel,
-  errorMessage,
-  fileSize,
-  probeAudioDuration,
-  recognitionConstructor,
-  slugify,
-  tempId,
-  type Kind,
-  type SpeechRecognitionLike,
-  type StudioMode,
-} from "@/lib/studio";
+import { DEMO_DURATION_SECONDS, DEMO_TRANSCRIPT, attachmentPreviews, buildSegments, errorMessage, probeAudioDuration, recognitionConstructor, slugify, tempId, type Kind, type SpeechRecognitionLike, type StudioMode } from "@/lib/studio";
 
 export function IAStudio({
   initialMode = "chat",
@@ -941,143 +884,24 @@ export function IAStudio({
         <div className="studio-vignette" />
       </div>
 
-      <header className="relative z-10 flex shrink-0 items-center justify-between gap-3 px-3 py-3 sm:px-5">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-100/60 text-[#0066FF] shadow-sm backdrop-blur-xl dark:bg-white/10 dark:text-[#8ab9ff]">
-            <Wand2 className="h-4 w-4" />
-          </span>
-          <div className="min-w-0">
-            <h1 className="truncate text-[15px] font-semibold tracking-[-0.02em] text-slate-900 dark:text-white/90">
-              IA Studio
-            </h1>
-            <p className="truncate text-[10px] text-slate-500 dark:text-white/35">
-              Tu centro de IA: chat tutor, audio y documentos
-            </p>
-          </div>
-        </div>
-
-        <div className="flex min-w-0 shrink-0 items-center gap-0.5">
-          {status?.provider === "gemini" && (
-            <label
-              title={GEMINI_RETIRED_NOTE}
-              className="mr-1 flex h-8 max-w-[128px] items-center gap-1 rounded-full border border-slate-300/45 bg-slate-100/65 pl-2 pr-1 text-slate-500 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06] dark:text-white/50"
-            >
-              {changingModel ? (
-                <Loader2 className="h-3 w-3 shrink-0 animate-spin text-[#0066FF]" />
-              ) : (
-                <Cpu className="h-3 w-3 shrink-0 text-[#0066FF] dark:text-[#8ab9ff]" />
-              )}
-              <select
-                value={status.model}
-                onChange={(event) => void changeModel(event.target.value)}
-                disabled={changingModel}
-                aria-label="Modelo de Gemini"
-                className="min-w-0 flex-1 cursor-pointer appearance-none truncate border-0 bg-transparent p-0 text-[10px] font-semibold text-slate-600 outline-none disabled:opacity-50 dark:text-white/60"
-              >
-                {GEMINI_MODEL_OPTIONS.map((option) => (
-                  <option
-                    key={option.value}
-                    value={option.value}
-                    className="bg-white text-slate-800 dark:bg-[#10151f] dark:text-white"
-                  >
-                    {option.label.split(" · ")[0].replace(/^Gemini\s+/, "")}
-                  </option>
-                ))}
-                {!GEMINI_MODEL_OPTIONS.some((option) => option.value === status.model) && (
-                  <option
-                    value={status.model}
-                    className="bg-white text-slate-800 dark:bg-[#10151f] dark:text-white"
-                  >
-                    {status.model}
-                  </option>
-                )}
-              </select>
-              <span aria-hidden className="pr-0.5 text-[8px] opacity-60">
-                ▾
-              </span>
-            </label>
-          )}
-          <NotificationBell className={cn(embedded ? "hidden" : "hidden lg:inline-flex")} />
-          <Badge
-            variant="secondary"
-            className={cn(
-              "mr-1 hidden rounded-full border text-[9.5px] font-semibold backdrop-blur-xl transition-colors duration-500 sm:flex",
-              embedded && "sm:hidden",
-              aiState === "idle" &&
-                "border-slate-300/40 bg-slate-100/60 text-slate-500 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/45",
-              aiState === "thinking" &&
-                "border-violet-400/30 bg-violet-500/10 text-violet-600 dark:border-violet-300/20 dark:bg-violet-400/10 dark:text-violet-200",
-              aiState === "responding" &&
-                "border-cyan-400/35 bg-cyan-400/10 text-cyan-700 dark:border-cyan-300/20 dark:bg-cyan-400/10 dark:text-cyan-200",
-            )}
-          >
-            <span
-              className={cn(
-                "mr-1 h-1.5 w-1.5 rounded-full transition-colors duration-500",
-                aiState === "idle" && "bg-[#34C759]",
-                aiState === "thinking" && "animate-pulse bg-violet-500 dark:bg-violet-300",
-                aiState === "responding" && "bg-cyan-500 dark:bg-cyan-300",
-              )}
-            />
-            {aiState === "idle" ? "En línea" : aiState === "thinking" ? "Pensando…" : "Respondiendo"}
-          </Badge>
-          {mode === "chat" && (
-            <>
-              <input
-                ref={importInputRef}
-                type="file"
-                accept="application/json,.json"
-                className="hidden"
-                onChange={importChat}
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => importInputRef.current?.click()}
-                disabled={importing}
-                title="Importar una conversación exportada"
-                className="h-8 rounded-full px-2 text-[11px]"
-              >
-                {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                <span className={embedded ? "hidden" : "hidden sm:inline"}>Importar</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => void exportChat()}
-                disabled={messages.length === 0 || exporting}
-                title="Descargar la conversación"
-                className="h-8 rounded-full px-2 text-[11px]"
-              >
-                {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                <span className={embedded ? "hidden" : "hidden sm:inline"}>Exportar</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => void clearChat()}
-                disabled={clearing || !hasConversation}
-                className="h-8 rounded-full px-2 text-[11px]"
-              >
-                {clearing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                <span className={embedded ? "hidden" : "hidden sm:inline"}>Limpiar</span>
-              </Button>
-            </>
-          )}
-          {onClose && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              aria-label="Cerrar IA Studio"
-              title="Cerrar"
-              className="h-8 w-8 rounded-full"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      </header>
+      <StudioHeader
+        status={status}
+        changingModel={changingModel}
+        changeModel={changeModel}
+        embedded={embedded}
+        aiState={aiState}
+        mode={mode}
+        importInputRef={importInputRef}
+        importChat={importChat}
+        importing={importing}
+        exportChat={exportChat}
+        messages={messages}
+        exporting={exporting}
+        clearChat={clearChat}
+        clearing={clearing}
+        hasConversation={hasConversation}
+        onClose={onClose}
+      />
 
       <ModeTabs mode={mode} onChange={changeMode} />
 
@@ -1104,783 +928,103 @@ export function IAStudio({
       )}
 
       {mode === "chat" && (
-        <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col">
-          <div
-            ref={chatScrollRef}
-            className={cn(
-              "min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-3 pt-2 sm:px-6",
-              embedded ? "pb-3" : "pb-[calc(var(--mobile-nav-offset)+9rem)] lg:pb-44",
-            )}
-          >
-            <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-end gap-4">
-              {loading ? (
-                <div className="flex flex-1 items-center justify-center pb-20">
-                  <span className="flex items-center gap-2 rounded-full border border-slate-300/40 bg-slate-100/60 px-4 py-2 text-[11px] text-slate-500 backdrop-blur-xl dark:border-white/10 dark:bg-black/35 dark:text-white/45">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-[#0066FF]" /> Abriendo el chat…
-                  </span>
-                </div>
-              ) : messages.length === 0 && !pending ? (
-                <div className="flex flex-1 flex-col items-center justify-center pb-16 text-center">
-                  <span className="flex h-16 w-16 items-center justify-center rounded-3xl border border-slate-300/40 bg-slate-100/60 text-[#0066FF] shadow-[0_24px_60px_-28px_rgba(0,102,255,0.7)] backdrop-blur-3xl dark:border-white/10 dark:bg-white/[0.08] dark:text-[#8ab9ff]">
-                    <GraduationCap className="h-7 w-7" />
-                  </span>
-                  <h2 className="mt-4 text-[24px] font-semibold tracking-[-0.04em] text-slate-900 dark:text-white/95">
-                    ¿Qué quieres resolver hoy?
-                  </h2>
-                  <p className="mt-1 max-w-md text-[12px] leading-5 text-slate-600 dark:text-white/45">
-                    Pregunta por tus tareas, pide un plan de estudio o resuelve un problema de
-                    clase. También puedes adjuntar una foto, un apunte o un PDF escaneado.
-                  </p>
-                  <div className="mt-5 grid w-full max-w-2xl gap-2 md:grid-cols-2">
-                    {CHAT_SUGGESTIONS.map((suggestion) => (
-                      <button
-                        key={suggestion}
-                        type="button"
-                        onClick={() => setChatInput(suggestion)}
-                        className="rounded-2xl border border-slate-300/40 bg-slate-100/45 px-3 py-2.5 text-left text-[11.5px] font-medium text-slate-600 backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-slate-400/45 hover:bg-slate-100/65 dark:border-white/10 dark:bg-white/[0.05] dark:text-white/55 dark:hover:border-white/20 dark:hover:bg-white/[0.09]"
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="mt-4 text-[10px] text-slate-400 dark:text-white/30">
-                    {status?.configured
-                      ? `Conectado a ${status.provider} · ${status.model}`
-                      : "Sin motor externo: respuestas por reglas"}
-                    {status?.tools_enabled ? " · Puede crear tareas y eventos en tu calendario" : ""}
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {messages.map((message) => (
-                    <MessageBubble key={message.id} message={message} />
-                  ))}
-                  {sendingChat && <TypingBubble />}
-                  {pending && (
-                    <PendingActionCard
-                      pending={pending}
-                      confirming={confirming}
-                      onConfirm={(approve) => void confirmPending(approve)}
-                    />
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-
-          <div
-            className={cn(
-              "z-40 max-w-3xl min-w-0",
-              embedded
-                ? "mx-auto w-full shrink-0 border-t border-slate-300/35 bg-[#f4f4f7]/55 px-3 pb-3 pt-2 backdrop-blur-xl dark:border-white/10 dark:bg-[#0b0f18]/45 sm:px-5"
-                : "fixed bottom-[calc(var(--mobile-nav-offset)+0.75rem)] left-1/2 w-[calc(100%-1.5rem)] -translate-x-1/2 lg:bottom-6 lg:left-[calc(50%+118px)]",
-            )}
-          >
-            {openBook && (
-              <div className="mb-1.5 flex justify-center px-3">
-                <div
-                  className={cn(
-                    "flex max-w-full flex-wrap items-center justify-center gap-1 rounded-2xl border px-2.5 py-1.5 shadow-[0_10px_30px_-20px_rgba(32,39,48,0.35)] backdrop-blur-3xl transition-colors",
-                    useBookContext
-                      ? "border-[#0066FF]/35 bg-[#0066FF]/[0.08] dark:border-[#8ab9ff]/25 dark:bg-[#0066FF]/15"
-                      : "border-slate-300/45 bg-slate-100/75 dark:border-white/10 dark:bg-black/45",
-                  )}
-                >
-                  <BookOpen className="h-3 w-3 shrink-0 text-[#0066FF] dark:text-[#8ab9ff]" />
-                  <span className="max-w-[210px] truncate text-[10px] font-medium text-slate-600 dark:text-white/55">
-                    {openBook.title} · pág. {openBook.page} de {openBook.pages}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setUseBookContext((value) => !value)}
-                    aria-pressed={useBookContext}
-                    title={
-                      useBookContext
-                        ? "La IA leerá la página o el capítulo abierto"
-                        : "La IA no leerá el PDF"
-                    }
-                    className={cn(
-                      "rounded-full px-1.5 py-0.5 text-[9px] font-semibold transition-colors",
-                      useBookContext
-                        ? "bg-[#0066FF] text-white"
-                        : "bg-slate-300/60 text-slate-600 dark:bg-white/10 dark:text-white/45",
-                    )}
-                  >
-                    {useBookContext ? "Contexto ON" : "Contexto OFF"}
-                  </button>
-                  {useBookContext && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          askAboutBook(
-                            "Hazme un resumen claro de esta página o capítulo del PDF.",
-                          )
-                        }
-                        disabled={sendingChat}
-                        className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-[#0066FF] transition-colors hover:bg-[#0066FF]/10 disabled:opacity-40 dark:text-[#8ab9ff] dark:hover:bg-white/10"
-                      >
-                        Resumen
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          askAboutBook(
-                            "Crea un mapa mental de este texto del PDF, con la idea central y las ramas de ideas principales.",
-                          )
-                        }
-                        disabled={sendingChat}
-                        className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-[#0066FF] transition-colors hover:bg-[#0066FF]/10 disabled:opacity-40 dark:text-[#8ab9ff] dark:hover:bg-white/10"
-                      >
-                        Mapa mental
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-            {sourceFiles.length > 0 && (
-              <div className="mb-1.5 flex justify-center px-3">
-                <div className="flex max-w-full items-center gap-1.5 rounded-full border border-slate-300/45 bg-slate-100/75 px-3 py-1 shadow-[0_10px_30px_-20px_rgba(32,39,48,0.35)] backdrop-blur-3xl dark:border-white/10 dark:bg-black/45">
-                  <FileText className="h-3 w-3 shrink-0 text-slate-400 dark:text-white/30" />
-                  <select
-                    value={chatDocumentId}
-                    onChange={(event) => setChatDocumentId(event.target.value)}
-                    className="max-w-[220px] truncate border-0 bg-transparent p-0 text-[10px] font-medium text-slate-500 outline-none dark:text-white/40"
-                    aria-label="Documento de contexto"
-                  >
-                    <option value="">Sin documento de contexto</option>
-                    {sourceFiles.map((file) => (
-                      <option key={file.id} value={file.id}>
-                        {file.filename}
-                      </option>
-                    ))}
-                  </select>
-                  {chatDocumentId && (
-                    <button
-                      type="button"
-                      onClick={() => setChatDocumentId("")}
-                      className="rounded-full p-0.5 text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white/70"
-                      aria-label="Quitar documento"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-            <ChatComposer
-              value={chatInput}
-              onChange={setChatInput}
-              onSend={() => void sendChat()}
-              sending={sendingChat}
-              listening={listening}
-              onToggleMic={() => toggleMicrophone("chat")}
-              placeholder="Pregunta lo que necesites…"
-              attachments={chatAttachments}
-              onAttachFiles={(files) => void attachFiles(files, "chat")}
-              onRemoveAttachment={(index) => removeAttachment("chat", index)}
-              attaching={attachingMode === "chat"}
-            />
-          </div>
-        </div>
+        <StudioChatPanel
+          chatScrollRef={chatScrollRef}
+          embedded={embedded}
+          loading={loading}
+          messages={messages}
+          pending={pending}
+          setChatInput={setChatInput}
+          status={status}
+          sendingChat={sendingChat}
+          confirming={confirming}
+          confirmPending={confirmPending}
+          openBook={openBook}
+          useBookContext={useBookContext}
+          setUseBookContext={setUseBookContext}
+          askAboutBook={askAboutBook}
+          sourceFiles={sourceFiles}
+          chatDocumentId={chatDocumentId}
+          setChatDocumentId={setChatDocumentId}
+          chatInput={chatInput}
+          sendChat={sendChat}
+          listening={listening}
+          toggleMicrophone={toggleMicrophone}
+          chatAttachments={chatAttachments}
+          attachFiles={attachFiles}
+          removeAttachment={removeAttachment}
+          attachingMode={attachingMode}
+        />
       )}
 
       {mode === "audio" && (
-        <div className="relative z-10 min-h-0 flex-1 overflow-y-auto px-3 pb-[calc(var(--mobile-nav-offset)+1.5rem)] pt-2 sm:px-5 lg:pb-8">
-          <div className="mx-auto max-w-5xl space-y-3">
-            <section className="grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-              <div className="app-glass rounded-3xl p-4 sm:p-5">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
-                      Audio a apuntes
-                    </p>
-                    <h2 className="mt-1 text-[17px] font-semibold tracking-[-0.02em] text-slate-800 dark:text-white/90">
-                      Sube una grabación
-                    </h2>
-                  </div>
-                  <FileAudio className="h-5 w-5 text-slate-300 dark:text-white/20" />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => audioInputRef.current?.click()}
-                  onDragOver={(event) => {
-                    event.preventDefault();
-                    setAudioDragging(true);
-                  }}
-                  onDragLeave={() => setAudioDragging(false)}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    setAudioDragging(false);
-                    chooseAudio(event.dataTransfer.files?.[0] ?? null);
-                  }}
-                  className={cn(
-                    "mt-4 flex w-full flex-col items-center justify-center rounded-3xl border-2 border-dashed px-6 py-9 text-center transition-all duration-200",
-                    audioDragging
-                      ? "border-[#0066FF]/60 bg-[#0066FF]/10"
-                      : "border-slate-300/35 bg-slate-100/30 hover:border-slate-400/45 hover:bg-slate-100/50 dark:border-white/15 dark:bg-white/[0.025] dark:hover:border-white/30 dark:hover:bg-white/[0.05]",
-                  )}
-                >
-                  <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100/60 text-[#0066FF] shadow-sm backdrop-blur-xl dark:bg-white/10 dark:text-[#8ab9ff]">
-                    {audioLoading ? (
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                    ) : (
-                      <UploadCloud className="h-6 w-6" />
-                    )}
-                  </span>
-                  <span className="mt-3 text-[13px] font-semibold text-slate-700 dark:text-white/80">
-                    {audioFile ? audioFile.name : "Arrastra un MP3, M4A, WAV, OGG o WEBM"}
-                  </span>
-                  <span className="mt-1 text-[10.5px] text-slate-500 dark:text-white/35">
-                    Máximo 24 MB · el audio no se guarda en la biblioteca
-                  </span>
-                </button>
-                <input
-                  ref={audioInputRef}
-                  type="file"
-                  accept=".mp3,.m4a,.wav,.ogg,.webm,.mp4,.mpeg,.mpga,.flac,audio/*"
-                  className="hidden"
-                  onChange={(event) => chooseAudio(event.target.files?.[0] ?? null)}
-                />
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-[10px] text-slate-400 dark:text-white/30">
-                    {audioFile ? `${fileSize(audioFile.size)} listos` : "Ningún archivo seleccionado"}
-                  </p>
-                  <Button
-                    onClick={() => void transcribeAudio()}
-                    disabled={audioLoading || !audioFile}
-                    className="h-9 rounded-full px-4"
-                  >
-                    {audioLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <FileAudio className="h-4 w-4" />
-                    )}
-                    {audioLoading ? "Transcribiendo…" : "Transcribir audio"}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="app-glass rounded-3xl p-4 sm:p-5">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
-                      Grabadora
-                    </p>
-                    <h2 className="mt-1 text-[17px] font-semibold tracking-[-0.02em] text-slate-800 dark:text-white/90">
-                      Graba una clase
-                    </h2>
-                  </div>
-                  <span
-                    className={cn(
-                      "flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-semibold",
-                      recording
-                        ? "bg-[#FF3B30]/12 text-[#d92b22] dark:bg-[#FF3B30]/15 dark:text-[#ff8a80]"
-                        : "bg-slate-100/60 text-slate-500 dark:bg-white/[0.06] dark:text-white/45",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "h-1.5 w-1.5 rounded-full",
-                        recording ? "animate-pulse bg-[#FF3B30]" : "bg-slate-400 dark:bg-white/30",
-                      )}
-                    />
-                    {recording ? "Grabando" : "Listo"}
-                  </span>
-                </div>
-
-                <div className="mt-4 rounded-3xl border border-slate-300/40 bg-slate-900/[0.03] p-4 dark:border-white/10 dark:bg-black/20">
-                  <div className="flex h-16 items-center justify-center gap-[3px]">
-                    {Array.from({ length: 36 }, (_, index) => (
-                      <span
-                        key={index}
-                        className={cn(
-                          "w-[3px] rounded-full transition-all duration-300",
-                          recording
-                            ? "animate-waveform bg-[#0066FF]"
-                            : "bg-slate-300/80 dark:bg-white/20",
-                        )}
-                        style={{
-                          height: recording
-                            ? `${16 + ((index * 13) % 42)}px`
-                            : `${8 + ((index * 7) % 18)}px`,
-                          animationDelay: `${(index % 9) * 0.08}s`,
-                          animationDuration: `${0.65 + (index % 5) * 0.12}s`,
-                        }}
-                      />
-                    ))}
-                  </div>
-                  <div className="mt-2 flex items-center justify-between text-[10.5px] text-slate-500 dark:text-white/35">
-                    <span className="font-medium tabular-nums text-slate-700 dark:text-white/70">
-                      {clock(seconds)}
-                    </span>
-                    <span>{recording ? "Escuchando…" : "Micrófono del navegador"}</span>
-                  </div>
-                </div>
-
-                <div className="mt-3 flex gap-2">
-                  {recording ? (
-                    <Button
-                      variant="destructive"
-                      className="h-9 flex-1 rounded-full"
-                      onClick={stopRecording}
-                    >
-                      <Square className="h-3.5 w-3.5" /> Detener y transcribir
-                    </Button>
-                  ) : (
-                    <Button className="h-9 flex-1 rounded-full" onClick={() => void startRecording()}>
-                      <Mic className="h-4 w-4" /> Grabar clase
-                    </Button>
-                  )}
-                </div>
-                <div className="mt-2 flex items-start justify-between gap-2">
-                  <p className="text-[10px] leading-4 text-slate-400 dark:text-white/30">
-                    La grabación se envía a Whisper al detenerla. Necesita micrófono y un motor de
-                    IA configurado.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={loadDemoTranscript}
-                    className="shrink-0 text-[10px] font-medium text-[#0066FF] underline underline-offset-2 dark:text-[#8ab9ff]"
-                  >
-                    Usar ejemplo
-                  </button>
-                </div>
-              </div>
-            </section>
-
-            {audioText && (
-              <section className="app-glass overflow-hidden rounded-3xl">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-300/40 px-4 py-3 dark:border-white/10 sm:px-5">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#0066FF] dark:text-[#8ab9ff]">
-                      Modo lectura
-                    </p>
-                    <input
-                      value={audioTitle}
-                      onChange={(event) => setAudioTitle(event.target.value)}
-                      className="mt-0.5 w-full min-w-0 border-0 bg-transparent p-0 text-[17px] font-semibold tracking-[-0.02em] text-slate-800 outline-none dark:text-white/90"
-                      aria-label="Título de la transcripción"
-                    />
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="rounded-full border border-slate-300/40 bg-slate-100/60 px-2.5 py-1 text-[9.5px] font-medium text-slate-500 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/45">
-                      {clock(audioDuration)} · {audioSegments.length} fragmentos
-                    </span>
-                    <Button variant="secondary" size="sm" onClick={() => void copyText()} className="h-8">
-                      {copied ? (
-                        <Check className="h-3.5 w-3.5 text-[#34C759]" />
-                      ) : (
-                        <Copy className="h-3.5 w-3.5" />
-                      )}
-                      {copied ? "Copiado" : "Copiar"}
-                    </Button>
-                  </div>
-                </div>
-
-                <article className="max-h-[420px] overflow-y-auto px-4 py-5 sm:px-6">
-                  <div className="mx-auto max-w-3xl space-y-5">
-                    {audioSegments.map((segment, index) => (
-                      <div
-                        key={`${segment.at}-${index}`}
-                        className="grid grid-cols-[52px_minmax(0,1fr)] gap-3"
-                      >
-                        <span className="pt-0.5 text-right text-[10.5px] font-semibold tabular-nums text-[#0066FF] dark:text-[#8ab9ff]">
-                          {segment.at}
-                        </span>
-                        <p className="text-[14px] leading-7 text-slate-700 dark:text-white/70">
-                          {segment.text}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </article>
-
-                <div className="border-t border-slate-300/40 px-4 py-4 dark:border-white/10 sm:px-5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      onClick={() => void saveNotebook()}
-                      disabled={savingNotebook || notebookSaved}
-                      className="h-9 rounded-full"
-                    >
-                      {savingNotebook ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <NotebookPen className="h-4 w-4" />
-                      )}
-                      {notebookSaved ? "Guardado en Cuadernos" : "Guardar como cuaderno"}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => void summarizeTranscript()}
-                      disabled={summarizing}
-                      className="h-9 rounded-full"
-                    >
-                      {summarizing ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Sparkles className="h-4 w-4" />
-                      )}
-                      {summarizing ? "Resumiendo…" : "Resumir con IA"}
-                    </Button>
-                  </div>
-
-                  {notebookSaved && (
-                    <p className="mt-2 flex items-center gap-1.5 text-[11px] text-[#1a9e3a] dark:text-[#7ee69a]">
-                      <Check className="h-3.5 w-3.5" /> Guardado en Cuadernos. Ya puedes generar
-                      flashcards o un resumen.
-                    </p>
-                  )}
-
-                  {summaryOutput && (
-                    <div className="mt-3 rounded-2xl border border-slate-300/40 bg-slate-100/55 p-3 dark:border-white/10 dark:bg-white/[0.04]">
-                      <p className="text-[11px] font-medium text-slate-800 dark:text-white/80">
-                        {summaryOutput.title}
-                      </p>
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {summaryOutput.output_document_id && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-[9.5px]"
-                            onClick={() => downloadPdf(summaryOutput)}
-                          >
-                            <Download className="h-3 w-3" /> PDF
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-[9.5px]"
-                          onClick={() => downloadWord(summaryOutput)}
-                        >
-                          <FileText className="h-3 w-3" /> Word
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </section>
-            )}
-          </div>
-        </div>
+        <StudioAudioPanel
+          audioInputRef={audioInputRef}
+          setAudioDragging={setAudioDragging}
+          chooseAudio={chooseAudio}
+          audioDragging={audioDragging}
+          audioLoading={audioLoading}
+          audioFile={audioFile}
+          transcribeAudio={transcribeAudio}
+          recording={recording}
+          seconds={seconds}
+          stopRecording={stopRecording}
+          startRecording={startRecording}
+          loadDemoTranscript={loadDemoTranscript}
+          audioText={audioText}
+          audioTitle={audioTitle}
+          setAudioTitle={setAudioTitle}
+          audioDuration={audioDuration}
+          audioSegments={audioSegments}
+          copyText={copyText}
+          copied={copied}
+          saveNotebook={saveNotebook}
+          savingNotebook={savingNotebook}
+          notebookSaved={notebookSaved}
+          summarizeTranscript={summarizeTranscript}
+          summarizing={summarizing}
+          summaryOutput={summaryOutput}
+          downloadPdf={downloadPdf}
+          downloadWord={downloadWord}
+        />
       )}
 
       {mode === "document" && (
-        <div className="relative z-10 min-h-0 flex-1 overflow-y-auto px-3 pb-[calc(var(--mobile-nav-offset)+1.5rem)] pt-2 sm:px-5 lg:overflow-hidden lg:pb-6">
-          <div className="mx-auto grid max-w-6xl gap-3 lg:h-full lg:grid-cols-[300px_minmax(0,1fr)]">
-            <aside className="space-y-3 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
-              <div className="app-glass rounded-3xl p-3.5">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#0066FF] dark:text-[#8ab9ff]">
-                      Documentos
-                    </p>
-                    <h2 className="mt-0.5 text-[14px] font-semibold text-slate-800 dark:text-white/90">
-                      Tus apuntes
-                    </h2>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => docInputRef.current?.click()}
-                    disabled={uploadingDoc}
-                    aria-label="Subir documento"
-                    className="h-8 w-8 rounded-full"
-                  >
-                    {uploadingDoc ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Upload className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => docInputRef.current?.click()}
-                  onDragOver={(event) => {
-                    event.preventDefault();
-                    setDocDragging(true);
-                  }}
-                  onDragLeave={() => setDocDragging(false)}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    setDocDragging(false);
-                    void uploadDocument(event.dataTransfer.files?.[0]);
-                  }}
-                  className={cn(
-                    "mt-3 flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed px-3 py-4 text-center transition-all",
-                    docDragging
-                      ? "border-[#0066FF]/60 bg-[#0066FF]/10"
-                      : "border-slate-300/35 bg-slate-100/30 hover:border-slate-400/45 hover:bg-slate-100/50 dark:border-white/15 dark:bg-white/[0.025] dark:hover:border-white/30",
-                  )}
-                >
-                  {uploadingDoc ? (
-                    <Loader2 className="h-5 w-5 animate-spin text-[#0066FF]" />
-                  ) : (
-                    <UploadCloud className="h-5 w-5 text-[#0066FF] dark:text-[#8ab9ff]" />
-                  )}
-                  <span className="mt-1.5 text-[10.5px] font-medium text-slate-600 dark:text-white/60">
-                    {uploadingDoc ? "Subiendo…" : "Arrastra o pulsa para subir"}
-                  </span>
-                  <span className="mt-0.5 text-[9px] text-slate-400 dark:text-white/30">
-                    PDF, Word, Excel, TXT o imagen
-                  </span>
-                </button>
-                <input
-                  ref={docInputRef}
-                  type="file"
-                  accept=".pdf,.docx,.txt,.md,.csv,.xlsx,.xls,.png,.jpg,.jpeg,.gif,.webp"
-                  className="hidden"
-                  onChange={(event) => void uploadDocument(event.target.files?.[0])}
-                />
-
-                <div className="mt-3 space-y-1.5">
-                  {sourceFiles.map((file) => {
-                    const active = file.id === docId;
-                    return (
-                      <button
-                        key={file.id}
-                        type="button"
-                        onClick={() => selectDocument(file.id)}
-                        className={cn(
-                          "w-full rounded-2xl border px-2.5 py-2 text-left transition-all",
-                          active
-                            ? "border-[#0066FF]/45 bg-[#0066FF]/10 shadow-[0_10px_24px_-20px_rgba(0,102,255,0.8)] dark:border-[#8ab9ff]/25 dark:bg-[#0066FF]/15"
-                            : "border-slate-300/40 bg-slate-100/50 hover:border-slate-400/45 hover:bg-slate-100/70 dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/[0.06]",
-                        )}
-                      >
-                        <div className="flex items-start gap-2">
-                          <FileText
-                            className={cn(
-                              "mt-0.5 h-3.5 w-3.5 shrink-0",
-                              active
-                                ? "text-[#0066FF] dark:text-[#8ab9ff]"
-                                : "text-slate-400 dark:text-white/30",
-                            )}
-                          />
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[10.5px] font-medium text-slate-700 dark:text-white/75">
-                              {file.filename}
-                            </span>
-                            <span className="mt-0.5 block text-[8.5px] text-slate-400 dark:text-white/30">
-                              {fileSize(file.size_bytes)} · {dateLabel(file.created_at)}
-                            </span>
-                          </span>
-                          {active && <Check className="mt-0.5 h-3 w-3 shrink-0 text-[#0066FF] dark:text-[#8ab9ff]" />}
-                        </div>
-                      </button>
-                    );
-                  })}
-                  {!loading && sourceFiles.length === 0 && (
-                    <p className="rounded-2xl border border-dashed border-slate-300/40 px-3 py-4 text-center text-[10px] text-slate-500 dark:border-white/10 dark:text-white/35">
-                      Sube tus apuntes para empezar.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {selectedDocument && (
-                <div className="app-glass rounded-3xl p-3.5">
-                  <p className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
-                    Generar con IA
-                  </p>
-                  <p className="mt-1 truncate text-[10.5px] font-medium text-slate-700 dark:text-white/70">
-                    {selectedDocument.filename}
-                  </p>
-                  <div className="mt-2 grid grid-cols-3 gap-1">
-                    {(["summary", "infographic", "mindmap"] as Kind[]).map((kind) => (
-                      <Button
-                        key={kind}
-                        variant="secondary"
-                        size="sm"
-                        disabled={busyKind !== null}
-                        onClick={() => void generate(kind)}
-                        className="h-8 px-1 text-[9px]"
-                      >
-                        {busyKind === `${selectedDocument.id}:${kind}` ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : kind === "summary" ? (
-                          <Sparkles className="h-3 w-3" />
-                        ) : kind === "infographic" ? (
-                          <Wand2 className="h-3 w-3" />
-                        ) : (
-                          <Network className="h-3 w-3" />
-                        )}
-                        {KIND_LABEL[kind]}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="app-glass rounded-3xl p-3.5">
-                <p className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
-                  Resultados generados
-                </p>
-                <div className="mt-2 space-y-2">
-                  {outputs.slice(0, 8).map((output) => (
-                    <div
-                      key={output.id}
-                      className="rounded-2xl border border-slate-300/40 bg-slate-100/55 p-2.5 dark:border-white/10 dark:bg-white/[0.04]"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <Badge variant="secondary" className="rounded-full text-[8px]">
-                            {KIND_LABEL[output.kind] ?? output.kind}
-                          </Badge>
-                          <p className="mt-1 truncate text-[10.5px] font-medium text-slate-800 dark:text-white/80">
-                            {output.title}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => void removeOutput(output.id)}
-                          className="rounded-lg p-1 text-slate-400 hover:bg-rose-500/10 hover:text-rose-500 dark:text-white/30"
-                          aria-label="Eliminar resultado"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </div>
-                      <div className="mt-1.5 flex flex-wrap gap-1">
-                        {output.output_document_id && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-1.5 text-[8.5px]"
-                            onClick={() => downloadPdf(output)}
-                          >
-                            <Download className="h-2.5 w-2.5" /> PDF
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 px-1.5 text-[8.5px]"
-                          onClick={() => downloadWord(output)}
-                        >
-                          <FileText className="h-2.5 w-2.5" /> Word
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 px-1.5 text-[8.5px]"
-                          onClick={() => window.open("https://www.canva.com/create/", "_blank")}
-                        >
-                          <ExternalLink className="h-2.5 w-2.5" /> Canva
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                  {outputs.length === 0 && (
-                    <p className="rounded-2xl border border-dashed border-slate-300/40 px-3 py-4 text-center text-[10px] text-slate-500 dark:border-white/10 dark:text-white/35">
-                      Todavía no has generado ningún resumen, infografía ni mapa mental.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </aside>
-
-            <section className="flex min-h-[540px] flex-col overflow-hidden rounded-3xl border border-slate-300/40 bg-slate-100/70 shadow-[0_28px_80px_-48px_rgba(32,39,48,0.35)] backdrop-blur-3xl dark:border-white/10 dark:bg-black/25 lg:min-h-0">
-              <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-300/40 px-3 py-2.5 dark:border-white/10 sm:px-4">
-                <div className="min-w-0">
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#0066FF] dark:text-[#8ab9ff]">
-                    Analizar documento
-                  </p>
-                  <p className="truncate text-[12px] font-semibold text-slate-800 dark:text-white/85">
-                    {selectedDocument?.filename ?? "Elige un documento"}
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setDocMessages([]);
-                    setPending(null);
-                  }}
-                  disabled={docMessages.length === 0}
-                  className="h-8 rounded-full text-[10.5px]"
-                >
-                  Nueva
-                </Button>
-              </div>
-
-              <div ref={docScrollRef} className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
-                <div className="flex min-h-full flex-col justify-end gap-3">
-                  {docMessages.length === 0 && !pending ? (
-                    <div className="flex flex-1 flex-col items-center justify-center py-10 text-center">
-                      <span className="flex h-14 w-14 items-center justify-center rounded-3xl border border-slate-300/40 bg-slate-100/65 text-[#0066FF] shadow-[0_24px_60px_-28px_rgba(0,102,255,0.7)] backdrop-blur-3xl dark:border-white/10 dark:bg-white/[0.08] dark:text-[#8ab9ff]">
-                        <FileText className="h-6 w-6" />
-                      </span>
-                      <h3 className="mt-3 text-[18px] font-semibold tracking-[-0.03em] text-slate-900 dark:text-white/95">
-                        Chatea con tus apuntes
-                      </h3>
-                      <p className="mt-1 max-w-sm text-[11px] leading-5 text-slate-500 dark:text-white/40">
-                        Sube un PDF (aunque esté escaneado), Word, Excel, texto o una foto de la
-                        pizarra y pregúntale lo que necesites. También puedes generar un resumen
-                        o un mapa mental.
-                      </p>
-                      <div className="mt-3 flex flex-wrap justify-center gap-1.5">
-                        {DOCUMENT_SUGGESTIONS.map((suggestion) => (
-                          <button
-                            key={suggestion}
-                            type="button"
-                            onClick={() => setDocInput(suggestion)}
-                            disabled={!selectedDocument}
-                            className="rounded-full border border-slate-300/40 bg-slate-100/55 px-2.5 py-1 text-[9.5px] font-medium text-slate-600 backdrop-blur-xl transition-colors hover:bg-slate-100/75 disabled:opacity-40 dark:border-white/10 dark:bg-white/[0.05] dark:text-white/50 dark:hover:bg-white/[0.09]"
-                          >
-                            {suggestion}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      {docMessages.map((message) => (
-                        <MessageBubble key={message.id} message={message} />
-                      ))}
-                      {sendingDocument && <TypingBubble label="Leyendo el documento…" />}
-                      {pending && (
-                        <PendingActionCard
-                          pending={pending}
-                          confirming={confirming}
-                          onConfirm={(approve) => void confirmPending(approve)}
-                        />
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <div className="shrink-0 border-t border-slate-300/40 p-2.5 dark:border-white/10 sm:p-3">
-                <ChatComposer
-                  value={docInput}
-                  onChange={setDocInput}
-                  onSend={() => void sendDocument()}
-                  sending={sendingDocument}
-                  listening={listening}
-                  onToggleMic={() => toggleMicrophone("document")}
-                  placeholder={
-                    selectedDocument
-                      ? `Pregunta sobre «${selectedDocument.filename}»…`
-                      : "Elige o sube un documento para empezar"
-                  }
-                  disabled={!selectedDocument}
-                  contextLabel={selectedDocument?.filename ?? null}
-                  onClearContext={() => selectDocument("")}
-                  attachments={docAttachments}
-                  onAttachFiles={(files) => void attachFiles(files, "document")}
-                  onRemoveAttachment={(index) => removeAttachment("document", index)}
-                  attaching={attachingMode === "document"}
-                  hint="El documento se usa como contexto. Comprueba los datos importantes."
-                />
-              </div>
-            </section>
-          </div>
-        </div>
+        <StudioDocumentPanel
+          docInputRef={docInputRef}
+          uploadingDoc={uploadingDoc}
+          setDocDragging={setDocDragging}
+          uploadDocument={uploadDocument}
+          docDragging={docDragging}
+          sourceFiles={sourceFiles}
+          docId={docId}
+          selectDocument={selectDocument}
+          loading={loading}
+          selectedDocument={selectedDocument}
+          busyKind={busyKind}
+          generate={generate}
+          outputs={outputs}
+          removeOutput={removeOutput}
+          downloadPdf={downloadPdf}
+          downloadWord={downloadWord}
+          setDocMessages={setDocMessages}
+          setPending={setPending}
+          docMessages={docMessages}
+          docScrollRef={docScrollRef}
+          pending={pending}
+          setDocInput={setDocInput}
+          sendingDocument={sendingDocument}
+          confirming={confirming}
+          confirmPending={confirmPending}
+          docInput={docInput}
+          sendDocument={sendDocument}
+          listening={listening}
+          toggleMicrophone={toggleMicrophone}
+          docAttachments={docAttachments}
+          attachFiles={attachFiles}
+          removeAttachment={removeAttachment}
+          attachingMode={attachingMode}
+        />
       )}
     </div>
   );

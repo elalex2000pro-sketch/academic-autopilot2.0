@@ -1,39 +1,17 @@
 "use client";
 
+import { ChatThreadComposer } from "@/components/chat/chat-thread-composer";
+import { ChatThreadHeader } from "@/components/chat/chat-thread-header";
+import { ChatConversationList } from "@/components/chat/chat-conversation-list";
+import { ChatProfilePanel } from "@/components/chat/chat-profile-panel";
+import { MessageText, MessageTicks } from "@/components/chat/chat-message-content";
+import { readError, nameOf, conversationTitle, conversationSubtitle, initials, formatClock, messagePreview, formatDay, isImage, formatSize } from "@/lib/chat-format";
 import { createPortal } from "react-dom";
 import "./chat-workspace.css";
-
-// Vista de chat: conversaciones privadas y grupales, @usuarios, adjuntos
-// (PDF/imagenes) y enlaces clickeables. Los mensajes nuevos llegan por el
-// WebSocket compartido de la app (`useRealtime`, evento "chat").
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ArrowLeft,
-  AtSign,
-  Bell,
-  BellOff,
-  Check,
-  CheckCheck,
-  FileText,
-  FolderOpen,
-  Forward,
-  Loader2,
-  MessageSquarePlus,
-  Palette,
-  Paperclip,
-  Plus,
-  Save,
-  Search,
-  Send,
-  SmilePlus,
-  UserPlus,
-  Users,
-  X,
-} from "lucide-react";
-
+import { AtSign, Check, FileText, FolderOpen, Forward, Loader2, MessageSquarePlus, Paperclip, Plus, Save, Search, UserPlus, X } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { ChatBackgroundPicker } from "@/components/chat-background-picker";
-import { ChatExtrasPicker } from "@/components/chat-extras-picker";
 import {
   ChatForwardModal,
   type ForwardTarget,
@@ -42,13 +20,8 @@ import { useRealtime } from "@/components/realtime-provider";
 import { setActiveChatConversation } from "@/lib/chat-active";
 import { Button } from "@/components/ui/button";
 import { VerifiedTick } from "@/components/verified-tick";
-
 import { chatApi } from "@/lib/api";
-import {
-  isChatMuted,
-  setChatMuted,
-  subscribeChatMutes,
-} from "@/lib/chat-mutes";
+import { subscribeChatMutes } from "@/lib/chat-mutes";
 import {
   DEFAULT_CHAT_BACKGROUND,
   backgroundStyle,
@@ -56,82 +29,11 @@ import {
   saveChatBackground,
   type ChatBackground,
 } from "@/lib/chat-background";
-import {
-  XP_EVENT,
-  getGamification,
-  getLevelInfo,
-  parseStickerMessage,
-  stickerMessage,
-  type ChatSticker,
-} from "@/lib/gamification";
+import { XP_EVENT, getGamification, getLevelInfo } from "@/lib/gamification";
 import { openFileWithSystem, saveFileAs } from "@/lib/native-files";
 import type { ChatConversation, ChatMessage, ChatUser } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { lockBodyScroll } from "@/lib/scroll-lock";
-
-const URL_PATTERN = /(https?:\/\/[^\s<]+)/g;
-
-function readError(error: unknown): string {
-  return error instanceof Error ? error.message : "Algo salio mal";
-}
-
-function nameOf(user: {
-  display_name: string;
-  username: string | null;
-}): string {
-  return user.username ? `@${user.username}` : user.display_name;
-}
-
-function conversationTitle(
-  conversation: ChatConversation,
-  meId: string,
-): string {
-  if (conversation.kind === "group") return conversation.title || "Grupo";
-  const other = conversation.members.find((member) => member.user.id !== meId);
-  return other ? other.user.display_name : "Chat privado";
-}
-
-function conversationSubtitle(
-  conversation: ChatConversation,
-  meId: string,
-): string {
-  if (conversation.kind === "group") {
-    return `${conversation.members.length} miembros`;
-  }
-  const other = conversation.members.find((member) => member.user.id !== meId);
-  return other?.user.username ? `@${other.user.username}` : "Privado";
-}
-
-function initials(value: string): string {
-  const parts = value.trim().split(/\s+/).slice(0, 2);
-  return parts.map((part) => part.charAt(0).toUpperCase()).join("") || "?";
-}
-
-function formatClock(iso: string): string {
-  return new Date(iso).toLocaleTimeString("es-ES", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function messagePreview(message: ChatMessage): string {
-  const sticker = parseStickerMessage(message.content);
-  return sticker ? `${sticker.emoji} ${sticker.name}` : message.content;
-}
-
-function formatDay(iso: string): string {
-  const date = new Date(iso);
-  const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(today.getDate() - 1);
-  const sameDay = (a: Date, b: Date) =>
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate();
-  if (sameDay(date, today)) return "Hoy";
-  if (sameDay(date, yesterday)) return "Ayer";
-  return date.toLocaleDateString("es-ES", { day: "2-digit", month: "long" });
-}
 
 function timeValue(item: { created_at: string }): number {
   const value = new Date(item.created_at).getTime();
@@ -175,113 +77,6 @@ function reconcileSentMessage(
     (message) => message.id !== tempId && message.id !== created.id,
   );
   return sortByCreatedAt([...withoutStale, created]);
-}
-
-function isImage(contentType: string, name: string): boolean {
-  return (
-    contentType.startsWith("image/") || /\.(png|jpe?g|gif|webp)$/i.test(name)
-  );
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-/** Texto con enlaces clickeables (y vista previa si el enlace es una imagen). */
-function MessageText({ text }: { text: string }) {
-  const sticker = parseStickerMessage(text);
-  if (sticker) {
-    return (
-      <span className="flex min-w-[88px] flex-col items-center gap-1 py-1">
-        <span className="text-[42px] leading-none drop-shadow-sm">
-          {sticker.emoji}
-        </span>
-        <span className="text-[9px] font-semibold uppercase tracking-[0.1em] opacity-65">
-          {sticker.name}
-        </span>
-      </span>
-    );
-  }
-  const parts = text.split(URL_PATTERN);
-  return (
-    <span className="whitespace-pre-wrap break-words">
-      {parts.map((part, index) => {
-        if (index % 2 === 1) {
-          const image = /\.(png|jpe?g|gif|webp)(\?.*)?$/i.test(part);
-          return (
-            <span key={`${part}-${index}`} className="block">
-              <a
-                href={part}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium underline underline-offset-2 hover:opacity-80"
-              >
-                {part}
-              </a>
-              {image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={part}
-                  alt="Vista previa del enlace"
-                  className="mt-2 max-h-64 w-auto rounded-lg border border-black/10 object-contain"
-                  loading="lazy"
-                />
-              ) : null}
-            </span>
-          );
-        }
-        return <span key={`text-${index}`}>{part}</span>;
-      })}
-    </span>
-  );
-}
-
-/**
- * Ticks de WhatsApp en la esquina de la burbuja: un tick gris al enviar, dos
- * grises al entregar y dos azules al leer. El azul es claro para que se vea
- * sobre la burbuja azul del emisor.
- */
-function MessageTicks({
-  mine,
-  status,
-  pending,
-}: {
-  mine: boolean;
-  status?: ChatMessage["status"];
-  pending?: boolean;
-}) {
-  if (pending) {
-    return (
-      <span className="inline-flex items-center gap-1">
-        <Loader2 className="h-2.5 w-2.5 animate-spin" />
-        Enviando
-      </span>
-    );
-  }
-  if (!mine) return null;
-  const value = status ?? "sent";
-  if (value === "sent") {
-    return (
-      <Check
-        className="h-3.5 w-3.5 text-[#75877d] dark:text-[#adbbb2]"
-        aria-label="Enviado"
-      />
-    );
-  }
-  const read = value === "read";
-  return (
-    <CheckCheck
-      className={cn(
-        "h-3.5 w-3.5",
-        read
-          ? "text-[#168ac2] dark:text-[#6bcfee]"
-          : "text-[#75877d] dark:text-[#adbbb2]",
-      )}
-      aria-label={read ? "Leído" : "Entregado"}
-    />
-  );
 }
 
 /** Adjunto: imagen en linea o archivo, con Abrir y Guardar nativos. */
@@ -476,30 +271,6 @@ function mergeMessages(
     });
   }
   return sortByCreatedAt([...byId.values()]);
-}
-
-function presenceLabel(peer: ChatUser | undefined): string {
-  if (peer?.online) return "En línea";
-  if (!peer?.last_seen_at) return "Sin conexión";
-  const date = new Date(peer.last_seen_at);
-  return `Última vez ${formatDay(peer.last_seen_at).toLowerCase()} a las ${formatClock(date.toISOString())}`;
-}
-
-function Avatar({
-  name,
-  group = false,
-  online = false,
-}: {
-  name: string;
-  group?: boolean;
-  online?: boolean;
-}) {
-  return (
-    <span className="chat-avatar" aria-hidden="true">
-      {group ? <Users className="h-5 w-5" /> : initials(name)}
-      {online ? <span className="chat-online-dot" /> : null}
-    </span>
-  );
 }
 
 export function ChatView() {
@@ -1038,215 +809,31 @@ export function ChatView() {
       <aside
         className={cn("chat-sidebar", mobileThread && "chat-mobile-hidden")}
       >
-        <div className="chat-profile">
-          <Avatar name={user?.full_name || user?.username || "Tú"} />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">
-              {user?.full_name || "Tu perfil"}
-            </p>
-            <button
-              type="button"
-              aria-label="Cambiar tu @usuario"
-              aria-expanded={editingUsername}
-              aria-controls="chat-username-form"
-              disabled={savingName}
-              title="Cambiar tu @usuario"
-              className="flex max-w-full items-center gap-1 truncate rounded text-left text-xs text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500"
-              onClick={() => {
-                setUsernameDraft(user?.username ?? "");
-                setNameMessage(null);
-                setEditingUsername((value) => !value);
-              }}
-            >
-              {user?.username ? `@${user.username}` : "Configura tu @usuario"}
-              <AtSign className="h-3 w-3 shrink-0 opacity-50" />
-            </button>
-          </div>
-          <button
-            className="chat-icon-button"
-            onClick={() => setDialogOpen(true)}
-            aria-label="Nuevo chat / Añadir contacto"
-            title="Nuevo chat"
-          >
-            <Plus className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="px-4 pb-3 pt-4">
-          <h1 className="mb-3 text-[23px] font-semibold tracking-[-0.04em]">
-            Chats
-          </h1>
-          <label className="chat-search">
-            <Search className="h-4 w-4 shrink-0" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar chats o @usuario"
-              aria-label="Buscar chats abiertos"
-            />
-            {query ? (
-              <button
-                aria-label="Limpiar búsqueda"
-                onClick={() => setQuery("")}
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            ) : null}
-          </label>
-        </div>
-        {!user?.username || editingUsername ? (
-          <form
-            id="chat-username-form"
-            className="mx-4 mb-3 rounded-xl border border-border bg-background/40 p-3"
-            onSubmit={(event) => { event.preventDefault(); void claimUsername(); }}
-          >
-            <p className="mb-2 text-xs">
-              Elige tu @usuario para que puedan encontrarte.
-            </p>
-            <div className="flex gap-2">
-              <input
-                ref={usernameRef}
-                aria-label="Tu nuevo @usuario"
-                value={usernameDraft}
-                onChange={(event) => setUsernameDraft(event.target.value)}
-                placeholder="@tu_usuario"
-                maxLength={25}
-                disabled={savingName}
-                autoComplete="off"
-                spellCheck={false}
-                className="min-w-0 flex-1 rounded-lg border border-border bg-transparent px-2 text-sm"
-              />
-              <Button
-                type="submit"
-                size="sm"
-                disabled={savingName || !usernameDraft.trim()}
-              >
-                Guardar
-              </Button>
-            </div>
-            {user?.username ? (
-              <button
-                type="button"
-                className="mt-2 text-xs text-muted-foreground underline underline-offset-2"
-                disabled={savingName}
-                onClick={() => { setEditingUsername(false); setNameMessage(null); }}
-              >
-                Cancelar
-              </button>
-            ) : null}
-            {nameMessage ? (
-              <p className="mt-2 text-xs text-destructive">{nameMessage}</p>
-            ) : null}
-          </form>
-        ) : null}
-        <div className="chat-conversation-list" aria-label="Conversaciones">
-          {loadingList ? (
-            <div className="flex justify-center p-10">
-              <Loader2
-                className="h-5 w-5 animate-spin"
-                aria-label="Cargando chats"
-              />
-            </div>
-          ) : !visibleConversations.length ? (
-            <div className="px-7 py-12 text-center text-sm text-muted-foreground">
-              <MessageSquarePlus className="mx-auto mb-3 h-8 w-8 opacity-50" />
-              <p>
-                {query
-                  ? "No hay chats que coincidan."
-                  : "Tu próxima conversación empieza con un @usuario."}
-              </p>
-              {!query ? (
-                <button
-                  onClick={() => setDialogOpen(true)}
-                  className="mt-3 font-medium text-foreground underline underline-offset-4"
-                >
-                  Añadir contacto
-                </button>
-              ) : null}
-            </div>
-          ) : (
-            visibleConversations.map((item) => {
-              const title = conversationTitle(item, meId);
-              const other = item.members.find(
-                (member) => member.user.id !== meId,
-              )?.user;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => void openConversation(item.id)}
-                  className={cn(
-                    "chat-conversation",
-                    item.id === activeId && "chat-conversation-selected",
-                  )}
-                  aria-current={item.id === activeId ? "true" : undefined}
-                >
-                  <Avatar
-                    name={title}
-                    group={item.kind === "group"}
-                    online={item.kind === "direct" && !!other?.online}
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center justify-between gap-2">
-                      <span className="truncate text-[13px] font-semibold">
-                        {title}
-                      </span>
-                      {item.last_message ? (
-                        <span
-                          className={cn(
-                            "shrink-0 text-[10px]",
-                            item.unread_count
-                              ? "text-emerald-700 dark:text-emerald-300"
-                              : "text-muted-foreground",
-                          )}
-                        >
-                          {formatClock(item.last_message.created_at)}
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
-                      {conversationSubtitle(item, meId)}
-                    </span>
-                    <span className="mt-1 flex items-center gap-1.5">
-                      <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-                        {item.last_message ? (
-                          <>
-                            {item.last_message.sender_id === meId ? (
-                              <span className="mr-1 inline-flex align-middle">
-                                <MessageTicks
-                                  mine
-                                  status={item.last_message.status}
-                                />
-                              </span>
-                            ) : null}
-                            {messagePreview(item.last_message) ||
-                              (item.last_message.attachment
-                                ? `📎 ${item.last_message.attachment.name}`
-                                : "Mensaje")}
-                          </>
-                        ) : (
-                          "Envía el primer mensaje"
-                        )}
-                      </span>
-                      {mutedChats.includes(item.id) ? (
-                        <BellOff
-                          className="h-3 w-3 shrink-0 text-muted-foreground"
-                          aria-label="Silenciado"
-                        />
-                      ) : null}
-                      {item.unread_count > 0 ? (
-                        <span
-                          className="chat-unread"
-                          aria-label={`${item.unread_count} mensajes sin leer`}
-                        >
-                          {item.unread_count > 99 ? "99+" : item.unread_count}
-                        </span>
-                      ) : null}
-                    </span>
-                  </span>
-                </button>
-              );
-            })
-          )}
-        </div>
+        <ChatProfilePanel
+          query={query}
+          setQuery={setQuery}
+          user={user}
+          editingUsername={editingUsername}
+          savingName={savingName}
+          setUsernameDraft={setUsernameDraft}
+          setNameMessage={setNameMessage}
+          setEditingUsername={setEditingUsername}
+          setDialogOpen={setDialogOpen}
+          claimUsername={claimUsername}
+          usernameRef={usernameRef}
+          usernameDraft={usernameDraft}
+          nameMessage={nameMessage}
+        />
+        <ChatConversationList
+          loadingList={loadingList}
+          visibleConversations={visibleConversations}
+          query={query}
+          setDialogOpen={setDialogOpen}
+          meId={meId}
+          openConversation={openConversation}
+          activeId={activeId}
+          mutedChats={mutedChats}
+        />
         {error && !active ? (
           <p
             role="alert"
@@ -1262,77 +849,17 @@ export function ChatView() {
       >
         {active ? (
           <>
-            <header className="chat-thread-header">
-              <button
-                className="chat-icon-button chat-back"
-                onClick={() => setMobileThread(false)}
-                aria-label="Volver a los chats"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </button>
-              <Avatar
-                name={conversationTitle(active, meId)}
-                group={active.kind === "group"}
-                online={active.kind === "direct" && !!peer?.online}
-              />
-              <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-1 truncate text-sm font-semibold">
-                  {conversationTitle(active, meId)}
-                  {peer?.is_verified && active.kind === "direct" ? (
-                    <VerifiedTick />
-                  ) : null}
-                </p>
-                <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                  {conversationSubtitle(active, meId)}
-                  {active.kind === "direct" ? (
-                    <span
-                      className={cn(
-                        "ml-2",
-                        peer?.online &&
-                          "text-emerald-700 dark:text-emerald-300",
-                      )}
-                    >
-                      {presenceLabel(peer)}
-                    </span>
-                  ) : null}
-                </p>
-              </div>
-              <button
-                onClick={() =>
-                  setMutedChats(setChatMuted(active.id, !activeMuted))
-                }
-                className="chat-icon-button"
-                aria-label={
-                  activeMuted
-                    ? "Activar notificaciones"
-                    : "Silenciar conversación"
-                }
-                aria-pressed={activeMuted}
-                title={activeMuted ? "Activar notificaciones" : "Silenciar"}
-              >
-                {activeMuted ? (
-                  <BellOff className="h-4 w-4" />
-                ) : (
-                  <Bell className="h-4 w-4" />
-                )}
-              </button>
-              <button
-                onClick={() => setBackgroundOpen(true)}
-                className="chat-icon-button"
-                aria-label="Cambiar fondo del chat"
-                title="Fondo del chat"
-              >
-                <Palette className="h-4 w-4" />
-              </button>
-              {active.kind === "group" &&
-              active.members.find((member) => member.user.id === meId)?.role ===
-                "owner" ? (
-                <InviteButton
-                  conversation={active}
-                  onInvited={() => void refreshList()}
-                />
-              ) : null}
-            </header>
+            <ChatThreadHeader
+          setMobileThread={setMobileThread}
+          active={active}
+          meId={meId}
+          peer={peer}
+          setMutedChats={setMutedChats}
+          activeMuted={activeMuted}
+          setBackgroundOpen={setBackgroundOpen}
+          InviteButton={InviteButton}
+          refreshList={refreshList}
+        />
             <div
               ref={threadRef}
               className="chat-messages"
@@ -1458,134 +985,22 @@ export function ChatView() {
                 Reenviado a {forwardNotice}
               </p>
             ) : null}
-            <div
-              className="chat-composer"
-              onDragOver={(event) => {
-                if (event.dataTransfer.types.includes("Files"))
-                  event.preventDefault();
-              }}
-              onDrop={(event) => {
-                event.preventDefault();
-                selectFile(event.dataTransfer.files[0] ?? null);
-              }}
-            >
-              {file ? (
-                <div className="chat-file-preview">
-                  {filePreview ? (
-                    <img
-                      src={filePreview}
-                      alt={`Vista previa de ${file.name}`}
-                      className="h-16 w-16 rounded-lg object-cover"
-                    />
-                  ) : (
-                    <FileText className="h-7 w-7 shrink-0 text-muted-foreground" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium">{file.name}</p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      {formatSize(file.size)}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setFile(null);
-                      if (fileRef.current) fileRef.current.value = "";
-                    }}
-                    className="chat-icon-button"
-                    aria-label="Quitar adjunto"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : null}
-              {extrasOpen ? (
-                <ChatExtrasPicker
-                  level={level}
-                  onEmoji={(emoji) => {
-                    setDraft((text) => text + emoji);
-                    composerRef.current?.focus();
-                  }}
-                  onSticker={(sticker) =>
-                    void handleSend(stickerMessage(sticker.id))
-                  }
-                  onClose={() => setExtrasOpen(false)}
-                />
-              ) : null}
-              <div className="flex items-end gap-1.5">
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.txt,.md,.csv,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
-                  className="hidden"
-                  aria-label="Seleccionar foto o documento"
-                  onChange={(event) => {
-                    selectFile(event.target.files?.[0] ?? null);
-                    event.target.value = "";
-                  }}
-                />
-                <button
-                  onClick={() => setExtrasOpen((value) => !value)}
-                  className="chat-icon-button"
-                  aria-label="Emojis y stickers"
-                  aria-expanded={extrasOpen}
-                >
-                  <SmilePlus className="h-5 w-5" />
-                </button>
-                <button
-                  onClick={() => fileRef.current?.click()}
-                  className="chat-icon-button"
-                  aria-label="Adjuntar foto o documento"
-                  title="Adjuntar foto o documento"
-                >
-                  <Paperclip className="h-5 w-5" />
-                </button>
-                <textarea
-                  ref={composerRef}
-                  value={draft}
-                  maxLength={4000}
-                  onChange={(event) => setDraft(event.target.value)}
-                  onPaste={(event) => {
-                    const pasted = event.clipboardData.files[0];
-                    if (pasted) {
-                      event.preventDefault();
-                      selectFile(pasted);
-                    }
-                  }}
-                  onKeyDown={(event) => {
-                    if (
-                      event.key === "Enter" &&
-                      !event.shiftKey &&
-                      !event.nativeEvent.isComposing
-                    ) {
-                      event.preventDefault();
-                      void handleSend();
-                    }
-                  }}
-                  rows={1}
-                  placeholder="Escribe un mensaje"
-                  aria-label="Mensaje"
-                  className="chat-textarea"
-                />
-                <button
-                  onClick={() => void handleSend()}
-                  disabled={
-                    sending || loadingThread || (!draft.trim() && !file)
-                  }
-                  className="chat-send"
-                  aria-label="Enviar mensaje"
-                >
-                  {sending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-              <p className="mt-1.5 pl-2 text-[10px] text-muted-foreground">
-                Enter para enviar · Mayús + Enter para otra línea · Adjuntos
-                hasta 25 MB
-              </p>
-            </div>
+            <ChatThreadComposer
+          selectFile={selectFile}
+          file={file}
+          filePreview={filePreview}
+          setFile={setFile}
+          fileRef={fileRef}
+          extrasOpen={extrasOpen}
+          level={level}
+          setDraft={setDraft}
+          composerRef={composerRef}
+          handleSend={handleSend}
+          setExtrasOpen={setExtrasOpen}
+          draft={draft}
+          sending={sending}
+          loadingThread={loadingThread}
+        />
           </>
         ) : (
           <div className="chat-welcome">

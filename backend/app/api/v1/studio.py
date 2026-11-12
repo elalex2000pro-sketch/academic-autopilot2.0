@@ -19,6 +19,7 @@ from app.models.ai_output import AiOutput
 from app.models.document import Document
 from app.schemas.studio import AiOutputRead, StudioGenerateRequest
 from app.services import ai_studio_service
+from app.services.ai_errors import AiProviderError
 from app.services.realtime import notify
 
 logger = get_logger(__name__)
@@ -33,6 +34,8 @@ async def generate(
     document = await _get_owned_document(db, current_user.id, payload.document_id)
     try:
         output = await ai_studio_service.generate(db, current_user, document, payload.kind)
+    except AiProviderError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from None
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001

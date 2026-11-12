@@ -160,7 +160,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, [pathname, sidebarLayout.collapsed]);
+  }, [pathname, sidebarLayout.collapsed, loading, user, isPublic]);
 
   // El drawer de IA se abre desde cualquier pantalla mediante un evento.
   useEffect(() => {

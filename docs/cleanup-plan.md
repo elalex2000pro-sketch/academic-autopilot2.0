@@ -57,7 +57,6 @@ Recuento de líneas físicas con UTF-8, incluidos comentarios y blancos, sobre f
 | `frontend/src/components/academics-view.tsx` | 1410 | Carga y selección de asignaturas; notas/exámenes; modales; métricas y presentación | Medio/alto | 5 |
 | `frontend/src/app/review/page.tsx` | 1259 | Selector y navegación; sesión de tarjetas; cuestionarios; catálogo de material; estadísticas | Medio/alto | 3 |
 | `frontend/src/app/notebooks/page.tsx` | 1205 | Lista y selección; editor de notas; fuentes; compartición; flujos de importación | Alto | 5 |
-| `frontend/src/components/spotify-view.tsx` | 1205 | Autenticación/SDK; sincronización del reproductor; búsqueda; biblioteca; controles | Alto | 8 |
 
 ### Backend
 
@@ -88,7 +87,7 @@ Recuento de líneas físicas con UTF-8, incluidos comentarios y blancos, sobre f
 
 ## Verificación de esta rama
 
-El workflow nuevo ejecuta typecheck/lint, tests Python y smoke en push/PR. No modifica `release-desktop.yml`. El smoke registra una cuenta efímera en la API SQLite aislada, crea una clase/documento/cuaderno, visita rutas y aliases con escritorio y móvil e importa un PDF real en IndexedDB para abrir el lector. Captura `console.error`, `pageerror`, HTTP de navegación, redirecciones y contenido de la sección; rechaza pantallas vacías y errores de render. No silencia errores con listas de excepciones. Guarda resultados y capturas de fallo en un directorio temporal. Spotify se comprueba desconectado y no se llama a servicios IA reales ni se verifican sus credenciales.
+El workflow nuevo ejecuta typecheck/lint, tests Python y smoke en push/PR. No modifica `release-desktop.yml`. El smoke registra una cuenta efímera en la API SQLite aislada, crea una clase/documento/cuaderno, visita rutas y aliases con escritorio y móvil e importa un PDF real en IndexedDB para abrir el lector. Captura `console.error`, `pageerror`, HTTP de navegación, redirecciones y contenido de la sección; rechaza pantallas vacías y errores de render. No silencia errores con listas de excepciones. Guarda resultados y capturas de fallo en un directorio temporal. No se llama a servicios IA reales ni se verifican sus credenciales.
 
 Comandos: `npm run typecheck`, `npm run lint`, `npm run test:smoke` desde frontend; `python -m pytest tests -q` desde backend. Para reproducir el smoke de CI, construir primero con `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000` y ejecutar con `SMOKE_WEB_MODE=start`. Las variables y los requisitos están documentados en AGENTS.md. La base SQLite prueba lógica y permisos, pero no sustituye pruebas específicas de PostgreSQL, ni aplica migraciones reales.
 
