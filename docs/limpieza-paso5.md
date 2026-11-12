@@ -187,3 +187,19 @@ Comparación AST normalizando CRLF: todas las instrucciones de ChatView anterior
 Los defectos PLAN-01/02/03 quedan registrados para una tarea aparte y no se tocan. Se conserva como trabajo pendiente extraer C6 y, después de nueva aprobación, ampliar los casos de reconexión/cambio rápido de hilo si se aborda su lógica. No se extraen blobs/adjuntos, diálogos con efectos ni callbacks WebSocket para reducir más líneas.
 
 Se eliminó el script temporal de extracción y se cerraron los servidores de prueba propios. Se sube únicamente limpieza/paso5, sin fusionar, sin PR y sin versión/tag. Antes de cualquier trabajo en C6 se espera aprobación explícita del usuario.
+
+## Preparación de integración en main — 13 de noviembre de 2026
+
+El usuario confirma que su prueba manual de limpieza/paso5 en la aplicación real de escritorio ha ido bien y autoriza integrarla con un merge commit normal, conservando el historial y las ramas limpieza/paso5 y respaldo/spotify-antes-retirada. Esta validación es la comunicada por el usuario; no se presenta como una nueva prueba manual del agente. Las notas de «sin PR» y «sin fusión» de los cierres anteriores describen aquellos momentos y quedan superadas por esta autorización de integración.
+
+Se revisaron los workflows de main y de limpieza/paso5: CI se ejecuta en push/pull request; release-desktop.yml publica únicamente por etiquetas v* o ramas release/**. La integración en main no debe crear versión, etiqueta ni release. No se modifican workflows ni versiones. Esto no desactiva las integraciones externas de despliegue web asociadas al repositorio.
+
+ARCHITECTURE.md ya refleja IA Studio, Planificador P1–P8 y Chat C1–C5 divididos. C6 (burbujas) continúa pendiente de aprobación y no se inicia, al igual que el rediseño.
+
+### Pendientes aparte, sin corregir en esta integración
+
+- REPASO-01: el usuario informa de que la sección Repaso no funciona desde hace tiempo. Defecto preexistente comunicado por el usuario, pendiente de reproducir y diagnosticar; no se afirma haber identificado su causa ni que el smoke de apertura valide todas sus funciones.
+- PLAN-01: horario en móvil; se conserva el timeout del recorrido de edición/cancelación/importación registrado antes de P1. Diagnóstico y corrección en una tarea aparte.
+- PLAN-02 y PLAN-03: errores de precarga RSC hacia /documents en consola, en escritorio y móvil; ya estaban presentes antes de P1. Se mantienen visibles como pendientes, sin relajar pruebas ni corregirlos aquí.
+
+La integración no cambia código funcional para resolver estos defectos. El documento local docs/rediseno-plan.md queda fuera de este commit y de esta integración.
