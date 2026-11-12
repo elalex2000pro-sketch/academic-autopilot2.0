@@ -717,7 +717,7 @@ export function AcademicsView() {
               stats.average === null ? (
                 "—"
               ) : (
-                <AnimatedCounter value={stats.average ?? 0} decimals={1} />
+                <AnimatedCounter value={stats.average / 10} decimals={1} />
               )
             }
             hint="sobre 10"
