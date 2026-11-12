@@ -5,7 +5,6 @@ const MAX = 5 * 1024 * 1024;
 const W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 const escape = (s: string) => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]!));
 function xml(s: string) { if (/<!DOCTYPE|<!ENTITY/i.test(s)) throw new Error("XML no permitido"); const d = new DOMParser().parseFromString(s, "application/xml"); if (d.querySelector("parsererror")) throw new Error("DOCX dañado"); return d; }
-const children = (e: Element, name: string) => Array.from(e.children).filter(c => c.localName === name);
 const node = (e: Element | Document, name: string) => e.getElementsByTagNameNS(W, name)[0];
 const val = (e: Element | undefined, attr = "val") => e?.getAttributeNS(W, attr) || "";
 

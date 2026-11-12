@@ -24,7 +24,6 @@ import {
   exportDocumentAsHtml,
   printDocumentAsPdf,
   safeFileName,
-  textToHtml,
 } from "@/lib/office-doc";
 import {
   SHEET_COLS,
