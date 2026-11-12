@@ -131,3 +131,26 @@ Script repetible: `frontend/tests/planner-e2e.cjs`. Desde frontend, con el build
 Referencia sin cambios de aplicación, commit base 73b4b82: **21 recorridos correctos y 3 pendientes**. Pasan altas y persistencia de tarea/examen/fecha, agenda, edición/cambio de fecha de tarea, completar/borrar con cancelación, horario local y recarga, navegación mes/semana/día/Hoy y selección de fecha nueva, en escritorio/móvil. Editar/cancelar/importar horario pasa en escritorio pero queda pendiente en móvil por timeout del control de edición. La comprobación estricta de consola falla en ambos tamaños por precarga RSC fallida hacia /documents. Es un fallo previo; no se silencia ni se atribuye al refactor. No se afirma smoke completamente verde. El script se repite íntegro y se comparan los casos, además del código de salida; un pendiente nuevo debe investigarse antes de avanzar.
 
 Los intentos iniciales del script necesitaron ajustar precondiciones de UI (vista Día para tareas y nombre visible del horario). No se modificó planner-view.tsx para construir la referencia. El archivo conserva 2493 líneas.
+
+## Resultado de P1–P8
+
+Se completa el plan aprobado en ocho commits independientes. Solo JSX/imports/contratos de props y las constantes del formulario cambian de módulo. El coordinador conserva exactamente sus parámetros y todas las instrucciones anteriores al return (comparación AST normalizando CRLF), incluidos estados, efectos, useMemo, callbacks y llamadas. Ningún panel nuevo declara hooks de estado/efecto. No fue necesario cambiar estados o efectos para extraerlos. EditablePanels, sus ids y los diálogos de coordinación permanecen donde estaban. Chat no se ha iniciado; C5 sigue propuesto como chat-thread-composer.tsx.
+
+| Paso | Commit | Líneas antes → después | Informe local del smoke (carpeta academic-smoke- en Temp) |
+|---|---|---|---|
+| P1 cabecera | ce81cbb | 2493 → 2414 | PUXckQ |
+| P2 tarjetas | 250ceba | 2414 → 2279 | l4maK4 |
+| P3 alta rápida y constantes | 170189b | 2279 → 2163 | nznIJP |
+| P4 tareas del día | f3b149a | 2163 → 1960 | itx2iN |
+| P5 herramientas horario | fe7ffb7 | 1960 → 1745 | OWOdiJ |
+| P6 mes | a1d409c | 1745 → 1603 | b4un8v |
+| P7 semana | 0e489de | 1603 → 1481 | n2mUtl |
+| P8 día | e7c197c | 1481 → 1168 | biwukI |
+
+Tras cada commit: build (incluye lint), typecheck y 97 tests backend correctos. Mismos siete avisos de lint y avisos existentes de pytest/Starlette. Se ejecutó el mismo planner-e2e.cjs sin cambios entre P1 y P8: los ocho informes coinciden caso por caso en viewport/nombre/estado con planner-baseline.json. Cada ejecución tiene 21 correctos y 3 pendientes; el código de salida es 1 y **no se afirma smoke específico verde**. El informe final completo se conserva en planner-final.json.
+
+Pendientes previos conservados: (1) control de edición/importación del horario en móvil no accesible para el recorrido automatizado (timeout), (2–3) errores de precarga RSC hacia /documents en consola, en escritorio y móvil. No se ignoran ni se corrigen en esta extracción. La prueba cubre mover la fecha por edición, no arrastre inexistente. Las importaciones usan texto y API SQLite aislada con IA externa desactivada; no validan importación por IA de imágenes. No se han cambiado dependencias, backend, migraciones ni datos de producción.
+
+El coordinador queda en **1168 líneas** frente a 2493. La guía de arquitectura refleja los ocho módulos. Las referencias a blobs y suscripciones, los temporizadores, la persistencia local del horario y los cálculos temporales siguen en el coordinador; su extracción sería otra tarea con pruebas y aprobación propias.
+
+Cierre adicional: smoke general `npm run test:smoke` correcto después de P8, con 56 comprobaciones de rutas/tamaños y los recorridos de Studio (artefactos `C:/Users/elale/AppData/Local/Temp/academic-smoke-DY0WwR`). El éxito del smoke general no sustituye ni convierte en correctos los tres pendientes del smoke específico del Planificador. Lint final correcto con siete avisos existentes. Se retiró el script temporal de extracción; se conserva únicamente el script reutilizable de pruebas solicitado. Los commits de esta fase siguen locales, sin fusión a main, sin Pull Request, versión ni tag.
