@@ -5,7 +5,7 @@ Rama `limpieza/base`, punto de partida `6ebe3dc`. Sin cambios de backend, depend
 ## Referencia antes de cambios
 
 - `npm run build`: correcto, Next.js 14.2.35.
-- `npm run lint`: correcto con 10 avisos existentes: imágenes en Chat/Spotify/Studio; limpieza del ref del escritor; dependencias de efectos en preferencias y recompensas.
+- `npm run lint`: correcto con 10 avisos existentes: imágenes en Chat/Studio (el recuento histórico incluye la sección musical retirada); limpieza del ref del escritor; dependencias de efectos en preferencias y recompensas.
 - `python -m pytest tests -q` en backend: 89 correctos; avisos existentes de pytest-asyncio/Starlette.
 - `office-home-e2e.cjs`: correcto (crear, recargar, guardar, volver, renombrar, mover, duplicar, historial y móvil).
 - `office-docx-e2e.cjs`: correcto, ida y vuelta real con LibreOffice, contenido/formato/imagen, reemplazo con un deshacer y plantillas.

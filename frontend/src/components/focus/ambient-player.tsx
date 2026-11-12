@@ -56,7 +56,7 @@ function readPrefs(): AmbientPrefs {
 
 /**
  * Reproductor de ambiente para el Modo Enfoque. Genera el sonido localmente,
- * así que no depende de Spotify ni de la red.
+ * así que no depende de servicios externos ni de la red.
  */
 export function AmbientPlayer() {
   const engineRef = useRef<AmbientEngine | null>(null);
