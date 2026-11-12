@@ -28,7 +28,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NotificationBell } from "@/components/notification-center";
-import { GEMINI_MODEL_OPTIONS, GEMINI_RETIRED_NOTE } from "@/lib/ai-models";
+import { DEFAULT_GEMINI_MODEL, GEMINI_MODEL_OPTIONS, GEMINI_RETIRED_NOTE } from "@/lib/ai-models";
 import { api } from "@/lib/api";
 import { getOpenBook, subscribeOpenBook, type OpenBookContext } from "@/lib/book-context";
 import {
@@ -996,6 +996,17 @@ export function IAStudio({
                 ▾
               </span>
             </label>
+          )}
+          {status?.provider === "gemini" && status.model !== DEFAULT_GEMINI_MODEL && (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={changingModel}
+              onClick={() => void changeModel(DEFAULT_GEMINI_MODEL)}
+              className="h-8 rounded-full px-2 text-[10px]"
+            >
+              Modelo por defecto
+            </Button>
           )}
           <NotificationBell className={cn(embedded ? "hidden" : "hidden lg:inline-flex")} />
           <Badge

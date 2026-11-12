@@ -106,6 +106,30 @@ async function main() {
       const reader = await link.getAttribute('href'); await visit(reader);
       await page.locator('.pdf-reader canvas').first().waitFor({ timeout: 30000 });
       for (const [route, target] of [['/assistant', '/studio?mode=chat'], ['/transcribe', '/studio?mode=audio'], ['/subjects', '/academics'], ['/exams', '/academics']]) await visit(route, target);
+      // Persist the model through the real test API; simulate provider replies only.
+      await request('/assistant/profile', token, 'PUT', { provider: 'gemini', model: 'gemini-2.5-flash' });
+      await visit('/studio');
+      const model = page.getByLabel('Modelo de Gemini');
+      await model.selectOption('gemini-3.1-pro-preview');
+      await page.getByText('Modelo de IA actualizado:', { exact: false }).waitFor();
+      await page.reload();
+      await page.waitForFunction(() => document.querySelector('select[aria-label="Modelo de Gemini"]')?.value === 'gemini-3.1-pro-preview');
+      let providerReplied = false;
+      const reply = 'Este modelo no está disponible con tu clave. Puedes volver al modelo por defecto.';
+      await page.route('**/api/v1/assistant/messages?*', route => route.fulfill({ json: providerReplied ? [{ id: 'mock-provider-error', role: 'assistant', content: reply, source: 'error', created_at: new Date().toISOString(), document_id: null }] : [] }));
+      await page.route('**/api/v1/assistant/chat', route => {
+        providerReplied = true;
+        return route.fulfill({ json: { reply, source: 'error', created_at: new Date().toISOString(), document_id: null, pending_action: null } });
+      });
+      await page.getByLabel('Mensaje para la IA').fill('Consulta de prueba');
+      await page.getByRole('button', { name: 'Enviar mensaje', exact: true }).click();
+      await page.getByText('Este modelo no está disponible con tu clave.', { exact: false }).waitFor();
+      await page.getByRole('button', { name: 'Modelo por defecto', exact: true }).click();
+      await page.waitForFunction(() => document.querySelector('select[aria-label="Modelo de Gemini"]')?.value === 'gemini-2.5-flash');
+      await page.unroute('**/api/v1/assistant/chat');
+      await page.unroute('**/api/v1/assistant/messages?*');
+      await request('/assistant/profile', token, 'PUT', { provider: 'local', model: '' });
+      console.log(`PASS ${viewport.width} Gemini model persistence, error and default recovery`);
       assert.deepEqual(errors, [], 'Late errors must also fail');
     } catch (error) {
       await page.screenshot({ path: path.join(output, `failure-${viewport.width}.png`), fullPage: true }).catch(() => {});
