@@ -18,6 +18,7 @@ Rama `limpieza/base`, punto de partida `6ebe3dc`. Sin cambios de backend, depend
 | Bloque | Comparación |
 |---|---|
 | 1. Guía y pendientes | Solo documentación; código de aplicación idéntico a la referencia. |
+| 3. Transporte de archivos | Build correcto; lint con los mismos 10 avisos; 89 tests correctos; test de transporte correcto; Dashboard Office y DOCX/LibreOffice/plantillas correctos, igual que la referencia. |
 | 2. Declaraciones sin uso | Build correcto; lint correcto con los mismos 10 avisos; 89 tests correctos. Solo se eliminan `textToHtml` importado sin uso, la lectura local `activeCell` y el helper privado `children`. |
 
 Las pruebas de interfaz automatizadas no se presentan como interacción manual con diálogos nativos. Los resultados finales y las comprobaciones manuales se registrarán al cerrar la fase.

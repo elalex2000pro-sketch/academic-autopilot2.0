@@ -1,5 +1,6 @@
 import type { OfficeData } from "./office-storage";
-import { downloadFile, safeFileName } from "./office-doc";
+import { saveOfficeFile } from "./office-file-actions";
+import { safeFileName } from "./office-doc";
 const MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const MAX = 5 * 1024 * 1024;
 const W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
@@ -67,8 +68,8 @@ export async function exportDocx(title: string, html: string, settings: Record<s
 
 export async function saveDocx(title: string, html: string, settings: Record<string,unknown> = {}) {
  const blob=await exportDocx(title,html,settings); const name=safeFileName(title)+".docx";
- if(window.autopilotDesktop?.files) { const r=await window.autopilotDesktop.files.save({name,data:await blob.arrayBuffer(),mimeType:MIME}); if(!r.ok&&!r.canceled) throw new Error(r.error); }
- else downloadFile(name,new Blob([blob],{type:MIME}));
+ const result=await saveOfficeFile(name,blob,MIME);
+ if(!result.ok&&!result.canceled) throw new Error(result.error);
 }
 
 export async function importDocx(buffer: ArrayBuffer): Promise<{html:string;settings:OfficeData["settings"];warnings:string[]}> {

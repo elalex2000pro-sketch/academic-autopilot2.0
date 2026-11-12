@@ -1,6 +1,7 @@
 "use client";
 import { AnimatePresence, motion } from "framer-motion";
-import { buildDocumentHtml, downloadFile, safeFileName } from "@/lib/office-doc";
+import { saveOfficeFile } from "@/lib/office-file-actions";
+import { buildDocumentHtml, safeFileName } from "@/lib/office-doc";
 import { useCallback, useEffect, useState } from "react";
 import { OfficeData, OfficeDocument, OfficeVersion, draftImportKey, officeRequest, officeDraftKey } from "@/lib/office-storage";
 
@@ -48,8 +49,8 @@ export function OfficeLibrary({ active, onOpen, onNew, onClose, onRestore, onImp
     const full = await officeRequest<OfficeDocument>(`/${doc.id}`);
     const blob = new Blob([full.kind === "document" ? buildDocumentHtml(full.title, full.content) : full.content], { type: full.kind === "document" ? "text/html;charset=utf-8" : "application/json" });
     const name = `${safeFileName(full.title)}.${full.kind === "document" ? "html" : "json"}`;
-    if (window.autopilotDesktop?.files) { const result = await window.autopilotDesktop.files.save({ name, data: await blob.arrayBuffer() }); if (!result.ok && !result.canceled) throw new Error(result.error); }
-    else downloadFile(name, blob);
+    const result = await saveOfficeFile(name, blob);
+    if (!result.ok && !result.canceled) throw new Error(result.error);
   }
   const folders = Array.from(new Set(docs.map(d => d.folder).filter(Boolean))) as string[];
   return <section className="app-glass flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-4 [&_button]:min-h-9 [&_button]:rounded-lg [&_button]:px-2 [&_button]:transition-colors [&_button:hover]:bg-primary/10 [&_button:focus-visible]:outline-primary [&_select]:rounded-lg [&_select]:border [&_select]:bg-background/60 [&_select]:p-2" aria-label="Mis documentos">
