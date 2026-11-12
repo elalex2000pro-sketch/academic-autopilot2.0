@@ -751,6 +751,7 @@ function configureSession(appSession) {
     "clipboard-sanitized-write",
     "fullscreen",
     "media",
+    "mediaKeySystem",
   ]);
 
   appSession.setPermissionCheckHandler((_webContents, permission, requestingOrigin) => {
