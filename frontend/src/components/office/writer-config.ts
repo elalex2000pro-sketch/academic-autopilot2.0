@@ -226,4 +226,3 @@ export const EDITOR_CONFIG = {
     ],
   },
 } as unknown as EditorConfig;
-
