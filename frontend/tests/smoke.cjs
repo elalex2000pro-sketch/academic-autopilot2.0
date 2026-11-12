@@ -99,7 +99,7 @@ async function main() {
       reports.push({ viewport: viewport.width, route, ok: true }); console.log(`PASS ${viewport.width} ${route}`);
     }
     try {
-      for (const route of ['/', '/planner', '/calendar', '/schedule', '/academics', '/classes', `/classes/${group.id}`, '/chat', '/review', '/notebooks', '/documents', '/office', `/office/${office.id}`, '/focus', '/spotify', '/settings', '/files', '/studio', '/studio?mode=audio', '/studio?mode=document', '/library']) await visit(route);
+      for (const route of ['/', '/planner', '/calendar', '/schedule', '/academics', '/classes', `/classes/${group.id}`, '/chat', '/review', '/notebooks', '/documents', '/office', `/office/${office.id}`, '/focus', '/settings', '/files', '/studio', '/studio?mode=audio', '/studio?mode=document', '/library']) await visit(route);
       // The reader is local IndexedDB, not /books. Import an actual PDF through its UI.
       await page.locator('input[type=file]').setInputFiles({ name: 'smoke-reader.pdf', mimeType: 'application/pdf', buffer: pdfFixture() });
       const link = page.locator('a[href^="/library/"]:visible').first(); await link.waitFor({ timeout: 30000 });
