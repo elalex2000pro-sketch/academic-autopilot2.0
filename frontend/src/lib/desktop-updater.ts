@@ -6,6 +6,8 @@
  * puente no existe y se usa el flujo de `app-update.ts`.
  */
 
+import { compareVersions } from "@/lib/app-update";
+
 export type DesktopUpdaterStatus =
   | "idle"
   | "checking"
@@ -26,6 +28,21 @@ export interface DesktopUpdaterState {
   releaseNotes: string;
   releaseDate: string | null;
   error: string | null;
+}
+
+/** Un estado pendiente del puente no implica que la versión siga siendo nueva. */
+export function getDesktopUpdateStatus(
+  state: DesktopUpdaterState,
+  currentVersion: string,
+): DesktopUpdaterStatus {
+  if (
+    state.version &&
+    (state.status === "available" || state.status === "downloading" || state.status === "ready") &&
+    compareVersions(state.version, currentVersion) <= 0
+  ) {
+    return "current";
+  }
+  return state.status;
 }
 
 export interface DesktopUpdaterInstallResult {

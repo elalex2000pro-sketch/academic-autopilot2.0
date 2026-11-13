@@ -28,6 +28,7 @@ import {
   type UpdateChannel,
 } from "@/lib/app-update";
 import {
+  getDesktopUpdateStatus,
   getDesktopUpdater,
   type DesktopUpdaterState,
 } from "@/lib/desktop-updater";
@@ -886,14 +887,15 @@ function DesktopUpdateToast() {
   // versión lista permanece hasta reiniciar o descartarlo.
   useEffect(() => {
     if (!manual || !state) return;
-    if (state.status !== "current" && state.status !== "disabled") return;
+    const status = getDesktopUpdateStatus(state, currentVersion);
+    if (status !== "current" && status !== "disabled") return;
     const timer = window.setTimeout(() => setManual(false), 5000);
     return () => window.clearTimeout(timer);
-  }, [manual, state]);
+  }, [manual, state, currentVersion]);
 
   if (!mounted || !state) return null;
 
-  const status = state.status;
+  const status = getDesktopUpdateStatus(state, currentVersion);
   const version = state.version ?? "";
   const isReady = status === "ready";
   const isDownloading = status === "available" || status === "downloading";
