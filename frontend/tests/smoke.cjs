@@ -79,22 +79,31 @@ async function main() {
     const context = await browser.newContext({ viewport, serviceWorkers: 'block', permissions: ['microphone'] });
     await context.addInitScript(({ token, user }) => { localStorage.setItem('autopilot_token', token); localStorage.setItem('autopilot_user', JSON.stringify(user)); localStorage.setItem('hasCompletedOnboarding_v1', 'true'); }, { token, user });
     const page = await context.newPage(); const errors = []; let current = 'startup';
-    page.on('console', message => { if (message.type() === 'error') errors.push(`${current}: console ${message.text()}`); });
-    page.on('pageerror', error => errors.push(`${current}: ${error.message}`));
-    async function visit(route, expected = route) {
-      current = route; const before = errors.length;
-      const response = await page.goto(WEB + route, { waitUntil: 'domcontentloaded', timeout: 90000 });
-      assert.ok(response && response.ok(), `${route}: HTTP ${response?.status()}`);
-      await page.waitForURL(url => url.pathname + url.search === expected, { timeout: 30000 });
-      await page.waitForFunction(() => {
+    function watchErrors(view) {
+      view.on('console', message => { if (message.type() === 'error') errors.push(`${current}: console ${message.text()}`); });
+      view.on('pageerror', error => errors.push(`${current}: ${error.message}`));
+    }
+    watchErrors(page);
+    async function assertView(view, route, expected = route) {
+      await view.waitForURL(url => url.pathname + url.search === expected, { timeout: 30000 });
+      await view.waitForFunction(() => {
         const main = document.querySelector('.pdf-reader') || document.querySelector('main');
         if (!main) return false; const text = main.textContent.trim(); const box = main.getBoundingClientRect();
         return box.width > 100 && box.height > 50 && text.length > 35 && main.querySelector('button,input,a,[contenteditable="true"]') && !/^Cargando[^.]*[.¡…]*$/.test(text);
       }, undefined, { timeout: 60000 });
-      if (route.startsWith('/office/')) await page.locator('.ck-editor__editable_root').waitFor({ timeout: 60000 });
-      await page.waitForTimeout(800);
-      const content = await page.locator('.pdf-reader, main').first().innerText();
+      if (route.startsWith('/office/')) await view.locator('.ck-editor__editable_root').waitFor({ timeout: 60000 });
+    }
+    async function assertNoFallback(view, route) {
+      const content = await view.locator('.pdf-reader, main').first().innerText();
       assert.ok(!/Algo ha fallado|Algo salió mal|Application error|No se pudo mostrar|Este PDF no está guardado/.test(content), route + ': error fallback');
+    }
+    async function visit(route, expected = route) {
+      current = route; const before = errors.length;
+      const response = await page.goto(WEB + route, { waitUntil: 'domcontentloaded', timeout: 90000 });
+      assert.ok(response && response.ok(), `${route}: HTTP ${response?.status()}`);
+      await assertView(page, route, expected);
+      await page.waitForTimeout(800);
+      await assertNoFallback(page, route);
       assert.deepEqual(errors.slice(before), [], route + ': browser errors');
       reports.push({ viewport: viewport.width, route, ok: true }); console.log(`PASS ${viewport.width} ${route}`);
     }
@@ -104,8 +113,24 @@ async function main() {
       // The reader is local IndexedDB, not /books. Import an actual PDF through its UI.
       await page.locator('input[type=file]').setInputFiles({ name: 'smoke-reader.pdf', mimeType: 'application/pdf', buffer: pdfFixture() });
       const link = page.locator('a[href^="/library/"]:visible').first(); await link.waitFor({ timeout: 30000 });
-      const reader = await link.getAttribute('href'); await visit(reader);
+      const reader = await link.getAttribute('href'); current = reader; const beforeReader = errors.length;
+      // Navegar por el enlace evita cancelar su precarga con un page.goto simultáneo.
+      await Promise.all([page.waitForURL(url => url.pathname === reader), link.click()]);
+      await assertView(page, reader);
       await page.locator('.pdf-reader canvas').first().waitFor({ timeout: 30000 });
+      await assertNoFallback(page, reader);
+      assert.deepEqual(errors.slice(beforeReader), [], reader + ': browser errors');
+      // La apertura directa comparte IndexedDB y sesión, sin abandonar la página anterior.
+      const directReader = await context.newPage();
+      watchErrors(directReader);
+      const response = await directReader.goto(WEB + reader, { waitUntil: 'domcontentloaded', timeout: 90000 });
+      assert.ok(response && response.ok(), `${reader}: HTTP ${response?.status()}`);
+      await assertView(directReader, reader);
+      await directReader.locator('.pdf-reader canvas').first().waitFor({ timeout: 30000 });
+      await assertNoFallback(directReader, reader);
+      assert.deepEqual(errors.slice(beforeReader), [], reader + ': browser errors');
+      reports.push({ viewport: viewport.width, route: reader, ok: true, linked: true, direct: true });
+      console.log(`PASS ${viewport.width} ${reader} (link and direct)`);
       for (const [route, target] of [['/assistant', '/studio?mode=chat'], ['/transcribe', '/studio?mode=audio'], ['/subjects', '/academics'], ['/exams', '/academics']]) await visit(route, target);
       }
       // Persist the model through the real test API; simulate provider replies only.
