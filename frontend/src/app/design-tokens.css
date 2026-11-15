@@ -1,6 +1,7 @@
-/* R1: exact existing values. Shared by navigation and content.
- * Compatibility aliases and selector precedence remain in their original files.
- * No extra style or preference is enabled here. */
+/* R1: exact existing values; one catalogue for navigation and content.
+ * theme-base/theme-v18 retain legacy selector roles; palette/type/radius/shadow
+ * feed shared utilities. material-* are the original shared CSS materials.
+ * Mode selection, compatibility aliases and cascade remain in the old CSS. */
 :root {
   --theme-base-root-background: 214 16% 91%;
   --theme-base-root-foreground: 213 18% 21%;
@@ -371,4 +372,214 @@
   --brand-gradient-1: #7B8CFF;
   --brand-gradient-2: #B57BFF;
   --shadow-empty: 0 0 #0000;
+  --literal-2a2a30: 42 42 48;
+  --literal-111114: 17 17 20;
+  --paint-154: 0 10px 24px -14px rgba(20,20,28,0.72),inset 0 1px 0 rgba(255,255,255,0.1);
+  --paint-155: inset 0 1px 0 rgba(255,255,255,0.3),0 8px 20px -14px rgba(32,39,48,0.2);
+  --color-rgb-255-255-255-0-32: rgb(255 255 255 / 0.32);
+  --color-000: #000;
+  --color-rgb-255-255-255-0-34: rgb(255 255 255 / 0.34);
+  --color-rgb-255-255-255-0-72: rgb(255 255 255 / 0.72);
+  --color-rgba-10-132-255-0-5: rgba(10, 132, 255, 0.5);
+  --color-rgba-100-168-255-0-5: rgba(100, 168, 255, 0.5);
+  --material-body-font-size: 13px;
+  --material-body-line-height: 1.5;
+  --material-body-letter-spacing: -0.006em;
+  --material-h1-letter-spacing: -0.022em;
+  --material-webkit-scrollbar-thumb-border-radius: 999px;
+  --material-webkit-scrollbar-thumb-border: 3px solid transparent;
+  --material-glass-panel-backdrop-filter: blur(48px) saturate(130%);
+  --material-update-progress-shine-background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(255 255 255 / 0.5),
+      transparent
+    );
+  --material-label-caps-font-size: 0.6875rem;
+  --material-label-caps-line-height: 1rem;
+  --material-label-caps-letter-spacing: 0.02em;
+  --material-mac-window-border-radius: 12px;
+  --material-mac-window-box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.14),
+      0 1px 2px rgb(0 0 0 / 0.08),
+      0 12px 32px rgb(0 0 0 / 0.16),
+      0 32px 64px -16px rgb(0 0 0 / 0.18);
+  --material-vibrancy-backdrop-filter: saturate(135%) blur(64px);
+  --material-inset-field-box-shadow: inset 0 1px 2px rgb(32 39 48 / 0.05);
+  --material-glass-card-border-radius: 24px;
+  --material-glass-card-border: 1px solid rgb(255 255 255 / 0.55);
+  --material-glass-card-background-color: rgb(238 241 245 / 0.7);
+  --material-glass-card-box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.34),
+      0 18px 44px -28px rgb(32 39 48 / 0.14),
+      0 4px 12px -8px rgb(32 39 48 / 0.05);
+  --material-glass-card-backdrop-filter: blur(64px) saturate(130%);
+  --material-dark-glass-card-border-color: rgb(255 255 255 / 0.1);
+  --material-dark-glass-card-background-color: rgb(0 0 0 / 0.22);
+  --material-dark-glass-card-box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.035),
+      0 8px 32px 0 rgb(0 0 0 / 0.38);
+  --material-glass-strong-background-image: linear-gradient(145deg, rgb(241 244 247 / 0.82), rgb(232 236 241 / 0.7));
+  --material-glass-strong-box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.4),
+      0 20px 48px -30px rgb(32 39 48 / 0.16);
+  --material-glass-strong-backdrop-filter: blur(64px) saturate(135%);
+  --material-dark-glass-strong-background-image: linear-gradient(145deg, rgb(0 0 0 / 0.3), rgb(0 0 0 / 0.18));
+  --material-dark-glass-strong-box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.045),
+      0 8px 32px 0 rgb(0 0 0 / 0.42);
+  --material-glass-inset-border: 1px solid rgb(201 209 219 / 0.36);
+  --material-glass-inset-background-color: rgb(224 229 235 / 0.45);
+  --material-glass-inset-box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.3);
+  --material-dark-glass-inset-border-color: rgb(255 255 255 / 0.055);
+  --material-dark-glass-inset-background-color: rgb(255 255 255 / 0.035);
+  --material-dark-glass-inset-box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.035);
+  --material-app-glass-background-color: rgb(238 241 245 / 0.68);
+  --material-dark-app-glass-box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03),
+      0 8px 32px 0 rgb(0 0 0 / 0.4);
+  --material-app-glass-strong-background-color: rgb(238 241 245 / 0.8);
+  --material-dark-app-glass-strong-background-color: rgb(0 0 0 / 0.3);
+  --material-dark-app-glass-strong-box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.035),
+      0 8px 32px 0 rgb(0 0 0 / 0.45);
+  --material-app-glass-soft-background-color: rgb(238 241 245 / 0.55);
+  --material-app-glass-soft-backdrop-filter: blur(40px) saturate(125%);
+  --material-dark-app-glass-soft-border-color: rgb(255 255 255 / 0.05);
+  --material-is-data-spotlight--background: rgb(255 255 255 / 0.06);
+  --material-ambient-blob-border-radius: 50%;
+  --material-dark-wallpaper-layer-data-tone-light-wallpaper-veil-background: hsl(240 8% 6% / 0.56);
+  --material-dark-wallpaper-layer-data-tone-dark-wallpaper-veil-background: hsl(240 8% 6% / 0.4);
+  --material-wallpaper-swatch-background-color: #e7eaef;
+  --material-wallpaper-swatch-background-image: radial-gradient(60% 60% at 16% 16%, #cbd4df 0%, transparent 70%),
+    radial-gradient(55% 60% at 84% 10%, #d6d9e2 0%, transparent 72%),
+    radial-gradient(65% 65% at 76% 88%, #ccd7d4 0%, transparent 70%),
+    radial-gradient(45% 55% at 20% 92%, #dcd7cf 0%, transparent 72%),
+    linear-gradient(135deg, #e9ecf0 0%, #eae9ee 50%, #e7ecea 100%);
+  --material-dark-wallpaper-swatch-background-color: #0b1020;
+  --material-dark-wallpaper-swatch-background-image: radial-gradient(60% 60% at 16% 16%, #1e4f9e 0%, transparent 70%),
+    radial-gradient(55% 60% at 84% 10%, #542d8a 0%, transparent 72%),
+    radial-gradient(65% 65% at 76% 88%, #0d5a50 0%, transparent 70%),
+    radial-gradient(45% 55% at 20% 92%, #6b3a1c 0%, transparent 72%),
+    linear-gradient(135deg, #0b1020 0%, #150e29 50%, #081a19 100%);
+  --material-dark-wallpaper-veil-background: hsl(240 8% 6% / 0.48);
+  --material-html-data-animations-ultra-glass-card-hover-box-shadow: 0 22px 52px -32px rgb(32 39 48 / 0.22),
+    0 8px 18px -12px rgb(32 39 48 / 0.1);
+  --material-html-data-animations-ultra-dark-glass-card-hover-box-shadow: 0 22px 52px -28px rgb(0 0 0 / 0.55),
+    0 8px 18px -12px rgb(0 0 0 / 0.35);
+  --material-html-data-animations-ultra-animate-fade-in-animation-timing-function: ease-out;
+  --material-html-data-performance-efficiency-glass-card-box-shadow: 0 1px 2px rgb(32 39 48 / 0.07);
+  --material-html-data-performance-efficiency-not-dark-glass-card-background-color: rgb(238 241 245 / 0.95);
+  --material-html-data-performance-efficiency-dark-glass-card-background-color: rgb(16 20 28 / 0.95);
+  --material-html-data-performance-efficiency-not-dark-glass-inset-background-color: rgb(228 233 239 / 0.92);
+  --material-html-data-performance-efficiency-dark-app-shell-header-class-backdrop-blur--background-color: rgb(10 10 10 / 0.96);
+  --material-html-not-dark-bg-white-not-keep-white--background-color: rgb(238 241 245 / 0.74);
+  --material-html-not-dark-bg-white-95-not-keep-white--background-color: rgb(238 241 245 / 0.72);
+  --material-html-not-dark-bg-white-75-not-keep-white--background-color: rgb(238 241 245 / 0.58);
+  --material-html-not-dark-bg-white-45-not-keep-white--background-color: rgb(238 241 245 / 0.44);
+  --material-html-not-dark-bg-slate-50-not-keep-white--background-color: rgb(238 241 245 / 0.66);
+  --material-html-not-dark-border-slate-200-border-color: rgb(201 209 219 / 0.45);
+  --material-html-not-dark-border-slate-300-border-color: rgb(201 209 219 / 0.55);
+  --material-html-not-dark-hover-bg-white-hover-not-keep-white--background-color: rgb(238 241 245 / 0.86);
+  --material-html-not-dark-focus-visible-bg-white-55-focus-visible-not-keep-white--background-color: rgb(238 241 245 / 0.78);
+  --material-html-not-dark-border-white-70-not-keep-white--border-color: rgb(201 209 219 / 0.48);
+  --material-html-not-dark-border-white-55-not-keep-white--border-color: rgb(201 209 219 / 0.38);
+  --material-html-not-dark-border-white-35-not-keep-white--border-color: rgb(201 209 219 / 0.28);
+  --material-html-not-dark-hover-border-white-80-hover-not-keep-white--border-color: rgb(165 175 186 / 0.45);
+  --material-html-not-dark-text-slate-900-color: #202730;
+  --material-html-not-dark-text-slate-800-color: #2c3540;
+  --material-html-not-dark-text-slate-700-color: #3a4450;
+  --material-html-not-dark-text-slate-600-color: #4a5563;
+  --material-html-not-dark-text-slate-500-color: #5f6b79;
+  --material-html-dark-where-bg-white-15-not-keep-white--background-color: hsl(0 0% 100% / 0.08);
+  --material-html-dark-bg-slate-200-background-color: hsl(240 3% 26%);
+  --material-html-dark-hover-bg-slate-50-hover-background-color: hsl(240 3% 15%);
+  --material-html-dark-hover-bg-slate-100-hover-background-color: hsl(240 3% 19%);
+  --material-html-dark-hover-bg-slate-200-hover-background-color: hsl(240 3% 24%);
+  --material-html-dark-bg-indigo-50-background-color: hsl(211 60% 18%);
+  --material-html-dark-bg-indigo-100-background-color: hsl(211 55% 24%);
+  --material-html-dark-bg-violet-100-background-color: hsl(276 40% 24%);
+  --material-html-dark-bg-fuchsia-50-40-background-color: hsl(338 50% 22%);
+  --material-html-dark-bg-rose-50-background-color: hsl(341 50% 20%);
+  --material-html-dark-bg-red-50-background-color: hsl(4 50% 20%);
+  --material-html-dark-bg-amber-50-background-color: hsl(33 60% 18%);
+  --material-html-dark-bg-emerald-50-background-color: hsl(140 40% 18%);
+  --material-html-dark-hover-bg-indigo-50-hover-background-color: hsl(211 50% 20%);
+  --material-html-dark-hover-bg-rose-50-hover-background-color: hsl(341 45% 22%);
+  --material-html-dark-hover-bg-fuchsia-50-hover-background-color: hsl(338 45% 22%);
+  --material-html-dark-text-slate-700-color: hsl(240 6% 84%);
+  --material-html-dark-text-slate-600-color: hsl(240 5% 74%);
+  --material-html-dark-text-slate-400-color: hsl(240 3% 52%);
+  --material-html-dark-text-slate-300-color: hsl(240 3% 44%);
+  --material-html-dark-text-indigo-600-color: hsl(211 100% 68%);
+  --material-html-dark-text-violet-600-color: hsl(276 80% 76%);
+  --material-html-dark-text-fuchsia-600-color: hsl(338 90% 72%);
+  --material-html-dark-text-rose-600-color: hsl(341 100% 72%);
+  --material-html-dark-text-red-600-color: hsl(4 100% 68%);
+  --material-html-dark-text-amber-600-color: hsl(33 100% 62%);
+  --material-html-dark-text-amber-800-color: hsl(33 100% 72%);
+  --material-html-dark-text-emerald-600-color: hsl(140 60% 60%);
+  --material-html-dark-border-slate-800-border-color: hsl(240 6% 70%);
+  --material-html-dark-border-white-70-border-color: hsl(0 0% 100% / 0.16);
+  --material-html-dark-border-indigo-100-border-color: hsl(211 50% 30%);
+  --material-html-dark-border-violet-100-border-color: hsl(276 30% 32%);
+  --material-html-dark-border-fuchsia-200-border-color: hsl(338 35% 32%);
+  --material-html-dark-border-rose-200-border-color: hsl(341 35% 32%);
+  --material-html-dark-border-amber-200-border-color: hsl(33 40% 30%);
+  --material-html-dark-border-emerald-100-border-color: hsl(140 30% 28%);
+  --material-html-dark-border-orange-100-border-color: hsl(33 35% 30%);
+  --material-animate-waveform-animation-timing-function: ease-in-out;
+  --material-studio-canvas-background: #f4f7fc;
+  --material-dark-studio-canvas-background: #04060c;
+  --material-studio-base-background: radial-gradient(120% 100% at 50% -20%, rgba(255, 255, 255, 0.96) 0%, rgba(246, 249, 254, 0.9) 46%, rgba(238, 243, 251, 0.96) 100%),
+    radial-gradient(90% 70% at 82% 112%, rgba(30, 64, 175, 0.12) 0%, transparent 70%),
+    linear-gradient(160deg, #f8fafd 0%, #eef3fa 55%, #e9eef7 100%);
+  --material-dark-studio-base-background: radial-gradient(120% 100% at 50% -20%, #111c3d 0%, #080d1a 48%, #04060c 100%),
+    radial-gradient(90% 70% at 82% 112%, rgba(29, 78, 216, 0.22) 0%, transparent 70%),
+    linear-gradient(160deg, #0a1020 0%, #060910 60%, #03050a 100%);
+  --material-studio-aurora-background: radial-gradient(38% 42% at 24% 26%, rgba(34, 211, 238, 0.34) 0%, transparent 70%),
+    radial-gradient(40% 44% at 76% 22%, rgba(139, 92, 246, 0.34) 0%, transparent 72%),
+    radial-gradient(46% 48% at 64% 80%, rgba(37, 99, 235, 0.3) 0%, transparent 74%),
+    radial-gradient(36% 40% at 16% 78%, rgba(217, 70, 239, 0.18) 0%, transparent 72%);
+  --material-studio-aurora-alt-background: radial-gradient(34% 38% at 34% 62%, rgba(56, 189, 248, 0.26) 0%, transparent 72%),
+    radial-gradient(32% 36% at 68% 40%, rgba(167, 139, 250, 0.26) 0%, transparent 74%),
+    radial-gradient(30% 34% at 84% 72%, rgba(59, 130, 246, 0.22) 0%, transparent 72%);
+  --material-dark-studio-aurora-not-studio-aurora-alt--background: radial-gradient(38% 42% at 24% 26%, rgba(34, 211, 238, 0.3) 0%, transparent 70%),
+    radial-gradient(40% 44% at 76% 22%, rgba(139, 92, 246, 0.38) 0%, transparent 72%),
+    radial-gradient(46% 48% at 64% 80%, rgba(37, 99, 235, 0.36) 0%, transparent 74%),
+    radial-gradient(36% 40% at 16% 78%, rgba(217, 70, 239, 0.24) 0%, transparent 72%);
+  --material-studio-response-flash-background: radial-gradient(60% 55% at 50% 45%, rgba(103, 232, 249, 0.28) 0%, transparent 70%),
+    radial-gradient(50% 50% at 70% 60%, rgba(167, 139, 250, 0.22) 0%, transparent 72%);
+  --material-studio-vignette-background: linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, transparent 22%, transparent 78%, rgba(226, 232, 240, 0.35) 100%);
+  --material-dark-studio-vignette-background: radial-gradient(120% 90% at 50% 50%, transparent 52%, rgba(2, 4, 10, 0.55) 100%),
+    linear-gradient(180deg, rgba(3, 6, 14, 0.45) 0%, transparent 20%, transparent 80%, rgba(2, 4, 10, 0.5) 100%);
+  --material-panel-cell-editing-background: rgba(10, 132, 255, 0.035);
+  --material-dark-panel-cell-editing-background: rgba(10, 132, 255, 0.06);
+  --material-panel-grip-border: 1px solid rgba(10, 132, 255, 0.35);
+  --material-panel-grip-background: #ffffff;
+  --material-panel-grip-color: #0b63c7;
+  --material-panel-grip-font-size: 10.5px;
+  --material-panel-grip-line-height: 1;
+  --material-panel-grip-box-shadow: 0 8px 18px -12px rgba(10, 132, 255, 0.95);
+  --material-dark-panel-grip-border-color: rgba(148, 197, 255, 0.28);
+  --material-dark-panel-grip-background: #1b1b1f;
+  --material-dark-panel-grip-color: #9dcaff;
+  --material-panel-resize-border-radius: 9px;
+  --material-glass-card-backdrop-filter-137: blur(28px) saturate(150%);
+  --material-app-glass-soft-backdrop-filter-138: blur(22px) saturate(140%);
+  --material-wallpaper-swatch-background-color-139: #f3f3f6;
+  --material-wallpaper-swatch-background-image-140: radial-gradient(70% 55% at 12% 0%, rgb(201 198 235 / 0.26) 0%, transparent 70%),
+    radial-gradient(45% 40% at 92% 2%, rgb(245 218 231 / 0.22) 0%, transparent 72%),
+    radial-gradient(65% 50% at 50% 100%, rgb(221 220 240 / 0.2) 0%, transparent 78%),
+    linear-gradient(180deg, #f7f7f9 0%, #f1f1f5 58%, #f4f4f7 100%);
+  --material-dark-wallpaper-swatch-background-color-141: #0a0a0a;
+  --material-dark-wallpaper-swatch-background-image-142: radial-gradient(70% 52% at 18% 0%, rgb(99 102 241 / 0.14) 0%, transparent 72%),
+    radial-gradient(48% 46% at 88% 12%, rgb(34 211 238 / 0.08) 0%, transparent 74%),
+    radial-gradient(58% 52% at 50% 100%, rgb(168 85 247 / 0.055) 0%, transparent 78%),
+    linear-gradient(180deg, #0a0a0a 0%, #09090b 58%, #0a0a0a 100%);
+  --material-wallpaper-veil-background: linear-gradient(180deg, rgb(255 255 255 / 0.2), rgb(255 255 255 / 0.06));
+  --material-dark-wallpaper-veil-background-144: rgb(10 10 10 / 0.4);
+  --material-html-data-glass-pure-glass-card-backdrop-filter: blur(56px) saturate(190%);
+  --material-html-data-glass-pure-app-glass-soft-backdrop-filter: blur(36px) saturate(175%);
+  --material-html-data-glass-pure-app-shell-header-class-backdrop-blur--background-color: rgb(243 243 246 / 0.34);
+  --material-html-data-glass-pure-app-shell-header-class-backdrop-blur--backdrop-filter: blur(48px) saturate(180%);
+  --material-html-dark-data-glass-pure-app-shell-header-class-backdrop-blur--background-color: rgb(10 10 10 / 0.42);
+  --material-html-data-glass-pure-vibrancy-backdrop-filter: blur(80px) saturate(180%);
+  --material-html-data-glass-pure-wallpaper-veil-background: linear-gradient(180deg, rgb(255 255 255 / 0.04), transparent);
+  --material-html-dark-data-glass-pure-wallpaper-veil-background: rgb(10 10 10 / 0.3);
+  --material-html-data-cosmetic-theme-aurora-app-shell-background-image: radial-gradient(70% 50% at 100% 0%, rgb(192 132 252 / 0.12), transparent 65%),
+    radial-gradient(60% 45% at 0% 100%, rgb(0 102 255 / 0.07), transparent 70%);
 }

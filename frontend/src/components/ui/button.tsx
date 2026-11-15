@@ -14,11 +14,11 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-[#1b1b1f] text-white shadow-[0_10px_24px_-14px_rgba(20,20,28,0.72),inset_0_1px_0_rgba(255,255,255,0.1)] hover:bg-[#2a2a30] active:bg-[#111114] active:shadow-pressed",
+          "bg-surface-inverse text-white shadow-[shadow:var(--paint-154)] hover:bg-literal-2a2a30 active:bg-literal-111114 active:shadow-pressed",
         destructive:
           "bg-destructive text-destructive-foreground shadow-button hover:brightness-[1.07] active:brightness-[0.95]",
         outline:
-          "border border-slate-300/40 bg-slate-100/70 text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_8px_20px_-14px_rgba(32,39,48,0.2)] backdrop-blur-3xl hover:bg-slate-100/85 active:bg-slate-200/60 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/80 dark:hover:bg-white/[0.1]",
+          "border border-slate-300/40 bg-slate-100/70 text-slate-700 shadow-[shadow:var(--paint-155)] backdrop-blur-3xl hover:bg-slate-100/85 active:bg-slate-200/60 dark:border-white/10 dark:bg-white/[0.06] dark:text-white/80 dark:hover:bg-white/[0.1]",
         secondary:
           "border border-border bg-secondary text-secondary-foreground hover:bg-secondary/70 active:bg-secondary/50",
         ghost: "text-foreground hover:bg-foreground/[0.055] active:bg-foreground/[0.09]",

@@ -116,6 +116,8 @@ const config: Config = {
     extend: {
       fontFamily: { sans: ["var(--font-body)"], display: ["var(--font-display)"], mono: ["var(--font-mono)"] },
       colors: {
+        "literal-111114": "rgb(var(--literal-111114) / <alpha-value>)",
+        "literal-2a2a30": "rgb(var(--literal-2a2a30) / <alpha-value>)",
         "literal-3f3852": "rgb(var(--literal-3f3852) / <alpha-value>)",
         "text-on-selection": "rgb(var(--text-on-selection) / <alpha-value>)",
         "surface-inverse": "rgb(var(--surface-inverse) / <alpha-value>)",

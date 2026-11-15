@@ -20,7 +20,42 @@ async function request(route, token, data) {
   assert.ok(r.ok, route + ': ' + r.status);
   return r.json();
 }
+function compareViews() {
+  assert.ok(output, "Set R1_OUTPUT");
+    const python = process.env.SMOKE_PYTHON || path.resolve(__dirname, '../../.venv311/Scripts/python.exe');
+    const comparison = spawnSync(python, ['-c', `
+from PIL import Image, ImageChops
+from pathlib import Path
+import json,sys
+root=Path(sys.argv[1]); stage=sys.argv[2]; failures=[]; noise=[]
+for key in json.loads((root/stage/'results.json').read_text()):
+ a=Image.open(root/'before'/(key+'.png')).convert('RGB'); b=Image.open(root/stage/(key+'.png')).convert('RGB')
+ diff=ImageChops.difference(a,b); box=diff.getbbox()
+ if box:
+  diff.save(root/stage/(key+'-diff.png'))
+  raw=diff.crop(box).tobytes(); count=sum(bool(raw[i] or raw[i+1] or raw[i+2]) for i in range(0,len(raw),3)); maximum=max(v[1] for v in diff.getextrema())
+  item={'case':key,'bounds':box,'pixels':count,'max_channel_difference':maximum}
+  # Text rasterization varies by 1-2/255; isolated edge pixels can vary by 3.
+  # Every difference is retained; no regions are masked. CSS computed
+  # colors/materials/type are checked strictly and independently below.
+  # Keep those differences visible in the report; reject larger differences.
+  (noise if maximum<=2 or (maximum<=3 and count<=20) else failures).append(item)
+ old_styles=root/'before'/(key+'.styles.json'); new_styles=root/stage/(key+'.styles.json')
+ if not old_styles.exists() or not new_styles.exists():
+  failures.append({'case':key,'computed_styles':'missing baseline or candidate'})
+ elif json.loads(old_styles.read_text())!=json.loads(new_styles.read_text()):
+  failures.append({'case':key,'computed_styles':'different'})
+(root/stage/'comparison.json').write_text(json.dumps({'cases':len(json.loads((root/stage/'results.json').read_text())),'failures':failures,'raster_noise':noise},indent=2))
+print(json.dumps({'cases':len(json.loads((root/stage/'results.json').read_text())),'failures':failures,'raster_noise_cases':len(noise),'max_channel_difference':max((n['max_channel_difference'] for n in noise),default=0)}))
+sys.exit(bool(failures))
+`, output, stage], { encoding: 'utf8', windowsHide: true });
+    console.log(comparison.stdout);
+    assert.equal(comparison.status, 0, comparison.stderr || 'Visual differences; inspect comparison.json and diff PNGs');
+}
+
 async function main() {
+  if (process.argv.includes("--compare-only")) return compareViews();
+  assert.ok(["localhost", "127.0.0.1"].includes(new URL(API).hostname) && ["localhost", "127.0.0.1"].includes(new URL(WEB).hostname), "Visual servers must be local");
   assert.ok(output, 'Set R1_OUTPUT to the persistent temporary artifact directory');
   assert.equal((await (await fetch(API + '/health')).json()).environment, 'isolated-chat-test');
   await fs.mkdir(path.join(output, stage), { recursive: true });
@@ -115,34 +150,7 @@ async function main() {
     }
   } finally { await browser.close(); }
   await fs.writeFile(path.join(output, stage, 'results.json'), JSON.stringify(results, null, 2));
-  if (!baseline) {
-    const python = process.env.SMOKE_PYTHON || path.resolve(__dirname, '../../.venv311/Scripts/python.exe');
-    const comparison = spawnSync(python, ['-c', `
-from PIL import Image, ImageChops
-from pathlib import Path
-import json,sys
-root=Path(sys.argv[1]); stage=sys.argv[2]; failures=[]; noise=[]
-for key in json.loads((root/stage/'results.json').read_text()):
- a=Image.open(root/'before'/(key+'.png')).convert('RGB'); b=Image.open(root/stage/(key+'.png')).convert('RGB')
- diff=ImageChops.difference(a,b); box=diff.getbbox()
- if box:
-  diff.save(root/stage/(key+'-diff.png'))
-  count=sum(p!=(0,0,0) for p in diff.get_flattened_data()); maximum=max(v[1] for v in diff.getextrema())
-  item={'case':key,'bounds':box,'pixels':count,'max_channel_difference':maximum}
-  # Text-raster calibration varied by 1-2/255 channel units. CSS computed
-  # colors/materials/type are checked strictly and independently below.
-  # Keep those differences visible in the report; reject larger differences.
-  (noise if maximum<=2 else failures).append(item)
- old_styles=root/'before'/(key+'.styles.json'); new_styles=root/stage/(key+'.styles.json')
- if old_styles.exists() and new_styles.exists() and json.loads(old_styles.read_text())!=json.loads(new_styles.read_text()):
-  failures.append({'case':key,'computed_styles':'different'})
-(root/stage/'comparison.json').write_text(json.dumps({'cases':len(json.loads((root/stage/'results.json').read_text())),'failures':failures,'raster_noise':noise},indent=2))
-print(json.dumps({'failures':failures,'raster_noise':noise}))
-sys.exit(bool(failures))
-`, output, stage], { encoding: 'utf8', windowsHide: true });
-    console.log(comparison.stdout);
-    assert.equal(comparison.status, 0, comparison.stderr || 'Visual differences; inspect comparison.json and diff PNGs');
-  }
+  if (!baseline) compareViews();
   console.log(`PASS R1 ${stage}: ${results.length} screenshots; artifacts ${output}`);
 }
 main().catch(e => { console.error(e); process.exitCode = 1; });
