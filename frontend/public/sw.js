@@ -65,6 +65,23 @@ self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") event.waitUntil(self.skipWaiting());
 });
 
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    const target = event.notification.data?.url;
+    const url = new URL(target || "/", self.location.origin);
+    if (url.origin !== self.location.origin) return;
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const client = windows.find((item) => item.url === url.href) || windows[0];
+    if (client) {
+      if (target && client.url !== url.href) await client.navigate(url.href);
+      await client.focus();
+    } else {
+      await self.clients.openWindow(url.href);
+    }
+  })());
+});
+
 // Ruta fija: renovar con red evita conservar un worker de otra versión de PDF.js.
 async function networkFirstPdfWorker(request) {
   const cache = await caches.open(STATIC_CACHE);

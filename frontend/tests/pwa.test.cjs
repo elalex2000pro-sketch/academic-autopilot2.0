@@ -112,3 +112,79 @@ test('un worker nuevo se activa y la navegación obtiene la página nueva de la 
   assert.ok([...next.stores.keys()].every(name => name.endsWith('test-next-deploy')));
   assert.equal(await (await next.request('/', { mode: 'navigate' })).text(), 'new page');
 });
+
+function notifications({ permission = 'granted', secure = true, supported = true, active = true, bridge, fail = false } = {}) {
+  const ts = require('typescript');
+  const calls = [];
+  class Registration {
+    active = active;
+    async showNotification(title, options) {
+      calls.push({ title, options });
+      if (fail) throw new Error('OS unavailable');
+    }
+  }
+  const Notification = { permission, async requestPermission() { calls.push('permission'); return 'granted'; } };
+  const globals = {
+    exports: {}, window: { Notification, isSecureContext: secure, autopilotDesktop: bridge }, Notification,
+    navigator: supported ? { serviceWorker: { async getRegistration() { return active ? new Registration() : undefined; } } } : {},
+    ServiceWorkerRegistration: Registration,
+  };
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname, '../src/lib/system-notifications.ts'), 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+  }).outputText, globals);
+  return { client: globals.exports, calls };
+}
+
+test('los avisos web usan showNotification sin construir Notification y conservan texto y destino', async () => {
+  const { client, calls } = notifications(); // Notification es un objeto, no un constructor.
+  assert.equal(client.supportsSystemNotifications(), true);
+  assert.equal(await client.showSystemNotification({ title: 'Aviso', body: 'Tarea', tag: 'hoy', url: '/planner' }), true);
+  assert.equal(calls[0].title, 'Aviso');
+  assert.equal(calls[0].options.body, 'Tarea');
+  assert.equal(calls[0].options.tag, 'hoy');
+  assert.equal(calls[0].options.data.url, '/planner');
+});
+
+test('sin soporte, permiso, worker activo o con fallo del sistema devuelve false sin bloquear', async () => {
+  for (const options of [{ supported: false }, { secure: false }, { permission: 'denied' }, { permission: 'default' }, { active: false }, { fail: true }]) {
+    const { client } = notifications(options);
+    assert.equal(await client.showSystemNotification({ title: 'Aviso', body: 'Tarea' }), false);
+  }
+  const denied = notifications({ permission: 'denied' });
+  assert.equal(await denied.client.ensureSystemNotificationPermission(), false);
+  assert.equal(denied.calls.length, 0);
+  const undecided = notifications({ permission: 'default' });
+  assert.equal(await undecided.client.ensureSystemNotificationPermission(), true);
+  assert.deepEqual(undecided.calls, ['permission']);
+});
+
+test('Electron conserva prioridad y puede recurrir al worker si falla su puente', async () => {
+  let nativeCalls = 0;
+  const native = notifications({ supported: false, bridge: { notify: async () => { nativeCalls++; return { ok: true }; } } });
+  assert.equal(await native.client.showSystemNotification({ title: 'Aviso', body: 'Tarea' }), true);
+  assert.equal(native.client.systemNotificationPermission(), 'granted');
+  assert.equal(nativeCalls, 1);
+  assert.equal(native.calls.length, 0);
+  const fallback = notifications({ bridge: { notify: async () => { throw new Error('native error'); } } });
+  assert.equal(await fallback.client.showSystemNotification({ title: 'Aviso', body: 'Tarea' }), true);
+  assert.equal(fallback.calls.length, 1);
+});
+
+test('pulsar el aviso enfoca o abre su destino del mismo origen, sin push', async () => {
+  const worker = workerHarness();
+  let closed = 0, focused = 0, navigated, opened;
+  const client = { url: 'https://app.test/', async navigate(url) { navigated = url; }, async focus() { focused++; } };
+  worker.self.clients.matchAll = async () => [client];
+  worker.self.clients.openWindow = async url => { opened = url; };
+  const event = url => ({ notification: { data: { url }, close() { closed++; } } });
+  await worker.dispatch('notificationclick', event('/planner'));
+  assert.equal(navigated, 'https://app.test/planner');
+  assert.equal(focused, 1);
+  worker.self.clients.matchAll = async () => [];
+  await worker.dispatch('notificationclick', event('/library'));
+  assert.equal(opened, 'https://app.test/library');
+  opened = undefined;
+  await worker.dispatch('notificationclick', event('https://other.test/'));
+  assert.equal(opened, undefined);
+  assert.equal(closed, 3);
+});

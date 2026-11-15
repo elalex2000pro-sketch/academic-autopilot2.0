@@ -3,7 +3,7 @@
 // Este modulo NO calcula que hay que avisar: eso lo hace `lib/notifications.ts`
 // (el mismo listado que alimenta el centro de avisos). Aqui solo se decide como
 // se muestra el aviso y se evita repetirlo:
-//   - Navegador / PWA -> API HTML5 `new Notification()`.
+//   - Navegador / PWA -> notificaciones del service worker.
 //   - Escritorio       -> puente IPC `autopilotDesktop.notify`, que usa el
 //                         proceso principal de Electron para lanzar la
 //                         notificacion nativa aunque la ventana este oculta.
@@ -32,13 +32,19 @@ function desktopBridge(): DesktopNotificationsBridge | null {
 
 export function supportsSystemNotifications(): boolean {
   if (typeof window === "undefined") return false;
-  return Boolean(desktopBridge()) || "Notification" in window;
+  return Boolean(desktopBridge()) || (
+    window.isSecureContext &&
+    "Notification" in window &&
+    "serviceWorker" in navigator &&
+    typeof ServiceWorkerRegistration !== "undefined" &&
+    typeof ServiceWorkerRegistration.prototype.showNotification === "function"
+  );
 }
 
 /** En Electron el permiso lo controla la app; en web lo decide el navegador. */
 export function systemNotificationPermission(): NotificationPermission | "unsupported" {
   if (desktopBridge()) return "granted";
-  if (typeof window === "undefined" || !("Notification" in window)) return "unsupported";
+  if (!supportsSystemNotifications()) return "unsupported";
   return Notification.permission;
 }
 
@@ -52,7 +58,7 @@ export function canNotifySystem(): boolean {
  */
 export async function ensureSystemNotificationPermission(): Promise<boolean> {
   if (desktopBridge()) return true;
-  if (typeof window === "undefined" || !("Notification" in window)) return false;
+  if (!supportsSystemNotifications()) return false;
   if (Notification.permission === "granted") return true;
   if (Notification.permission === "denied") return false;
   try {
@@ -77,20 +83,19 @@ export async function showSystemNotification(
     }
   }
 
-  if (typeof window === "undefined" || !("Notification" in window)) return false;
+  if (!supportsSystemNotifications()) return false;
   if (Notification.permission !== "granted") return false;
 
   try {
-    const notification = new Notification(payload.title, {
+    // getRegistration no espera indefinidamente si el worker aún no existe.
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (!registration?.active || typeof registration.showNotification !== "function") return false;
+    await registration.showNotification(payload.title, {
       body: payload.body,
       tag: payload.tag,
       silent: false,
+      data: { url: payload.url },
     });
-    notification.onclick = () => {
-      window.focus();
-      if (payload.url) window.location.assign(payload.url);
-      notification.close();
-    };
     return true;
   } catch {
     return false;
