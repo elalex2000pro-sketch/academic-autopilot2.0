@@ -295,7 +295,7 @@ export function PlannerTimetableTools({
               </div>
             </div>
 
-            <div className="rounded-2xl bg-slate-900/[0.02] p-3.5 lg:col-span-2 dark:bg-white/[0.02]">
+            <div className="min-w-0 rounded-2xl bg-slate-900/[0.02] p-3.5 lg:col-span-2 dark:bg-white/[0.02]">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
