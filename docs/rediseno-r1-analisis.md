@@ -1,4 +1,8 @@
-# R1 — Paso 1: análisis y propuesta, pendiente de aprobación
+# R1 — Paso 1: análisis y propuesta aprobados
+
+Análisis aprobado por el usuario. El contenido siguiente conserva la fotografía
+del paso 1; implementación y resultados de los pasos 2–3 en
+[`rediseno-r1-verificacion.md`](rediseno-r1-verificacion.md).
 
 15 de noviembre de 2026. Rama `feat/rediseno-r1-temas`, creada desde main
 actualizado en `07cf9e93d859d198409cd92df29b365233ab40ad` (PR #6).
