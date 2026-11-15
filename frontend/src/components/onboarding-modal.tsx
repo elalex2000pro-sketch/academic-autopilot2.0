@@ -82,7 +82,7 @@ const STEPS: OnboardingStep[] = [
     eyebrow: "Hazlo tuyo",
     title: "Ajustes",
     description:
-      "Conecta tus herramientas y elige cómo quieres trabajar. Autopilot se adapta a tu forma de estudiar.",
+      "Conecta tus herramientas y elige cómo quieres trabajar. Atlantium se adapta a tu forma de estudiar.",
     bullets: [
       "Conecta Moodle o Google Classroom para importar tareas.",
       "Elige tu motor de IA y activa los recordatorios.",

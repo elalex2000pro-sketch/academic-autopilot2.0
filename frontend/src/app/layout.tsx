@@ -16,16 +16,16 @@ import "./v18-theme.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Academic Autopilot",
-    template: "%s · Academic Autopilot",
+    default: "Atlantium",
+    template: "%s · Atlantium",
   },
   description:
     "Gestor academico autonomo: planifica tu estudio, organiza apuntes y consulta tu biblioteca, tambien sin conexion.",
-  applicationName: "Academic Autopilot",
+  applicationName: "Atlantium",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "Academic Autopilot",
+    title: "Atlantium",
     statusBarStyle: "default",
   },
   formatDetection: { telephone: false },

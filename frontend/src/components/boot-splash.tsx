@@ -42,7 +42,7 @@ export function BootSplash() {
       className="pointer-events-none fixed inset-0 z-[200] overflow-hidden bg-background transition-opacity duration-300 motion-reduce:transition-none"
       style={{ opacity: leaving ? 0 : 1 }}
     >
-      <span className="sr-only">Cargando Academic Autopilot…</span>
+      <span className="sr-only">Cargando Atlantium…</span>
       <SkeletonScreen />
     </div>
   );

@@ -293,7 +293,7 @@ export function InstallAppButton({
         Instalador para Windows 10 y 11
       </p>
       <p className="mt-1 text-xs leading-5 text-indigo-900/80 dark:text-indigo-100/80">
-        Descarga el archivo, ábrelo y sigue los pasos. Tendrás Academic Autopilot en su propia ventana,
+        Descarga el archivo, ábrelo y sigue los pasos. Tendrás Atlantium en su propia ventana,
         con acceso directo en el escritorio y sin abrir el navegador.
       </p>
       <Button
@@ -336,7 +336,7 @@ export function InstallAppButton({
         El instalador es para Windows
       </p>
       <p className="mt-1 text-xs leading-5 text-indigo-900/80 dark:text-indigo-100/80">
-        En este dispositivo puedes usar Autopilot como app web instalable, con su propia ventana y
+        En este dispositivo puedes usar Atlantium como app web instalable, con su propia ventana y
         acceso directo. Tus datos y tu cuenta son los mismos.
       </p>
       <p className="mt-2 text-[11px] leading-5 text-indigo-800/75 dark:text-indigo-200/75">
@@ -377,7 +377,7 @@ export function InstallAppButton({
             </span>
             <div>
               <h2 id="install-app-title" className="text-lg font-bold tracking-tight">
-                Instala Autopilot en tu ordenador
+                Instala Atlantium en tu ordenador
               </h2>
               <p className="text-xs text-muted-foreground">
                 Un programa propio para Windows, sin abrir el navegador.
@@ -450,7 +450,7 @@ export function InstallAppButton({
               <Download className="h-4 w-4 text-indigo-500" /> Otra opción: instalar como app web
             </p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Si no quieres descargar el instalador, puedes abrir Autopilot como una app web en este
+              Si no quieres descargar el instalador, puedes abrir Atlantium como una app web en este
               dispositivo. Es la misma cuenta y los mismos datos.
             </p>
             {webAppInstalled ? (

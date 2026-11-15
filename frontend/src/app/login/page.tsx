@@ -90,7 +90,7 @@ export default function LoginPage() {
         <div className="app-drag relative flex h-11 items-center border-b border-slate-300/40 bg-slate-100/60 px-4 dark:border-white/[0.06] dark:bg-white/[0.03]">
           <TrafficLights />
           <span className="pointer-events-none absolute inset-x-0 text-center text-[13px] font-medium text-muted-foreground">
-            Academic Autopilot
+            Atlantium
           </span>
         </div>
 
@@ -135,7 +135,7 @@ export default function LoginPage() {
               <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#1b1b1f] text-white shadow-sm">
                 <Logo className="h-6 w-6" />
               </span>
-              <span className="text-[13px] font-semibold">Academic Autopilot</span>
+              <span className="text-[13px] font-semibold">Atlantium</span>
             </div>
 
             {view === "recovery" ? (
