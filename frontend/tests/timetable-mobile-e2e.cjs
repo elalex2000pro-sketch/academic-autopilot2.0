@@ -15,7 +15,7 @@ const API='http://127.0.0.1:8000/api/v1',WEB='http://localhost:3000';
   }
   const browser=await chromium.launch({channel:'chrome',headless:true}),results=[];
   try{
-    for(const width of [1440,390,600,768,1024])for(const route of ['/schedule','/planner','/calendar']){
+    for(const width of (process.env.TIMETABLE_WIDTHS?JSON.parse(process.env.TIMETABLE_WIDTHS):[1440,390,600,768,1024]))for(const route of ['/schedule','/planner','/calendar']){
       const context=await browser.newContext({viewport:{width,height:960},serviceWorkers:'block'});
       await context.addInitScript(({token,user,entries})=>{
         localStorage.setItem('autopilot_token',token);localStorage.setItem('autopilot_user',JSON.stringify(user));localStorage.setItem('hasCompletedOnboarding_v1','true');
@@ -42,6 +42,11 @@ const API='http://127.0.0.1:8000/api/v1',WEB='http://localhost:3000';
           if(width<=600&&day===6)assert.ok(await region.evaluate(e=>e.scrollLeft>0),'Debe desplazarse hasta el último día');
           await button.click({timeout:4000});await page.locator('#planner-class-title').fill('Editado '+day);
           await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();
+        }
+        if(width===390){
+          await region.scrollIntoViewIfNeeded();await region.evaluate(e=>{e.scrollLeft=e.scrollWidth;});
+          await region.screenshot({path:path.join(output,stage,key+'-last-days.png'),animations:'disabled'});
+          await page.screenshot({path:path.join(output,stage,key+'-last-days-page.png'),animations:'disabled'});
         }
         await page.reload({waitUntil:'networkidle'});
         const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('customTimetable')));
