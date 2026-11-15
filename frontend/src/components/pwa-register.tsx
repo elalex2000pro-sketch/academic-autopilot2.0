@@ -38,17 +38,31 @@ export function PwaRegister() {
     if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
 
     const register = () => {
-      navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((error) => {
+      navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).catch((error) => {
         console.warn("No se pudo activar el modo sin conexión", error);
       });
     };
 
+    const update = () => {
+      if (!navigator.onLine || document.visibilityState !== "visible") return;
+      void navigator.serviceWorker.getRegistration().then((registration) => registration?.update()).catch(() => {});
+    };
+
+    window.addEventListener("online", update);
+    window.addEventListener("focus", update);
+    document.addEventListener("visibilitychange", update);
+
     if (document.readyState === "complete") {
       register();
-      return;
+    } else {
+      window.addEventListener("load", register, { once: true });
     }
-    window.addEventListener("load", register, { once: true });
-    return () => window.removeEventListener("load", register);
+    return () => {
+      window.removeEventListener("load", register);
+      window.removeEventListener("online", update);
+      window.removeEventListener("focus", update);
+      document.removeEventListener("visibilitychange", update);
+    };
   }, []);
 
   return null;
