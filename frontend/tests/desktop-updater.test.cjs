@@ -20,16 +20,35 @@ const versions = loadTs('src/lib/app-update.ts', id => {
   return require('../package.json');
 });
 
-async function checkMetadata(payload,desktop=false) {
+async function checkMetadata(payload,desktop=false,currentVersion='1.3.46',requests=[]) {
   const client=loadTs('src/lib/app-update.ts',()=>require('../package.json'),{
-    process:{env:{NEXT_PUBLIC_APP_VERSION:'1.3.46'}}, // versión de origen del ensayo, independiente del candidato
+    process:{env:{NEXT_PUBLIC_APP_VERSION:currentVersion}}, // versión de origen del ensayo, independiente del candidato
     Headers,AbortController,URL,setTimeout,clearTimeout,
     navigator:{userAgent:desktop?'AcademicAutopilotDesktop/1.3.46':''},
-    fetch:async()=>({ok:true,json:async()=>payload}),
+    fetch:async url=>{requests.push(url);return {ok:true,json:async()=>payload};},
   });
   return (await client.checkForUpdates()).update;
 }
 const asset={name:'Academic-Autopilot-Setup.exe',size:12345,browser_download_url:'https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases/download/v1.4.0/Academic-Autopilot-Setup.exe'};
+const publishedManifest=require('../public/version.json');
+test('el manifiesto publicado ofrece 1.4.0 a 1.3.46 con sus datos definitivos',async()=>{
+  const update=await checkMetadata(publishedManifest);
+  assert.equal(update.version,'1.4.0');
+  assert.equal(update.sizeBytes,112773372);
+  assert.equal(publishedManifest.publishedAt,'2026-11-15T19:11:05Z');
+  assert.equal(publishedManifest.enabled,true);
+});
+test('el manifiesto publicado no ofrece actualizar una 1.4.0 ni una superior',async()=>{
+  for(const installed of ['1.4.0','1.4.1','1.5.0'])assert.equal(await checkMetadata(publishedManifest,false,installed),null);
+});
+test('escritorio consulta GitHub y no el manifiesto web',async()=>{
+  const requests=[];
+  const update=await checkMetadata([{tag_name:'v1.4.0',assets:[{...asset,size:112773372}]}],true,'1.4.0',requests);
+  assert.equal(update.version,'1.4.0'); // la versión instalada procede de Electron: 1.3.46
+  assert.equal(update.channel,'desktop');
+  assert.equal(requests.length,1);
+  assert.match(requests[0],/^https:\/\/api\.github\.com\/repos\/elalex2000pro-sketch\/academic-autopilot2\.0\/releases/);
+});
 test('ignora borradores y preliminares incluso si falta su bandera',async()=>{
   for(const release of [{tag_name:'v1.4.0',draft:true},{tag_name:'v1.4.0',prerelease:true},{tag_name:'v1.4.0-beta.1'}])assert.equal(await checkMetadata([{...release,assets:[asset]}],true),null);
   assert.equal(await checkMetadata({version:'1.4.0-beta.1'}),null);
