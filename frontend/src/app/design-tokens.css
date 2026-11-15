@@ -582,4 +582,6 @@
   --material-html-dark-data-glass-pure-wallpaper-veil-background: rgb(10 10 10 / 0.3);
   --material-html-data-cosmetic-theme-aurora-app-shell-background-image: radial-gradient(70% 50% at 100% 0%, rgb(192 132 252 / 0.12), transparent 65%),
     radial-gradient(60% 45% at 0% 100%, rgb(0 102 255 / 0.07), transparent 70%);
+  --notification-dot-outline: 0 0 0 2px rgba(255,255,255,0.9);
+  --notification-dot-outline-dark: 0 0 0 2px rgba(0,0,0,0.55);
 }

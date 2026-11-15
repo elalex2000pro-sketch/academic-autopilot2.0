@@ -337,7 +337,7 @@ export function NotificationBell({ className }: { className?: string }) {
       {unreadCount > 0 && (
         <span
           aria-hidden
-          className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#FF3B30] shadow-[0_0_0_2px_rgba(255,255,255,0.9)] dark:shadow-[0_0_0_2px_rgba(0,0,0,0.55)]"
+          className="absolute right-1 top-1 h-2 w-2 rounded-full bg-system-red shadow-[shadow:var(--notification-dot-outline)] dark:shadow-[shadow:var(--notification-dot-outline-dark)]"
         />
       )}
     </Button>
