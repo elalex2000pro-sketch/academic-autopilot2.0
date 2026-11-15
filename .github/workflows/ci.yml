@@ -47,6 +47,8 @@ jobs:
       - run: node --test scripts/release/check.test.cjs
       - run: node --test tests/desktop-updater.test.cjs
         working-directory: frontend
+      - run: node --test tests/pwa.test.cjs
+        working-directory: frontend
       - run: npm run typecheck
         working-directory: frontend
       - run: npm run lint

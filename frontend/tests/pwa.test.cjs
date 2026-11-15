@@ -188,3 +188,38 @@ test('pulsar el aviso enfoca o abre su destino del mismo origen, sin push', asyn
   assert.equal(opened, undefined);
   assert.equal(closed, 3);
 });
+
+test('el registro evita caché HTTP y busca actualizaciones al volver, sin forzar recargas', async () => {
+  const ts = require('typescript');
+  const effects = [], events = {}, registrations = [];
+  let updates = 0;
+  const globals = {
+    exports: {}, process: { env: { NODE_ENV: 'production' } },
+    require: () => ({ useEffect: effect => effects.push(effect) }),
+    window: { addEventListener: (name, fn) => { events[name] = fn; }, removeEventListener: name => { delete events[name]; } },
+    document: { readyState: 'complete', visibilityState: 'visible', addEventListener: (name, fn) => { events[name] = fn; }, removeEventListener: name => { delete events[name]; } },
+    navigator: { onLine: true, serviceWorker: {
+      async register(url, options) { registrations.push({ url, options }); },
+      async getRegistration() { return { async update() { updates++; } }; },
+    } },
+  };
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname, '../src/components/pwa-register.tsx'), 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+  }).outputText, globals);
+  globals.exports.PwaRegister();
+  const cleanup = effects.map(effect => effect());
+  assert.equal(registrations[0].url, '/sw.js');
+  assert.equal(registrations[0].options.updateViaCache, 'none');
+  for (const name of ['online', 'focus', 'visibilitychange']) events[name]();
+  await Promise.resolve();
+  assert.equal(updates, 3);
+  globals.navigator.onLine = false;
+  events.focus();
+  globals.navigator.onLine = true;
+  globals.document.visibilityState = 'hidden';
+  events.visibilitychange();
+  await Promise.resolve();
+  assert.equal(updates, 3);
+  cleanup.forEach(fn => fn());
+  assert.deepEqual(events, {});
+});
