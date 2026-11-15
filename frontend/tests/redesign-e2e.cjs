@@ -100,6 +100,14 @@ async function main() {
         }
         assert.ok(stable, 'Screenshot must stabilize: ' + key);
         await fs.writeFile(path.join(output, stage, key + '.png'), shot);
+        const styles = await page.evaluate(() => {
+          const properties = ['color', 'backgroundColor', 'backgroundImage', 'boxShadow', 'borderRadius', 'borderColor', 'borderWidth', 'backdropFilter', 'fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing'];
+          return [...document.querySelectorAll('body, main, h1, h2, button, .v18-rail, [data-mobile-nav], .app-glass, .app-glass-strong, .glass-card')].map(e => {
+            const css = getComputedStyle(e);
+            return { tag: e.tagName, styles: Object.fromEntries(properties.map(p => [p, p === 'fontFamily' ? css[p].replace(/["']/g, '').replace(/\s*,\s*/g, ',') : css[p]])) };
+          });
+        });
+        await fs.writeFile(path.join(output, stage, key + '.styles.json'), JSON.stringify(styles));
         results.push(key);
       }
       assert.deepEqual(errors, []);
@@ -121,11 +129,13 @@ for key in json.loads((root/stage/'results.json').read_text()):
   diff.save(root/stage/(key+'-diff.png'))
   count=sum(p!=(0,0,0) for p in diff.get_flattened_data()); maximum=max(v[1] for v in diff.getextrema())
   item={'case':key,'bounds':box,'pixels':count,'max_channel_difference':maximum}
-  # Calibration exposed text-raster differences of 1-2/255 channel units.
-  # Alias-only CSS was also checked by exact declaration expansion. Keep all
-  # differences in the report; reject visible color/layout/content differences.
+  # Text-raster calibration varied by 1-2/255 channel units. CSS computed
+  # colors/materials/type are checked strictly and independently below.
   # Keep those differences visible in the report; reject larger differences.
-  (noise if maximum<=2 and count<=5000 else failures).append(item)
+  (noise if maximum<=2 else failures).append(item)
+ old_styles=root/'before'/(key+'.styles.json'); new_styles=root/stage/(key+'.styles.json')
+ if old_styles.exists() and new_styles.exists() and json.loads(old_styles.read_text())!=json.loads(new_styles.read_text()):
+  failures.append({'case':key,'computed_styles':'different'})
 (root/stage/'comparison.json').write_text(json.dumps({'cases':len(json.loads((root/stage/'results.json').read_text())),'failures':failures,'raster_noise':noise},indent=2))
 print(json.dumps({'failures':failures,'raster_noise':noise}))
 sys.exit(bool(failures))

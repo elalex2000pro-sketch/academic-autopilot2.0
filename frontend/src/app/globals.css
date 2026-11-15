@@ -1690,3 +1690,21 @@ html.dark .tt-tone-break {
     display: none;
   }
 }
+
+/* Preserve Tailwind colored-shadow composition at the consuming element. */
+@layer utilities {
+  .shadow-liquid { --tw-shadow-colored: var(--shadow-liquid-layer-0-geometry) var(--tw-shadow-color), var(--shadow-liquid-layer-1-geometry) var(--tw-shadow-color); }
+  .shadow-liquid-soft { --tw-shadow-colored: var(--shadow-liquid-soft-layer-0-geometry) var(--tw-shadow-color), var(--shadow-liquid-soft-layer-1-geometry) var(--tw-shadow-color); }
+  .shadow-glass { --tw-shadow-colored: var(--shadow-glass-layer-0-geometry) var(--tw-shadow-color), var(--shadow-glass-layer-1-geometry) var(--tw-shadow-color), var(--shadow-glass-layer-2-geometry) var(--tw-shadow-color); }
+  .shadow-glass-soft { --tw-shadow-colored: var(--shadow-glass-soft-layer-0-geometry) var(--tw-shadow-color), var(--shadow-glass-soft-layer-1-geometry) var(--tw-shadow-color); }
+  .shadow-liquid-dark { --tw-shadow-colored: var(--shadow-liquid-dark-layer-0-geometry) var(--tw-shadow-color), var(--shadow-liquid-dark-layer-1-geometry) var(--tw-shadow-color); }
+  .shadow-liquid-blue { --tw-shadow-colored: var(--shadow-liquid-blue-layer-0-geometry) var(--tw-shadow-color); }
+  .shadow-sm { --tw-shadow-colored: var(--shadow-sm-layer-0-geometry) var(--tw-shadow-color), var(--shadow-sm-layer-1-geometry) var(--tw-shadow-color); }
+  .shadow { --tw-shadow-colored: var(--shadow-default-layer-0-geometry) var(--tw-shadow-color), var(--shadow-default-layer-1-geometry) var(--tw-shadow-color); }
+  .shadow-md { --tw-shadow-colored: var(--shadow-md-layer-0-geometry) var(--tw-shadow-color), var(--shadow-md-layer-1-geometry) var(--tw-shadow-color); }
+  .shadow-lg { --tw-shadow-colored: var(--shadow-lg-layer-0-geometry) var(--tw-shadow-color), var(--shadow-lg-layer-1-geometry) var(--tw-shadow-color); }
+  .shadow-xl { --tw-shadow-colored: var(--shadow-xl-layer-0-geometry) var(--tw-shadow-color), var(--shadow-xl-layer-1-geometry) var(--tw-shadow-color); }
+  .shadow-window { --tw-shadow-colored: var(--shadow-window-layer-0-geometry) var(--tw-shadow-color), var(--shadow-window-layer-1-geometry) var(--tw-shadow-color), var(--shadow-window-layer-2-geometry) var(--tw-shadow-color), var(--shadow-window-layer-3-geometry) var(--tw-shadow-color); }
+  .shadow-pressed { --tw-shadow-colored: var(--shadow-pressed-layer-0-geometry) var(--tw-shadow-color); }
+  .shadow-button { --tw-shadow-colored: var(--shadow-button-layer-0-geometry) var(--tw-shadow-color), var(--shadow-button-layer-1-geometry) var(--tw-shadow-color), var(--shadow-button-layer-2-geometry) var(--tw-shadow-color); }
+}
