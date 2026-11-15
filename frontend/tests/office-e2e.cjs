@@ -7,11 +7,25 @@ const API='http://127.0.0.1:8000/api/v1';
 async function main(){
   const output=process.env.OFFICE_TRACE_OUTPUT || await fs.mkdtemp(path.join(os.tmpdir(),'office-revisions-'));
   await fs.mkdir(output,{recursive:true});
-  const trace=[]; let phase='inicio';
+  const trace=[], cleanup=[]; let phase='inicio';
   assert.equal((await (await fetch('http://127.0.0.1:8000/health')).json()).environment,'isolated-chat-test');
   const r=await fetch(API+'/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:`office${Date.now()}@example.com`,password:'OfficeBrowser123',full_name:'Prueba Office'})});
   const {access_token:token}=await r.json(); assert.ok(token);
   const user=await (await fetch(API+'/auth/me',{headers:{Authorization:'Bearer '+token}})).json();
+  const headers={Authorization:'Bearer '+token,'Content-Type':'application/json'};
+  const read=async id=>{
+    const response=await fetch(API+'/office/documents/'+id,{headers});assert.ok(response.ok);return response.json();
+  };
+  async function eventually(check,label){
+    const end=Date.now()+30000;
+    while(Date.now()<end){if(await check())return;await new Promise(resolve=>setTimeout(resolve,100));}
+    assert.fail(label);
+  }
+  async function bounded(promise,label){
+    let timer;
+    try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label)),15000);})]);}
+    finally{clearTimeout(timer);}
+  }
   const browser=await chromium.launch({channel:'chrome',headless:true});
   const context=await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true});
   await context.exposeBinding('officeTrace',(_source,event)=>{trace.push({phase,...event});});
@@ -67,9 +81,10 @@ async function main(){
   const dir=await fs.mkdtemp(path.join(os.tmpdir(),'office-browser-'));const html=path.join(dir,download.suggestedFilename());await download.saveAs(html);
   assert.ok((await fs.readFile(html,'utf8')).includes('Texto recuperado'));
   await page.getByRole('button',{name:'Archivo',exact:true}).click();
-  const chooser=page.waitForEvent('filechooser');await page.getByText('Abrir desde el PC...',{exact:true}).click();await (await chooser).setFiles(html);
   phase='importación HTML';
+  const chooser=page.waitForEvent('filechooser');await page.getByText('Abrir desde el PC...',{exact:true}).click();await (await chooser).setFiles(html);
   await editor.waitFor();await page.waitForTimeout(2000);assert.ok((await editor.innerText()).includes('Texto recuperado'));
+  assert.equal(trace.filter(e=>e.phase==='importación HTML'&&e.status===409).length,0,'La apertura del importado debe esperar al guardado saliente, sin PUT desfasados');
   // Offline draft survives, then retries against the real API.
   phase='desconexión';
   await page.route('**/api/v1/office/documents**', route => route.abort());
@@ -80,7 +95,6 @@ async function main(){
   await page.evaluate(() => window.dispatchEvent(new Event('online')));
   await page.getByRole('status').filter({hasText:'Guardado'}).waitFor();
   // A second client writes first; this editor must retain its own draft.
-  const headers={Authorization:'Bearer '+token,'Content-Type':'application/json'};
   const docs=await (await fetch(API+'/office/documents',{headers})).json();
   const current=await (await fetch(API+'/office/documents/'+docs[0].id,{headers})).json();
   const payload=Object.fromEntries(['title','kind','content','schema_version','settings','folder','revision'].map(k=>[k,current[k]]));
@@ -88,14 +102,95 @@ async function main(){
   await editor.fill('Mi cambio en conflicto');
   await page.getByRole('status').filter({hasText:'Conflicto de versión'}).waitFor();
   assert.ok(await page.evaluate(() => Object.keys(localStorage).some(k => k.startsWith('academic-office-draft:') && localStorage[k].includes('Mi cambio en conflicto'))));
+  await page.evaluate(()=>window.dispatchEvent(new Event('online')));
+  await page.getByRole('status').filter({hasText:'Conflicto de versión'}).waitFor();
+  assert.ok((await read(current.id)).content.includes('Cambio remoto'),'Reconectar no debe sobrescribir un conflicto real');
   await page.getByRole('button',{name:'Guardar como copia',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Guardado'}).waitFor();
+  await eventually(()=>!page.url().endsWith(current.id),'La copia debe abrir su propia ruta');
+  assert.ok((await read(current.id)).content.includes('Cambio remoto'),'El conflicto real no debe sobrescribir el servidor');
+
+  phase='respuesta perdida y recuperación';
+  const copyId=page.url().split('/').pop(), copyUrl='**/api/v1/office/documents/'+copyId;
+  let lost=false,offline=true;
+  await page.route(copyUrl,async route=>{
+    if(route.request().method()!=='PUT')return route.continue();
+    if(lost)return offline?route.abort():route.continue();
+    lost=true;const response=await route.fetch();assert.ok(response.ok());
+    await route.abort(); // El servidor confirmó el guardado, pero el editor no recibió la respuesta.
+  });
+  await editor.fill('Contenido confirmado con respuesta perdida');
+  await page.getByRole('status').filter({hasText:'Sin conexión'}).waitFor();
+  assert.ok((await read(copyId)).content.includes('respuesta perdida'));
+  offline=false;
+  await page.evaluate(()=>window.dispatchEvent(new Event('online')));
+  await page.getByRole('status').filter({hasText:'Guardado'}).waitFor();
+  assert.equal(await page.getByRole('status').filter({hasText:'Conflicto de versión'}).count(),0);
+  // La respuesta perdida no debe bloquear tampoco las ediciones posteriores.
+  lost=false;offline=true;
+  await editor.fill('Primer envío confirmado sin respuesta');
+  await page.getByRole('status').filter({hasText:'Sin conexión'}).waitFor();
+  await editor.fill('Edición posterior a la respuesta perdida');
+  await eventually(()=>page.evaluate(()=>Object.keys(localStorage).some(k=>k.startsWith('academic-office-draft:')&&localStorage[k].includes('Edición posterior'))),'Conservar la edición posterior en el borrador');
+  offline=false;await page.evaluate(()=>window.dispatchEvent(new Event('online')));
+  await page.getByRole('status').filter({hasText:'Guardado'}).waitFor();
+  assert.ok((await read(copyId)).content.includes('Edición posterior'));
+  await page.unroute(copyUrl);
+
+  phase='importación con PUT pendiente';
+  let entered,release,delivered,deliveryError;
+  const pendingPut=new Promise(resolve=>{entered=resolve}),gate=new Promise(resolve=>{release=resolve});
+  const delivery=new Promise(resolve=>{delivered=resolve});
+  cleanup.push(release);
+  let held=false;
+  await page.route(copyUrl,async route=>{
+    if(route.request().method()!=='PUT'||held)return route.continue();
+    held=true;const response=await route.fetch();entered();await gate;
+    try{await route.fulfill({response});}catch(error){deliveryError=error;}finally{delivered();}
+  });
+  await editor.fill('Último contenido antes de importar, debe conservarse');
+  await bounded(pendingPut,'Debe comenzar el PUT retenido antes de importar');
+  const postCount=trace.filter(e=>e.event==='request'&&e.method==='POST'&&e.url==='/api/v1/office/documents').length;
+  await page.getByRole('button',{name:'Archivo',exact:true}).click();
+  const pendingChooser=page.waitForEvent('filechooser');await page.getByText('Abrir desde el PC...',{exact:true}).click();await(await pendingChooser).setFiles(html);
+  assert.equal(trace.filter(e=>e.event==='request'&&e.method==='POST'&&e.url==='/api/v1/office/documents').length,postCount,'Importar debe esperar al PUT anterior');
+  assert.ok(await page.evaluate(()=>Object.keys(localStorage).some(k=>k.startsWith('academic-office-draft:')&&localStorage[k].includes('Último contenido antes de importar'))));
+  release();await bounded(delivery,'Debe entregarse la respuesta del PUT retenido');assert.equal(deliveryError,undefined);await page.unroute(copyUrl);
+  await eventually(()=>page.url().split('/').pop()!==copyId,'La importación debe abrir otro documento');
+  await editor.waitFor();
+  assert.ok((await read(copyId)).content.includes('Último contenido antes de importar'));
+  assert.ok((await editor.innerText()).includes('Texto recuperado'));
+  const importedId=page.url().split('/').pop();
+  await eventually(async()=>!(await page.getByRole('status').innerText()).includes('Guardando'),'La importación debe terminar de guardar');
+  assert.equal(await page.getByRole('status').filter({hasText:'Conflicto de versión'}).count(),0);
+
+  phase='cambio rápido mientras abre otro documento';
+  await page.getByRole('button',{name:'Volver a Office',exact:true}).click();await page.waitForURL('**/office');
+  let opening,finishOpen;
+  const opened=new Promise(resolve=>{opening=resolve}),openGate=new Promise(resolve=>{finishOpen=resolve});
+  cleanup.push(finishOpen);
+  await page.route(copyUrl,async route=>{
+    if(route.request().method()!=='GET')return route.continue();
+    const response=await route.fetch();opening();await openGate;
+    await route.fulfill({response}).catch(()=>{}); // La navegación puede cancelar esta lectura.
+  });
+  const copyTitle=(await read(copyId)).title;
+  await page.locator('article button').filter({has:page.getByText(copyTitle,{exact:true})}).first().click();await bounded(opened,'Debe comenzar la apertura retenida');
+  await page.goBack();await page.waitForURL('**/office');
+  const importedTitle=(await read(importedId)).title;
+  await page.locator('article button').filter({has:page.getByText(importedTitle,{exact:true})}).first().click();
+  await page.waitForURL('**/office/'+importedId);await editor.waitFor();
+  finishOpen();await page.unroute(copyUrl);
+  assert.ok((await editor.innerText()).includes('Texto recuperado'),'Una lectura antigua no debe reemplazar el documento actual');
+  assert.ok((await read(copyId)).content.includes('Último contenido antes de importar'));
+  assert.equal(trace.filter(e=>e.phase==='importación con PUT pendiente'&&e.status===409).length,0,'La importación con guardado pendiente tampoco debe enviar revisiones antiguas');
   await page.setViewportSize({width:390,height:844});
   await page.getByRole('button',{name:'Volver a Office',exact:true}).click();
   await page.getByRole('textbox',{name:'Buscar documentos'}).fill('Borrador');
   await page.locator('article').first().waitFor();
-  assert.deepEqual(errors,[]); console.log('PASS migration, create, autosave, close/reopen, copy, restore, HTML download/open, offline retry, conflict recovery and mobile library');
+  assert.deepEqual(errors,[]); console.log('PASS migration, autosave, restore, import with pending PUT, offline retry, lost response, real conflict/copy, rapid navigation, content preservation and mobile library');
   } finally {
+    cleanup.forEach(release=>release());
     await fs.writeFile(path.join(output,'revisions.json'),JSON.stringify(trace,null,2));
     console.log('Office revision trace: '+output);
     await browser.close();
