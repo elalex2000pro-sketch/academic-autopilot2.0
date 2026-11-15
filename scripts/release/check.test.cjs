@@ -1,5 +1,5 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
-const {checkVersions,checkRemote}=require('./check.cjs'),{createMetadata}=require('./metadata.cjs');
+const {checkVersions,checkRemote,checkDraft}=require('./check.cjs'),{createMetadata}=require('./metadata.cjs');
 test('versiones reales coherentes y rechazo de etiqueta distinta o preliminar',()=>{
   const v=checkVersions();assert.equal(checkVersions(undefined,'v'+v),v);for(const tag of ['v9.0.0','v'+v+'-beta.1'])assert.throws(()=>checkVersions(undefined,tag));
 });
@@ -9,6 +9,8 @@ test('todas las raíces de versión deben coincidir',()=>{
     fs.mkdirSync(path.dirname(path.join(tmp,file)),{recursive:true});fs.writeFileSync(path.join(tmp,file),JSON.stringify({version:'1.3.46',packages:{'':{version:'1.3.46'}}}));
   }
   assert.equal(checkVersions(tmp),'1.3.46');fs.writeFileSync(path.join(tmp,'desktop/package-lock.json'),JSON.stringify({version:'1.3.46',packages:{'':{version:'1.3.45'}}}));assert.throws(()=>checkVersions(tmp));
+  fs.mkdirSync(path.join(tmp,'docs/releases'),{recursive:true});fs.writeFileSync(path.join(tmp,'docs/releases/1.3.46.md'),'## Novedades\n- Una mejora.\n## Correcciones\n## Avisos');
+  assert.throws(()=>checkDraft(tmp,'1.3.46'));fs.writeFileSync(path.join(tmp,'frontend/public/version.json'),JSON.stringify({version:'1.3.46',enabled:false}));assert.equal(checkDraft(tmp,'1.3.46').length,1);
   }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 });
 test('CI y ambos Vercel del mismo commit son obligatorios',()=>{

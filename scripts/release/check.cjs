@@ -19,7 +19,7 @@ function checkRemote(runs,statuses,sha){
 async function remote(){
   assert.equal(process.env.GITHUB_EVENT_NAME,'push');assert.equal(process.env.GITHUB_REF_TYPE,'tag');
   const tag=process.env.GITHUB_REF_NAME;checkVersions(ROOT,tag);
-  require('./metadata.cjs').parseNotes(fs.readFileSync(path.join(ROOT,'docs/releases',tag.slice(1)+'.md'),'utf8'));
+  checkDraft(ROOT,tag.slice(1));
   const sha=cp.execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
   assert.equal(sha,cp.execFileSync('git',['rev-parse','origin/main'],{encoding:'utf8'}).trim(),'La etiqueta debe apuntar al main actual');
   const repo=process.env.GITHUB_REPOSITORY;
@@ -28,5 +28,10 @@ async function remote(){
   const statuses=await get('/commits/'+sha+'/statuses?per_page=100');
   checkRemote(runs.workflow_runs,statuses,sha);console.log('Versiones, etiqueta, CI y dos Vercel correctos para '+sha);
 }
-module.exports={checkVersions,checkRemote};
+function checkDraft(root,version){
+  const manifest=JSON.parse(fs.readFileSync(path.join(root,'frontend/public/version.json'),'utf8'));
+  assert.equal(manifest.enabled,false,'El candidato debe mantener el aviso web desactivado hasta la aprobación final');
+  return require('./metadata.cjs').parseNotes(fs.readFileSync(path.join(root,'docs/releases',version+'.md'),'utf8'));
+}
+module.exports={checkVersions,checkRemote,checkDraft};
 if(require.main===module)(async()=>{if(process.argv[2]==='--remote')await remote();else console.log(checkVersions(ROOT,process.argv[2]));})().catch(e=>{console.error(e.message);process.exitCode=1;});
