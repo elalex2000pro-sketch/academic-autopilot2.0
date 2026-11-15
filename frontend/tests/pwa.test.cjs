@@ -7,7 +7,8 @@ const PUBLIC = path.join(__dirname, '../public');
 
 test('el manifiesto conserva SVG y declara PNG reales de 192, 512 y maskable', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(PUBLIC, 'manifest.webmanifest')));
-  assert.ok(manifest.name && manifest.short_name);
+  assert.equal(manifest.name, 'Atlantium');
+  assert.equal(manifest.short_name, 'Atlantium');
   assert.equal(manifest.start_url, '/');
   assert.equal(manifest.scope, '/');
   assert.equal(manifest.display, 'standalone');

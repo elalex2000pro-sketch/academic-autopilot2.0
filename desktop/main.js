@@ -696,8 +696,8 @@ function runSmokeTest() {
         typeof result.href === "string" &&
         result.href.startsWith(APP_ORIGIN) &&
         String(result.userAgent).includes("AcademicAutopilotDesktop/") &&
-        (String(result.title).includes("Academic Autopilot") ||
-          String(result.text).includes("Academic Autopilot"));
+        (["Academic Autopilot", "Atlantium"].some((name) =>
+          String(result.title).includes(name) || String(result.text).includes(name)));
       finishSmoke(
         ok,
         ok

@@ -104,6 +104,7 @@ async function main() {
       current = route; const before = errors.length;
       const response = await page.goto(WEB + route, { waitUntil: 'domcontentloaded', timeout: 90000 });
       assert.ok(response && response.ok(), `${route}: HTTP ${response?.status()}`);
+      assert.match(await page.title(), /Atlantium/, route + ': nombre visible');
       await assertView(page, route, expected);
       await page.waitForTimeout(800);
       await assertNoFallback(page, route);
