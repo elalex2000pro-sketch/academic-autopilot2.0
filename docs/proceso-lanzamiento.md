@@ -39,6 +39,15 @@
    ausencia de ese campo). No anunciar un borrador en la web.
    Hasta tener artefacto real, sizeBytes=null: no mostrar un tamaño ficticio.
    latest*.yml lo genera electron-builder con los tamaños y hashes reales.
+   Comprobación obligatoria tras publicar: tomar sizeBytes del EXE publicado
+   (API de GitHub y manifiesto adjunto), no del candidato local. Son builds
+   independientes y no se presupone que tengan idéntico tamaño: en 1.4.0 el
+   candidato tenía 112.773.375 bytes y el publicado 112.773.372. No es un
+   redondeo; no se ha determinado la diferencia interna exacta del empaquetado.
+   Antes de cerrar el lanzamiento, verificar en la URL pública de Vercel la
+   versión, sizeBytes, publishedAt real de GitHub y enabled:true. Si difieren,
+   corregir solo el manifiesto web mediante PR; no reconstruir ni sustituir
+   instaladores, feeds o etiquetas publicados para igualar el candidato.
 
 ## Reversión
 
