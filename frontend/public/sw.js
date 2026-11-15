@@ -5,7 +5,8 @@
  *   (asi no se mezclan datos privados con la cache publica del service worker).
  * - Navegacion: red primero; si falla, usa la ultima pagina visitada.
  */
-const VERSION = "2026-11-09-1";
+const VERSION = "2026-11-16-1";
+const PDF_WORKER = "/pdf.worker.min.mjs";
 const PRECACHE = `autopilot-precache-${VERSION}`;
 const STATIC_CACHE = `autopilot-static-${VERSION}`;
 const PAGES_CACHE = `autopilot-pages-${VERSION}`;
@@ -17,6 +18,7 @@ const PRECACHE_URLS = [
   "/icons/icon-512.png",
   "/icons/icon-maskable-512.png",
   "/icons/apple-touch-icon.png",
+  PDF_WORKER,
 ];
 
 // Guarda el HTML inicial y los chunks que referencia. Sin esto, la primera
@@ -59,6 +61,42 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") event.waitUntil(self.skipWaiting());
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    const target = event.notification.data?.url;
+    const url = new URL(target || "/", self.location.origin);
+    if (url.origin !== self.location.origin) return;
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const client = windows.find((item) => item.url === url.href) || windows[0];
+    if (client) {
+      if (target && client.url !== url.href) await client.navigate(url.href);
+      await client.focus();
+    } else {
+      await self.clients.openWindow(url.href);
+    }
+  })());
+});
+
+// Ruta fija: renovar con red evita conservar un worker de otra versión de PDF.js.
+async function networkFirstPdfWorker(request) {
+  const cache = await caches.open(STATIC_CACHE);
+  try {
+    const response = await fetch(request, { cache: "no-cache" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    await cache.put(request, response.clone());
+    return response;
+  } catch (error) {
+    const cached = (await cache.match(request)) || (await caches.match(PDF_WORKER));
+    if (cached) return cached;
+    throw error;
+  }
+}
+
 async function networkFirstPage(request) {
   const cache = await caches.open(PAGES_CACHE);
   try {
@@ -94,10 +132,16 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
+  if (url.protocol !== "http:" && url.protocol !== "https:") return;
   if (url.origin !== self.location.origin) return;
 
   // La API se gestiona en la app con IndexedDB. Nunca se cachea aqui.
-  if (url.pathname.startsWith("/api/")) return;
+  if (url.pathname === "/api" || url.pathname.startsWith("/api/")) return;
+
+  if (url.pathname === PDF_WORKER) {
+    event.respondWith(networkFirstPdfWorker(request));
+    return;
+  }
 
   if (request.mode === "navigate") {
     event.respondWith(networkFirstPage(request));

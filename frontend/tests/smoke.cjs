@@ -74,6 +74,9 @@ async function main() {
   await request('/notebooks', token, 'POST', { title: 'Cuaderno de humo' });
   const channel = process.env.SMOKE_BROWSER_CHANNEL || 'chrome';
   browser = await chromium.launch({ headless: true, args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'], ...(channel === 'chromium' ? {} : { channel }) });
+  if (process.env.SMOKE_WEB_MODE === 'start') {
+    await require('./pwa-e2e.cjs').verifyPwa(browser, { WEB, API, token, user, office, output, pdfFixture });
+  }
   const reports = [];
   for (const viewport of [{ width: 1440, height: 960 }, { width: 390, height: 844 }]) {
     const context = await browser.newContext({ viewport, serviceWorkers: 'block', permissions: ['microphone'] });
