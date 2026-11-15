@@ -15,15 +15,12 @@ import {
   Cpu,
   Database,
   ExternalLink,
-  FileSpreadsheet,
   GraduationCap,
   KeyRound,
   LayoutDashboard,
   Loader2,
   LogOut,
-  NotebookText,
   Palette,
-  PenTool,
   Plus,
   RefreshCw,
   RotateCcw,
@@ -1081,135 +1078,6 @@ export function SettingsView() {
               </div>
             </SettingsGroup>
 
-            <SettingsGroup
-              icon={ExternalLink}
-              title="Herramientas externas"
-              description="Accesos directos y exportaciones, sin cuentas adicionales."
-            >
-              <div className="grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
-                <CompactIntegrationCard
-                  id="notebooklm"
-                  name="NotebookLM"
-                  description="Resúmenes, mapas y preguntas guiadas"
-                  icon={NotebookText}
-                  status="manual"
-                  expanded={openPanel === "notebooklm"}
-                  onToggle={() => togglePanel("notebooklm")}
-                >
-                  <p className="text-[10.5px] leading-4 text-slate-500 dark:text-white/35">
-                    Google todavía no ofrece una API pública. Genera tus resúmenes o infografías en
-                    IA Studio y súbelos a un cuaderno para estudiar con sus explicaciones y mapas.
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    <Button
-                      asChild
-                      size="sm"
-                      variant="outline"
-                      className="h-7 px-2.5 text-[11px]"
-                    >
-                      <a href="https://notebooklm.google.com" target="_blank" rel="noreferrer">
-                        Abrir NotebookLM
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </Button>
-                    <Button asChild size="sm" variant="ghost" className="h-7 px-2.5 text-[11px]">
-                      <button
-                        type="button"
-                        onClick={openAiDrawer}
-                        className="font-semibold underline underline-offset-2"
-                      >
-                        Abrir IA Studio
-                      </button>
-                    </Button>
-                  </div>
-                </CompactIntegrationCard>
-
-                <CompactIntegrationCard
-                  id="canva"
-                  name="Canva"
-                  description="Infografías y diseños editables"
-                  icon={PenTool}
-                  status="manual"
-                  expanded={openPanel === "canva"}
-                  onToggle={() => togglePanel("canva")}
-                >
-                  <ol className="list-decimal space-y-1 pl-4 text-[10.5px] leading-4 text-slate-500 dark:text-white/35">
-                    <li>Genera el diseño en IA Studio (Resumen, Infografía o Mapa mental).</li>
-                    <li>Descárgalo en PDF o Word.</li>
-                    <li>En Canva elige «Crear diseño» → «Importar» y edita colores y fuentes.</li>
-                  </ol>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    <Button
-                      asChild
-                      size="sm"
-                      variant="outline"
-                      className="h-7 px-2.5 text-[11px]"
-                    >
-                      <a href="https://www.canva.com/create/" target="_blank" rel="noreferrer">
-                        Abrir Canva
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </Button>
-                    <Button asChild size="sm" variant="ghost" className="h-7 px-2.5 text-[11px]">
-                      <button
-                        type="button"
-                        onClick={openAiDrawer}
-                        className="font-semibold underline underline-offset-2"
-                      >
-                        Abrir IA Studio
-                      </button>
-                    </Button>
-                  </div>
-                </CompactIntegrationCard>
-
-                <CompactIntegrationCard
-                  id="office"
-                  name="Word y Excel"
-                  description="Sube .docx/.xlsx y exporta tus datos"
-                  icon={FileSpreadsheet}
-                  status="manual"
-                  expanded={openPanel === "office"}
-                  onToggle={() => togglePanel("office")}
-                >
-                  <p className="text-[10.5px] leading-4 text-slate-500 dark:text-white/35">
-                    Sube tus apuntes desde Archivos o descarga tu información para abrirla en Word o
-                    Excel. Cada cuaderno también se descarga en Word desde Cuadernos.
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      className="h-7 px-2.5 text-[11px]"
-                      onClick={() =>
-                        void api
-                          .exportTasksExcel()
-                          .catch((error: unknown) => setNotice(String(error)))
-                      }
-                    >
-                      Tareas en Excel
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      className="h-7 px-2.5 text-[11px]"
-                      onClick={() =>
-                        void api
-                          .exportNotebooksExcel()
-                          .catch((error: unknown) => setNotice(String(error)))
-                      }
-                    >
-                      Cuadernos en Excel
-                    </Button>
-                    <Button asChild size="sm" variant="ghost" className="h-7 px-2.5 text-[11px]">
-                      <a href="/documents">Ir a Documentos</a>
-                    </Button>
-                  </div>
-                </CompactIntegrationCard>
-              </div>
-            </SettingsGroup>
-
             <SettingsCard
               icon={Cpu}
               title="Motor de IA Studio"
@@ -1797,7 +1665,7 @@ export function SettingsView() {
 
                 <SettingRow
                   title="Exportar tu información"
-                  description="Descarga tus tareas o cuadernos en Excel para abrirlos en Word o Excel."
+                  description="Descarga tus tareas o cuadernos en formato .xlsx."
                 >
                   <div className="flex flex-wrap gap-1.5">
                     <Button
