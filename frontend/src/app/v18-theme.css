@@ -111,7 +111,7 @@ html.dark body {
 
 /* El rail es intencionadamente oscuro en ambos temas, como en V18. */
 .v18-rail {
-  background-color: #1b1b1f;
+  background-color: rgb(var(--surface-inverse));
 }
 
 /* Pure Glass: una capa casi transparente con desenfoque intenso. Mantiene

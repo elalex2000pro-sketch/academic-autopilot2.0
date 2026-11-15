@@ -32,7 +32,7 @@ function TrafficLight({
   const sphere = (
     <span
       className={cn(
-        "flex h-4 w-4 items-center justify-center rounded-full shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.18)] transition-transform duration-150 group-hover:scale-105 group-active:scale-95",
+        "flex h-4 w-4 items-center justify-center rounded-full shadow-[shadow:var(--elevation-window-controls-8)] transition-transform duration-150 group-hover:scale-105 group-active:scale-95",
         color,
       )}
     >
@@ -97,7 +97,7 @@ export function WindowControls({ compact = false }: { compact?: boolean }) {
       key: "close",
       label: "Cerrar ventana",
       title: "Cerrar",
-      color: "bg-[#ff5f57]",
+      color: "bg-literal-ff5f57",
       icon: X,
       onClick: () => window.autopilotDesktop?.close(),
     },
@@ -105,7 +105,7 @@ export function WindowControls({ compact = false }: { compact?: boolean }) {
       key: "minimize",
       label: "Minimizar ventana",
       title: "Minimizar",
-      color: "bg-[#febc2e]",
+      color: "bg-literal-febc2e",
       icon: Minus,
       onClick: () => window.autopilotDesktop?.minimize(),
     },
@@ -113,7 +113,7 @@ export function WindowControls({ compact = false }: { compact?: boolean }) {
       key: "maximize",
       label: "Maximizar o restaurar ventana",
       title: "Maximizar / Restaurar",
-      color: "bg-[#28c840]",
+      color: "bg-literal-28c840",
       icon: Plus,
       onClick: () => window.autopilotDesktop?.toggleMaximize(),
     },

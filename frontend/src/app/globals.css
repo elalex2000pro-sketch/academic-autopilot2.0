@@ -1708,3 +1708,8 @@ html.dark .tt-tone-break {
   .shadow-pressed { --tw-shadow-colored: var(--shadow-pressed-layer-0-geometry) var(--tw-shadow-color); }
   .shadow-button { --tw-shadow-colored: var(--shadow-button-layer-0-geometry) var(--tw-shadow-color), var(--shadow-button-layer-1-geometry) var(--tw-shadow-color), var(--shadow-button-layer-2-geometry) var(--tw-shadow-color); }
 }
+
+.selection-indicator {
+  background-color: rgb(var(--selection-soft));
+  box-shadow: var(--tw-ring-offset-shadow, var(--shadow-empty)), var(--tw-ring-shadow, var(--shadow-empty)), var(--selection-indicator-shadow);
+}

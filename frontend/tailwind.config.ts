@@ -116,6 +116,17 @@ const config: Config = {
     extend: {
       fontFamily: { sans: ["var(--font-body)"], display: ["var(--font-display)"], mono: ["var(--font-mono)"] },
       colors: {
+        "literal-3f3852": "rgb(var(--literal-3f3852) / <alpha-value>)",
+        "text-on-selection": "rgb(var(--text-on-selection) / <alpha-value>)",
+        "surface-inverse": "rgb(var(--surface-inverse) / <alpha-value>)",
+        "selection-soft": "rgb(var(--selection-soft) / <alpha-value>)",
+        "literal-f4f4f7": "rgb(var(--literal-f4f4f7) / <alpha-value>)",
+        "literal-0c0c0f": "rgb(var(--literal-0c0c0f) / <alpha-value>)",
+        "literal-2a2a31": "rgb(var(--literal-2a2a31) / <alpha-value>)",
+        "literal-0b0f18": "rgb(var(--literal-0b0f18) / <alpha-value>)",
+        "literal-ff5f57": "rgb(var(--literal-ff5f57) / <alpha-value>)",
+        "literal-febc2e": "rgb(var(--literal-febc2e) / <alpha-value>)",
+        "literal-28c840": "rgb(var(--literal-28c840) / <alpha-value>)",
         white: "rgb(var(--palette-white) / <alpha-value>)",
         black: "rgb(var(--palette-black) / <alpha-value>)",
         border: "hsl(var(--border))",

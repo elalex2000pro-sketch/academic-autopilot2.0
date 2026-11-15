@@ -7,7 +7,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { chromium } = require('playwright-core');
 const { spawnSync } = require('node:child_process');
-const API = 'http://127.0.0.1:8000', WEB = 'http://localhost:3000';
+const API = process.env.R1_API || 'http://127.0.0.1:8000', WEB = process.env.R1_WEB || 'http://localhost:3000';
 const output = process.env.R1_OUTPUT;
 const baseline = process.argv.includes('--baseline');
 const selectorsOnly = process.argv.includes('--aurora-selectors');
