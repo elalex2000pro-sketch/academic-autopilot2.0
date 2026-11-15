@@ -1,10 +1,18 @@
 {
-  "version": "1.3.46",
-  "publishedAt": "2026-11-11T18:43:40.712015+00:00",
-  "sizeBytes": null,
+  "version": "1.4.0",
+  "publishedAt": null,
+  "generatedAt": "2026-11-15T18:45:24.118Z",
+  "sizeBytes": 112773375,
   "notes": [
-    "Office: DOCX nativo con importación, exportación y avisos de compatibilidad.",
-    "Búsqueda y reemplazo con deshacer agrupado y seis plantillas para documentos."
+    "El Chat recupera los mensajes pendientes al volver la conexión o regresar a la app.",
+    "Repaso permite usar los apuntes guardados de un cuaderno en Chat y Studio, y explica cómo configurar la IA cuando falta.",
+    "La app queda preparada para ofrecer distintos estilos más adelante, sin cambiar su aspecto actual.",
+    "Se corrige un conflicto de guardado de Office al cambiar de documento o importar; el horario permite desplazarse y editar los últimos días en móvil.",
+    "El aviso de actualizar ya no ofrece versiones iguales o anteriores a la instalada.",
+    "Configuración se simplifica: se retiran las tarjetas de Canva, NotebookLM y Word/Excel.",
+    "El instalador de Windows no está firmado y Windows puede mostrar un aviso de seguridad.",
+    "El instalador para Mac todavía no se ha probado."
   ],
-  "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases/tag/v1.3.46"
+  "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases/tag/v1.4.0",
+  "enabled": false
 }
