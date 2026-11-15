@@ -8,6 +8,7 @@ import {
   useContext,
   useEffect,
   useRef,
+  useState,
   type ReactNode,
 } from "react";
 
@@ -26,11 +27,17 @@ type Listener = (event: RealtimeEvent) => void;
 const RealtimeContext = createContext<(listener: Listener) => () => void>(
   () => () => {},
 );
+const RealtimeConnectedContext = createContext(false);
+
+export function useRealtimeConnected() {
+  return useContext(RealtimeConnectedContext);
+}
 
 export function RealtimeProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const userId = user?.id;
   const listeners = useRef<Set<Listener>>(new Set());
+  const [connected, setConnected] = useState(false);
 
   // Depender del id (y no del objeto User) evita reconectar el WebSocket cada
   // vez que `/auth/me` refresca el perfil con un objeto nuevo.
@@ -40,12 +47,29 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     let stopped = false;
     let retry = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let lastActivity = Date.now();
+    setConnected(false);
 
     const connect = () => {
+      if (stopped || !navigator.onLine) return;
+      if (timer) clearTimeout(timer);
+      if (ws) {
+        ws.onclose = null;
+        ws.onerror = null;
+        ws.onmessage = null;
+        ws.onopen = null;
+        ws.close();
+      }
+      setConnected(false);
       const url = realtimeUrl();
       if (!url) return;
-      ws = new WebSocket(url);
-      ws.onopen = () => {
+      const socket = new WebSocket(url);
+      ws = socket;
+      lastActivity = Date.now();
+      socket.onopen = () => {
+        if (stopped || ws !== socket) return;
+        lastActivity = Date.now();
+        setConnected(true);
         retry = 0;
         // Un dispositivo conectado confirma entrega incluso fuera de /chat.
         void chatApi.markAllDelivered().catch(() => undefined);
@@ -55,7 +79,9 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
           }
         });
       };
-      ws.onmessage = (message) => {
+      socket.onmessage = (message) => {
+        if (stopped || ws !== socket) return;
+        lastActivity = Date.now();
         try {
           const parsed = JSON.parse(message.data) as RealtimeEvent;
           if (parsed.event === "ping") return;
@@ -81,18 +107,47 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
           /* ignora mensajes no JSON */
         }
       };
-      ws.onclose = () => {
-        if (stopped) return;
+      socket.onclose = () => {
+        if (stopped || ws !== socket) return;
+        setConnected(false);
+        if (!navigator.onLine) return;
         retry = Math.min(retry + 1, 6);
         timer = setTimeout(connect, Math.min(1000 * retry, 15000));
       };
-      ws.onerror = () => ws?.close();
+      socket.onerror = () => socket.close();
     };
 
+    // El servidor envía ping cada 15 s: una conexión muda no está sana.
+    const watchdog = setInterval(() => {
+      if (ws && Date.now() - lastActivity > 45_000) {
+        setConnected(false);
+        ws.close();
+      }
+    }, 10_000);
+    const resume = () => {
+      if (document.visibilityState !== "visible" || !navigator.onLine) return;
+      if (!ws || ws.readyState === WebSocket.CLOSED || Date.now() - lastActivity > 45_000)
+        connect();
+    };
+    const offline = () => {
+      setConnected(false);
+      if (timer) clearTimeout(timer);
+      ws?.close();
+    };
+    window.addEventListener("online", resume);
+    window.addEventListener("offline", offline);
+    window.addEventListener("focus", resume);
+    document.addEventListener("visibilitychange", resume);
     connect();
     return () => {
       stopped = true;
+      setConnected(false);
       if (timer) clearTimeout(timer);
+      clearInterval(watchdog);
+      window.removeEventListener("online", resume);
+      window.removeEventListener("offline", offline);
+      window.removeEventListener("focus", resume);
+      document.removeEventListener("visibilitychange", resume);
       ws?.close();
     };
   }, [userId]);
@@ -106,7 +161,9 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
   return (
     <RealtimeContext.Provider value={subscribe}>
-      {children}
+      <RealtimeConnectedContext.Provider value={connected}>
+        {children}
+      </RealtimeConnectedContext.Provider>
     </RealtimeContext.Provider>
   );
 }

@@ -6,7 +6,7 @@ import asyncio
 import os
 import uuid
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 from urllib.parse import quote
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
@@ -619,16 +619,42 @@ async def list_messages(
     db: DbSession,
     limit: int = Query(50, ge=1, le=200),
     before: Annotated[datetime | None, Query()] = None,
+    after: Annotated[uuid.UUID | Literal["start"] | None, Query()] = None,
 ) -> list[ChatMessageRead]:
-    """Ultimos mensajes en orden cronologico; `before` carga los anteriores."""
+    """Historial reciente o una pagina ascendente posterior al mensaje `after`."""
     await _require_member(db, conversation_id, current_user.id)
+    if before is not None and after is not None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Usa before o after, no ambos",
+        )
 
     stmt = select(ChatMessage).where(ChatMessage.conversation_id == conversation_id)
-    if before is not None:
-        stmt = stmt.where(ChatMessage.created_at < before)
-    stmt = stmt.order_by(ChatMessage.created_at.desc()).limit(limit)
+    if after is not None:
+        stmt = stmt.order_by(ChatMessage.created_at.asc(), ChatMessage.id.asc())
+    if after is not None and after != "start":
+        # Scope the cursor to the authorized conversation, including for members
+        # who also belong to another conversation. Never expose a foreign cursor.
+        cursor = (
+            await db.execute(stmt.where(ChatMessage.id == after))
+        ).scalar_one_or_none()
+        if cursor is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Mensaje de referencia no encontrado",
+            )
+        stmt = stmt.where(
+            (ChatMessage.created_at > cursor.created_at)
+            | ((ChatMessage.created_at == cursor.created_at) & (ChatMessage.id > cursor.id))
+        )
+    elif after is None:
+        if before is not None:
+            stmt = stmt.where(ChatMessage.created_at < before)
+        stmt = stmt.order_by(ChatMessage.created_at.desc(), ChatMessage.id.desc())
+    stmt = stmt.limit(limit)
     messages = list((await db.execute(stmt)).scalars())
-    messages.reverse()
+    if after is None:
+        messages.reverse()
     if not messages:
         return []
 

@@ -16,7 +16,7 @@ import {
   ChatForwardModal,
   type ForwardTarget,
 } from "@/components/chat-forward-modal";
-import { useRealtime } from "@/components/realtime-provider";
+import { useRealtime, useRealtimeConnected } from "@/components/realtime-provider";
 import { setActiveChatConversation } from "@/lib/chat-active";
 import { Button } from "@/components/ui/button";
 import { VerifiedTick } from "@/components/verified-tick";
@@ -276,6 +276,7 @@ function mergeMessages(
 export function ChatView() {
   const { user, refreshUser } = useAuth();
   const meId = user?.id ?? "";
+  const realtimeConnected = useRealtimeConnected();
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -319,6 +320,11 @@ export function ChatView() {
   const openRequest = useRef(0);
   const listRequest = useRef(0);
   const shouldScroll = useRef(false);
+  const openController = useRef<AbortController | null>(null);
+  // Solo avanza tras una lectura REST completa; un evento WS puede saltarse
+  // mensajes emitidos durante una desconexión y no debe adelantar este cursor.
+  const catchupCursor = useRef<string | null>(null);
+  const syncNow = useRef<() => void>(() => {});
   activeIdRef.current = activeId;
   mobileThreadRef.current = mobileThread;
   messagesRef.current = messages;
@@ -327,6 +333,7 @@ export function ChatView() {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      openController.current?.abort();
     };
   }, []);
   useEffect(() => {
@@ -424,18 +431,20 @@ export function ChatView() {
     [threadVisible, atBottom],
   );
 
-  const refreshList = useCallback(async () => {
+  const refreshList = useCallback(async (signal?: AbortSignal) => {
     const request = ++listRequest.current;
     try {
-      const items = await chatApi.conversations();
-      if (mountedRef.current && request === listRequest.current) {
+      const items = await chatApi.conversations(signal);
+      if (!signal?.aborted && mountedRef.current && request === listRequest.current) {
         setConversations(sortConversations(items));
         setError(null);
       }
     } catch (caught) {
-      if (mountedRef.current) setError(readError(caught));
+      if (!signal?.aborted && mountedRef.current && request === listRequest.current)
+        setError(readError(caught));
+      if (signal) throw caught;
     } finally {
-      if (mountedRef.current) setLoadingList(false);
+      if (!signal?.aborted && mountedRef.current) setLoadingList(false);
     }
   }, []);
 
@@ -465,9 +474,13 @@ export function ChatView() {
 
   const openConversation = useCallback(
     async (id: string) => {
+      openController.current?.abort();
+      const controller = new AbortController();
+      openController.current = controller;
       const request = ++openRequest.current;
       activeIdRef.current = id;
       loadedConversation.current = null;
+      catchupCursor.current = null;
       setActiveId(id);
       setMobileThread(true);
       setLoadingThread(true);
@@ -478,23 +491,24 @@ export function ChatView() {
       setHasOlder(false);
       void refreshPresence(id);
       try {
-        const items = await chatApi.messages(id);
+        const items = await chatApi.messages(id, undefined, controller.signal);
         if (
-          !mountedRef.current ||
+          controller.signal.aborted || !mountedRef.current ||
           activeIdRef.current !== id ||
           request !== openRequest.current
         )
           return;
         loadedConversation.current = id;
+        catchupCursor.current = items.at(-1)?.id ?? null;
         shouldScroll.current = true;
         setMessages((current) => mergeMessages(items, current));
         setHasOlder(items.length === 50);
       } catch (caught) {
-        if (activeIdRef.current === id && request === openRequest.current)
+        if (!controller.signal.aborted && mountedRef.current && activeIdRef.current === id && request === openRequest.current)
           setError(readError(caught));
       } finally {
         if (
-          mountedRef.current &&
+          !controller.signal.aborted && mountedRef.current &&
           activeIdRef.current === id &&
           request === openRequest.current
         )
@@ -599,6 +613,95 @@ export function ChatView() {
     return () => window.clearInterval(timer);
   }, [activeId, refreshPresence]);
   useEffect(() => {
+    if (!meId || loadingThread) return;
+    let stopped = false;
+    let failures = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let controller: AbortController | null = null;
+    let refreshStatuses = realtimeConnected;
+    const generation = openRequest.current;
+    const available = () => navigator.onLine && document.visibilityState === "visible";
+    const pause = () => {
+      if (timer) clearTimeout(timer);
+      controller?.abort();
+      controller = null;
+    };
+    const run = async () => {
+      if (stopped || controller || !available()) return;
+      if (timer) clearTimeout(timer);
+      const request = new AbortController();
+      controller = request;
+      try {
+        const showingThread = window.matchMedia("(min-width: 768px)").matches || mobileThread;
+        if (activeId && showingThread) {
+          const bootstrap = loadedConversation.current !== activeId;
+          const items = bootstrap
+            ? await chatApi.messages(activeId, undefined, request.signal)
+            : await chatApi.messagesSince(activeId, catchupCursor.current, request.signal);
+          // Mantener también los recibos existentes tras perder eventos WS.
+          const recent = refreshStatuses
+            ? await chatApi.messages(activeId, undefined, request.signal)
+            : [];
+          if (stopped || request.signal.aborted || activeIdRef.current !== activeId || openRequest.current !== generation)
+            return;
+          if (bootstrap) {
+            loadedConversation.current = activeId;
+            setHasOlder(items.length === 50);
+          }
+          if (items.length || recent.length) {
+            shouldScroll.current = atBottom();
+            setMessages((current) => {
+              const reconciled = items.reduce((all, item) => mergeIncomingMessage(all, item, meId), current);
+              return mergeMessages(mergeMessages(reconciled, current.filter((item) => !item.pending)), recent);
+            });
+            if (items.length) catchupCursor.current = items[items.length - 1].id;
+            if (items.some((item) => item.sender_id !== meId))
+              await chatApi.markDelivered(activeId);
+          }
+          refreshStatuses = false;
+          if (!request.signal.aborted)
+            requestAnimationFrame(() => void markVisibleRead(activeId));
+        }
+        if (stopped || request.signal.aborted) return;
+        await refreshList(request.signal);
+        failures = 0;
+      } catch (caught) {
+        if (!stopped && !request.signal.aborted) {
+          failures = Math.min(failures + 1, 4);
+          setError(readError(caught));
+        }
+      } finally {
+        if (controller === request) {
+          controller = null;
+          if (!stopped && available())
+            timer = setTimeout(() => void run(), Math.min((realtimeConnected ? 30_000 : 5_000) * 2 ** failures, 60_000));
+        }
+      }
+    };
+    const resume = () => {
+      if (!available()) { pause(); return; }
+      refreshStatuses = true;
+      void run();
+    };
+    syncNow.current = resume;
+    window.addEventListener("online", resume);
+    window.addEventListener("offline", pause);
+    window.addEventListener("focus", resume);
+    window.addEventListener("pageshow", resume);
+    document.addEventListener("visibilitychange", resume);
+    void run();
+    return () => {
+      stopped = true;
+      pause();
+      syncNow.current = () => {};
+      window.removeEventListener("online", resume);
+      window.removeEventListener("offline", pause);
+      window.removeEventListener("focus", resume);
+      window.removeEventListener("pageshow", resume);
+      document.removeEventListener("visibilitychange", resume);
+    };
+  }, [activeId, loadingThread, mobileThread, meId, realtimeConnected, atBottom, markVisibleRead, refreshList]);
+  useEffect(() => {
     if (!forwardNotice) return;
     const timer = window.setTimeout(() => setForwardNotice(null), 4000);
     return () => window.clearTimeout(timer);
@@ -606,17 +709,10 @@ export function ChatView() {
 
   useRealtime((event) => {
     if (event.event === "reconnected") {
-      void refreshList();
+      syncNow.current();
       const id = activeIdRef.current;
       if (id) {
         void refreshPresence(id);
-        void chatApi
-          .messages(id)
-          .then((items) => {
-            if (activeIdRef.current === id)
-              setMessages((current) => mergeMessages(current, items));
-          })
-          .catch(() => undefined);
       }
       return;
     }

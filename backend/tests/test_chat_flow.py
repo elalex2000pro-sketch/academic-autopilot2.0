@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+import uuid
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
 from chat_test_server import create_test_app
 from fastapi.testclient import TestClient
 
+from app.api.v1 import realtime
 from app.core.rate_limit import limiter
+from app.models.chat import ChatMessage
 
 
 @pytest.fixture
@@ -217,3 +220,80 @@ def test_read_cursor_does_not_acknowledge_unseen_messages(client):
     assert client.post(base + "/read?through=" + second["id"], headers=bob).status_code == 204
     client.post(base + "/read?through=" + first["id"], headers=bob)
     assert client.get("/api/v1/chat/conversations", headers=bob).json()[0]["unread_count"] == 0
+
+
+def test_incremental_messages_paginate_without_gaps_or_duplicates(client):
+    alice, a, _ = account(client, "alice")
+    bob, b, _ = account(client, "bob")
+    conversation = direct(client, alice, b["username"])
+    base = "/api/v1/chat/conversations/" + conversation + "/messages"
+    # More than 50 pending messages, including timestamp ties across pages.
+    start = datetime(2026, 1, 1, tzinfo=UTC)
+    # Include hexadecimal letters so SQLite's UUID column never coerces IDs
+    # made only of digits into integers (unlike PostgreSQL's native UUID type).
+    ids = [uuid.UUID(int=(0xABCDEF << 104) + i + 1) for i in range(128)]
+
+    async def seed():
+        async with realtime.AsyncSessionLocal() as session:
+            session.add_all([
+                ChatMessage(
+                    id=message_id,
+                    conversation_id=uuid.UUID(conversation),
+                    sender_id=uuid.UUID(a["id"]),
+                    content=str(index),
+                    created_at=start + timedelta(seconds=index // 65),
+                )
+                for index, message_id in reversed(list(enumerate(ids)))
+            ])
+            await session.commit()
+
+    client.portal.call(seed)
+    start_page = client.get(base, headers=bob, params={"after": "start", "limit": 17})
+    assert start_page.status_code == 200
+    assert [item["id"] for item in start_page.json()] == [str(value) for value in ids[:17]]
+    latest = client.get(base, headers=bob).json()
+    assert [item["id"] for item in latest] == [str(value) for value in ids[-50:]]
+    # The old history request remains available.
+    older = client.get(base, headers=bob, params={"before": start + timedelta(seconds=1)}).json()
+    assert len(older) == 50 and all(item["created_at"].startswith("2026-01-01T00:00:00") for item in older)
+
+    cursor = str(ids[0])
+    recovered = []
+    for _ in range(10):
+        response = client.get(base, headers=bob, params={"after": cursor, "limit": 17})
+        assert response.status_code == 200, response.text
+        page = response.json()
+        if not page:
+            break
+        recovered.extend(page)
+        cursor = page[-1]["id"]
+    assert [item["id"] for item in recovered] == [str(value) for value in ids[1:]]
+    assert len({item["id"] for item in recovered}) == 127
+    assert all(item["status"] == "sent" for item in recovered)
+    assert client.get(base, headers=bob, params={"after": cursor}).json() == []
+    # A later write is picked up using the same last cursor, without old history.
+    sent = client.post(base, headers=alice, data={"content": "Nuevo"}).json()
+    assert [item["id"] for item in client.get(base, headers=bob, params={"after": cursor}).json()] == [sent["id"]]
+
+
+def test_incremental_messages_validate_cursor_and_membership(client):
+    alice, _, _ = account(client, "alice")
+    bob, b, _ = account(client, "bob")
+    outsider, c, _ = account(client, "eve")
+    conversation = direct(client, alice, b["username"])
+    other_conversation = direct(client, alice, c["username"])
+    base = "/api/v1/chat/conversations/" + conversation + "/messages"
+    other_base = "/api/v1/chat/conversations/" + other_conversation + "/messages"
+    message = client.post(base, headers=alice, data={"content": "Privado"}).json()
+    foreign = client.post(other_base, headers=alice, data={"content": "Otro hilo"}).json()
+    assert client.get(base, params={"after": message["id"]}).status_code == 401
+    assert client.get(base, headers=outsider, params={"after": "start"}).status_code == 403
+    assert client.get(base, headers=outsider, params={"after": message["id"]}).status_code == 403
+    for cursor in [str(uuid.uuid4()), foreign["id"]]:
+        response = client.get(base, headers=bob, params={"after": cursor})
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Mensaje de referencia no encontrado"
+    assert client.get(base, headers=bob, params={"after": "invalid"}).status_code == 422
+    assert client.get(base, headers=bob, params={"after": message["id"], "before": message["created_at"]}).status_code == 422
+    for limit in [0, 201]:
+        assert client.get(base, headers=bob, params={"after": message["id"], "limit": limit}).status_code == 422
