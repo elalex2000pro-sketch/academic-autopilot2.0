@@ -2,6 +2,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { OfficeData, OfficeDocument, OfficeError, officeDraftKey, officeRequest } from "@/lib/office-storage";
 
+// Un cambio de ruta monta otro editor antes de que termine el guardado saliente.
+const documentSaves = new Map<string, Promise<boolean>>();
+function documentData(value: OfficeData): OfficeData {
+  return { title: value.title, kind: value.kind, content: value.content, schema_version: value.schema_version, settings: value.settings, folder: value.folder };
+}
+
 export function useOfficeStorage(data: OfficeData, load: (doc: OfficeData) => void) {
   const [active, setActive] = useState<OfficeDocument | null>(null);
   const [status, setStatus] = useState("Sin guardar");
@@ -14,6 +20,7 @@ export function useOfficeStorage(data: OfficeData, load: (doc: OfficeData) => vo
   const checkpointRevision = useRef(0);
   const pending = useRef<Promise<boolean> | null>(null);
   const blocked = useRef(false);
+  const unconfirmed = useRef<{ id: string; revision: number; data: OfficeData } | null>(null);
   const persist = useCallback(() => {
     try { localStorage.setItem(officeDraftKey(docRef.current?.id || "new"), JSON.stringify({ data: current.current, revision: docRef.current?.revision, import_key: draftKey.current })); return true; }
     catch { setError("No hay espacio para conservar el borrador local. Guarda una copia en el PC."); return false; }
@@ -21,9 +28,9 @@ export function useOfficeStorage(data: OfficeData, load: (doc: OfficeData) => vo
   const save = useCallback(async (checkpoint = false): Promise<boolean> => {
     if (pending.current) { await pending.current; return saveRef.current(checkpoint); }
     if (blocked.current) return false;
+    const doc = docRef.current;
     const task = (async () => {
       const value = { ...current.current }; const serialized = JSON.stringify(value);
-      const doc = docRef.current;
       try {
         if (serialized === baseline.current && doc) {
           if (checkpoint && checkpointRevision.current !== doc.revision) {
@@ -32,13 +39,32 @@ export function useOfficeStorage(data: OfficeData, load: (doc: OfficeData) => vo
           return true;
         }
         persist(); setStatus("Guardando");
-        const saved = await officeRequest<OfficeDocument>(doc ? `/${doc.id}` : "", doc ? "PUT" : "POST", { ...value, ...(doc ? { revision: doc.revision, checkpoint } : { import_key: draftKey.current }) });
+        let saved: OfficeDocument;
+        try {
+          saved = await officeRequest<OfficeDocument>(doc ? `/${doc.id}` : "", doc ? "PUT" : "POST", { ...value, ...(doc ? { revision: doc.revision, checkpoint } : { import_key: draftKey.current }) });
+        } catch (e) {
+          if (!(e instanceof OfficeError) && doc && !unconfirmed.current) {
+            unconfirmed.current = { id: doc.id, revision: doc.revision, data: documentData(value) };
+          }
+          if (!(e instanceof OfficeError) || e.status !== 409 || !doc) throw e;
+          // Una respuesta perdida puede ocultar un guardado ya confirmado.
+          // Solo adoptar esa revisión si TODOS los datos enviados coinciden.
+          const remote = await officeRequest<OfficeDocument>(`/${doc.id}`);
+          const remoteData = JSON.stringify(documentData(remote));
+          if (remoteData === JSON.stringify(documentData(value))) saved = remote;
+          else if (unconfirmed.current?.id === doc.id && unconfirmed.current.revision === doc.revision && remote.revision === doc.revision + 1 && remoteData === JSON.stringify(unconfirmed.current.data)) {
+            // El usuario pudo seguir editando tras perder la respuesta anterior.
+            // La revisión remota debe ser exactamente aquel envío, sin cambios ajenos.
+            saved = await officeRequest<OfficeDocument>(`/${doc.id}`, "PUT", { ...value, revision: remote.revision, checkpoint });
+          } else throw e;
+        }
         if (!doc && (saved.content !== value.content || saved.title !== value.title || JSON.stringify(saved.settings) !== JSON.stringify(value.settings))) {
           // Una creación anterior pudo llegar al servidor aunque se perdiera la respuesta.
           // Su respuesta idempotente no confirma que este borrador más reciente esté guardado.
           docRef.current = saved; setActive(saved);
           throw new OfficeError(409, "El servidor recuperó una creación anterior. Conservamos tu borrador más reciente; guárdalo como copia.");
         }
+        unconfirmed.current = null;
         docRef.current = saved; setActive(saved); baseline.current = serialized;
         if (checkpoint || !doc) checkpointRevision.current = saved.revision;
         setStatus("Guardado"); setError(""); setSavedAt(Date.now());
@@ -55,12 +81,17 @@ export function useOfficeStorage(data: OfficeData, load: (doc: OfficeData) => vo
       }
     })();
     pending.current = task;
-    try { return await task; } finally { if (pending.current === task) pending.current = null; }
+    if (doc) documentSaves.set(doc.id, task);
+    try { return await task; } finally {
+      if (pending.current === task) pending.current = null;
+      if (doc && documentSaves.get(doc.id) === task) documentSaves.delete(doc.id);
+    }
   }, [persist]);
   const draftKey = useRef(crypto.randomUUID());
   const install = useCallback((doc: OfficeDocument | null, value: OfficeData) => {
     docRef.current = doc; setActive(doc); blocked.current = false;
-    const clean: OfficeData = { title: value.title, kind: value.kind, content: value.content, schema_version: value.schema_version, settings: value.settings, folder: value.folder };
+    unconfirmed.current = null;
+    const clean = documentData(value);
     baseline.current = JSON.stringify(clean); current.current = clean;
     draftKey.current = crypto.randomUUID(); checkpointRevision.current = 0;
     loader.current(value); setStatus(doc ? "Guardado" : "Sin guardar"); setError("");
@@ -68,6 +99,7 @@ export function useOfficeStorage(data: OfficeData, load: (doc: OfficeData) => vo
   const open = useCallback(async (id: string) => {
     if (pending.current) await pending.current;
     if (JSON.stringify(current.current) !== baseline.current && !await save(true)) return;
+    while (documentSaves.has(id)) await documentSaves.get(id);
     const doc = await officeRequest<OfficeDocument>(`/${id}`);
     const raw = localStorage.getItem(officeDraftKey(id));
     install(doc, doc);
