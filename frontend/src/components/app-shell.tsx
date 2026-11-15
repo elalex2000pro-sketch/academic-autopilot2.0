@@ -69,7 +69,7 @@ const HEADER_CONTROL =
 const HEADER_CONTROL_FLAT = "flex items-center justify-center p-2";
 
 const HEADER_BUTTON =
-  "h-9 w-9 rounded-full text-[#3f3852] hover:bg-white/60 hover:text-[#1d1d1f] dark:text-white/65 dark:hover:bg-white/10 dark:hover:text-white";
+  "h-9 w-9 rounded-full text-literal-3f3852 hover:bg-white/60 hover:text-text-on-selection dark:text-white/65 dark:hover:bg-white/10 dark:hover:text-white";
 
 function RailNavLink({
   href,
@@ -105,7 +105,7 @@ function RailNavLink({
           aria-hidden="true"
           className={cn(
             "h-[19px] w-[19px] transition-colors",
-            active ? "text-[#1d1d1f]" : "text-white/55 group-hover:text-white",
+            active ? "text-text-on-selection" : "text-white/55 group-hover:text-white",
           )}
           strokeWidth={active ? 2.05 : 1.8}
         />
@@ -198,7 +198,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (loading || !user) {
     return (
       <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-transparent text-slate-500 dark:text-white/45">
-        <Loader2 className="h-5 w-5 animate-spin text-[#1d1d1f] dark:text-white" />
+        <Loader2 className="h-5 w-5 animate-spin text-text-on-selection dark:text-white" />
         <span className="text-[12.5px]">Cargando tu espacio…</span>
       </div>
     );
@@ -227,7 +227,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <aside
           ref={railRef}
           className={cn(
-            "v18-rail hide-scrollbar relative sticky top-3 hidden h-[calc(100dvh-1.5rem)] shrink-0 flex-col items-center overflow-y-auto overflow-x-hidden rounded-[32px] border border-white/10 bg-[#1b1b1f] pb-4 pt-2 shadow-[0_30px_70px_-30px_rgba(20,20,28,0.72),inset_0_1px_0_rgba(255,255,255,0.09)] transition-[width] duration-200 md:flex",
+            "v18-rail hide-scrollbar relative sticky top-3 hidden h-[calc(100dvh-1.5rem)] shrink-0 flex-col items-center overflow-y-auto overflow-x-hidden rounded-[var(--radius-32)] border border-white/10 bg-surface-inverse pb-4 pt-2 shadow-[shadow:var(--elevation-app-shell-0)] transition-[width] duration-200 md:flex",
             sidebarLayout.side === "right" ? "mr-4" : "ml-4",
             sidebarLayout.collapsed ? "w-[62px]" : "w-[78px]",
           )}
@@ -235,7 +235,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {railBubble ? (
             <motion.div
               aria-hidden="true"
-              className="pointer-events-none absolute left-0 top-0 h-11 w-11 rounded-full bg-[#e9e4f6] shadow-[0_10px_24px_-12px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.75)]"
+              className="pointer-events-none absolute left-0 top-0 h-11 w-11 rounded-full bg-selection-soft shadow-[shadow:var(--elevation-app-shell-1)]"
               initial={false}
               animate={{ x: railBubble.x, y: railBubble.y }}
               transition={reduceMotion ? { duration: 0 } : RAIL_SPRING}
@@ -318,20 +318,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 "sticky top-0 z-40 border-b pt-[env(safe-area-inset-top,0px)] md:hidden",
                 isOffice
                   ? "border-transparent bg-transparent"
-                  : "border-black/[0.04] bg-[#f4f4f7]/82 backdrop-blur-2xl dark:border-white/[0.06] dark:bg-[#0c0c0f]/82",
+                  : "border-black/[0.04] bg-literal-f4f4f7/82 backdrop-blur-2xl dark:border-white/[0.06] dark:bg-literal-0c0c0f/82",
               )}
             >
               <div className="flex items-center justify-between gap-2 px-3 py-2">
                 <Link
                   href="/"
-                  className="flex min-w-0 items-center gap-2.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[#1d1d1f]/25 dark:focus-visible:ring-white/35"
+                  className="flex min-w-0 items-center gap-2.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-text-on-selection/25 dark:focus-visible:ring-white/35"
                   aria-label="Academic Autopilot · Inicio"
                 >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#1b1b1f] text-white">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-inverse text-white">
                     <Logo className="h-6 w-6" />
                   </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-[12.5px] font-semibold leading-tight tracking-[-0.02em] text-[#1d1d1f] dark:text-white/90">
+                    <span className="block truncate text-[12.5px] font-semibold leading-tight tracking-[-0.02em] text-text-on-selection dark:text-white/90">
                       Academic Autopilot
                     </span>
                     <span className="block truncate text-[9.5px] leading-tight text-black/45 dark:text-white/35">
@@ -367,7 +367,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       className={cn(
                         "flex h-11 shrink-0 touch-manipulation items-center gap-1.5 rounded-full px-3 text-[11px] font-medium transition-colors",
                         active
-                          ? "bg-[#1b1b1f] text-white shadow-[0_6px_16px_-9px_rgba(0,0,0,0.7)]"
+                          ? "bg-surface-inverse text-white shadow-[shadow:var(--elevation-app-shell-2)]"
                           : "bg-white/55 text-black/55 hover:bg-white/80 hover:text-black/80 dark:bg-white/[0.06] dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white/85",
                       )}
                     >
@@ -406,7 +406,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   href="/settings"
                   aria-label={`Perfil de ${name}`}
                   title={name}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1b1b1f] text-[10.5px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16)] outline-none transition-colors hover:bg-[#2a2a31] focus-visible:ring-2 focus-visible:ring-[#1d1d1f]/25 dark:bg-[#e9e4f6] dark:text-[#1d1d1f] dark:hover:bg-white dark:focus-visible:ring-white/40"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-inverse text-[10.5px] font-semibold text-white shadow-[shadow:var(--elevation-app-shell-3)] outline-none transition-colors hover:bg-literal-2a2a31 focus-visible:ring-2 focus-visible:ring-text-on-selection/25 dark:bg-selection-soft dark:text-text-on-selection dark:hover:bg-white dark:focus-visible:ring-white/40"
                 >
                   {initials}
                 </Link>
@@ -463,7 +463,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               role="dialog"
               aria-modal="true"
               aria-label="IA Studio"
-              className="flex h-dvh w-full min-w-0 max-w-[480px] flex-col overflow-hidden border-l border-white/15 bg-[#f4f4f7]/92 shadow-[-30px_0_80px_-40px_rgba(15,23,42,0.65)] backdrop-blur-3xl dark:border-white/10 dark:bg-[#0b0f18]/94"
+              className="flex h-dvh w-full min-w-0 max-w-[480px] flex-col overflow-hidden border-l border-white/15 bg-literal-f4f4f7/92 shadow-[shadow:var(--elevation-app-shell-4)] backdrop-blur-3xl dark:border-white/10 dark:bg-literal-0b0f18/94"
               initial={{ x: 64, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 64, opacity: 0 }}

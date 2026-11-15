@@ -10,6 +10,7 @@ import { RealtimeProvider } from "@/components/realtime-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { WallpaperBackdrop } from "@/components/wallpaper-backdrop";
 
+import "./design-tokens.css";
 import "./globals.css";
 import "./v18-theme.css";
 

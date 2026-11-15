@@ -18,6 +18,20 @@ App de estudio entre alumnos. Frontend Next.js/React, API FastAPI y escritorio E
 
 ## Qué tocar con cuidado
 
+R1, temas: `frontend/src/app/design-tokens.css` es el catálogo único de valores
+exactos del estilo actual para navegación y contenido: paleta, materiales,
+cristal, radios, sombras y las tres familias tipográficas existentes. Se importa
+antes de `globals.css` y `v18-theme.css`; estos conservan los alias, selectores,
+capas y prioridades anteriores. Tailwind consume el mismo catálogo, incluidos
+sus colores con opacidad y sombras coloreadas. No se añade una preferencia ni
+un estilo seleccionable. La navegación usa la superficie inversa del catálogo
+(oscura en ambos modos, como antes), sin un tema independiente; el indicador
+móvil estático y animado comparte una sola regla `selection-indicator`.
+Los colores de sombras se resuelven en el elemento consumidor para preservar
+la composición de Tailwind. No mover variables dependientes de coordenadas
+locales al ámbito raíz. Alcance, comparación visual y excepciones conservadas
+en `docs/rediseno-r1-verificacion.md`.
+
 `office/use-office-storage.ts` controla autoguardado, conflictos, historial y recuperación. Mantener sus claves locales, revisiones y esquema de datos. El lector PDF guarda archivos en IndexedDB; no es el mismo almacén que `/books`.
 
 Preservar rutas, props, textos, estilos Liquid Glass y orden de efectos al extraer componentes. Cuidar selección/deshacer de CKEditor, eventos WebSocket, permisos y origen de los IPC. No modificar migraciones aplicadas ni dependencias durante la limpieza.

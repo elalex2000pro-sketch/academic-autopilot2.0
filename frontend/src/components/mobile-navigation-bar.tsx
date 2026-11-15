@@ -20,7 +20,7 @@ const MobileNavIndicator = dynamic(
 );
 
 const STATIC_INDICATOR =
-  "gpu-layer absolute inset-0 rounded-full bg-[#e9e4f6] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.75),inset_0_1px_0_rgba(255,255,255,0.7)]";
+  "gpu-layer absolute inset-0 rounded-full selection-indicator";
 
 /**
  * Barra de navegación inferior móvil.
@@ -47,7 +47,7 @@ export function MobileNavigationBar() {
     >
       <div
         data-mobile-nav
-        className="gpu-layer flex items-center gap-0.5 rounded-[30px] border border-white/10 bg-[#1b1b1f]/95 p-1.5 shadow-[0_22px_55px_-24px_rgba(12,12,16,0.8),inset_0_1px_0_rgba(255,255,255,0.09)] backdrop-blur-2xl"
+        className="gpu-layer flex items-center gap-0.5 rounded-[var(--radius-30)] border border-white/10 bg-surface-inverse/95 p-1.5 shadow-[shadow:var(--elevation-mobile-navigation-bar-6)] backdrop-blur-2xl"
       >
         {PRIMARY_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = isActive(pathname, href);
@@ -56,7 +56,7 @@ export function MobileNavigationBar() {
               key={href}
               href={href}
               aria-current={active ? "page" : undefined}
-              className="group relative flex h-14 min-w-11 flex-1 touch-manipulation select-none flex-col items-center justify-center gap-0.5 rounded-[22px] px-0.5 outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-white/55"
+              className="group relative flex h-14 min-w-11 flex-1 touch-manipulation select-none flex-col items-center justify-center gap-0.5 rounded-[var(--radius-22)] px-0.5 outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-white/55"
             >
               <span className="relative flex h-11 w-11 items-center justify-center">
                 {active ? (
@@ -70,7 +70,7 @@ export function MobileNavigationBar() {
                   className={cn(
                     "relative z-10 h-[21px] w-[21px] transition-colors duration-150",
                     active
-                      ? "text-[#1d1d1f]"
+                      ? "text-text-on-selection"
                       : "text-white/50 group-hover:text-white/90",
                   )}
                   strokeWidth={active ? 2.1 : 1.8}
