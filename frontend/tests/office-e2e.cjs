@@ -5,13 +5,34 @@ const os = require('node:os');
 const path = require('node:path');
 const API='http://127.0.0.1:8000/api/v1';
 async function main(){
+  const output=process.env.OFFICE_TRACE_OUTPUT || await fs.mkdtemp(path.join(os.tmpdir(),'office-revisions-'));
+  await fs.mkdir(output,{recursive:true});
+  const trace=[]; let phase='inicio';
   assert.equal((await (await fetch('http://127.0.0.1:8000/health')).json()).environment,'isolated-chat-test');
   const r=await fetch(API+'/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:`office${Date.now()}@example.com`,password:'OfficeBrowser123',full_name:'Prueba Office'})});
   const {access_token:token}=await r.json(); assert.ok(token);
   const user=await (await fetch(API+'/auth/me',{headers:{Authorization:'Bearer '+token}})).json();
   const browser=await chromium.launch({channel:'chrome',headless:true});
   const context=await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true});
+  await context.exposeBinding('officeTrace',(_source,event)=>{trace.push({phase,...event});});
+  await context.addInitScript(()=>{
+    const instance=crypto.randomUUID(), original=window.fetch;
+    const record=event=>void window.officeTrace({instance,at:Date.now(),page:location.pathname,...event}).catch(()=>{});
+    window.addEventListener('pagehide',()=>record({event:'pagehide'}));
+    window.fetch=function(input,options){
+      const url=typeof input==='string'?input:input instanceof URL?input.href:input.url;
+      if(!url.includes('/api/v1/office/documents'))return original.call(this,input,options);
+      const id=crypto.randomUUID(), method=options?.method || 'GET';
+      let body;try{body=JSON.parse(options?.body)}catch{}
+      record({event:'request',id,url:new URL(url,location.href).pathname,method,keepalive:options?.keepalive || false,revision:body?.revision,content:body?.content,title:body?.title});
+      return original.call(this,input,options).then(response=>{
+        void response.clone().json().then(body=>record({event:'response',id,status:response.status,revision:body?.revision,document:body?.id,detail:body?.detail})).catch(()=>{});
+        return response;
+      },error=>{record({event:'network-error',id,message:error.message});throw error;});
+    };
+  });
   const page=await context.newPage(); const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  try {
   await context.addInitScript(({token,user})=>{localStorage.setItem('autopilot_token',token);localStorage.setItem('autopilot_user',JSON.stringify(user));localStorage.setItem('hasCompletedOnboarding_v1','true');}, {token,user});
   await page.goto('http://localhost:3000/office');
   await page.evaluate(()=>localStorage.setItem('academic-office-document-v1',JSON.stringify({name:'Borrador auditado',html:'<h1>Álgebra</h1><p><strong>Texto recuperado</strong></p>'})));
@@ -34,6 +55,7 @@ async function main(){
   await original.getByRole('button',{name:'Historial',exact:true}).click();
   await page.getByRole('button',{name:'Restaurar',exact:true}).last().click();
 
+  phase='restauración y recarga';
   await editor.waitFor(); assert.ok((await editor.innerText()).includes('Texto recuperado'));
   await page.reload();
 
@@ -46,8 +68,10 @@ async function main(){
   assert.ok((await fs.readFile(html,'utf8')).includes('Texto recuperado'));
   await page.getByRole('button',{name:'Archivo',exact:true}).click();
   const chooser=page.waitForEvent('filechooser');await page.getByText('Abrir desde el PC...',{exact:true}).click();await (await chooser).setFiles(html);
+  phase='importación HTML';
   await editor.waitFor();await page.waitForTimeout(2000);assert.ok((await editor.innerText()).includes('Texto recuperado'));
   // Offline draft survives, then retries against the real API.
+  phase='desconexión';
   await page.route('**/api/v1/office/documents**', route => route.abort());
   await editor.fill('Borrador sin conexión');
   await page.getByRole('status').filter({hasText:'Sin conexión'}).waitFor();
@@ -71,6 +95,10 @@ async function main(){
   await page.getByRole('textbox',{name:'Buscar documentos'}).fill('Borrador');
   await page.locator('article').first().waitFor();
   assert.deepEqual(errors,[]); console.log('PASS migration, create, autosave, close/reopen, copy, restore, HTML download/open, offline retry, conflict recovery and mobile library');
-  await browser.close();
+  } finally {
+    await fs.writeFile(path.join(output,'revisions.json'),JSON.stringify(trace,null,2));
+    console.log('Office revision trace: '+output);
+    await browser.close();
+  }
 }
 main().catch(e=>{console.error(e);process.exit(1)});
