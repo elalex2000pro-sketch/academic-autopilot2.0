@@ -6,7 +6,7 @@ import asyncio
 import os
 import uuid
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 from urllib.parse import quote
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
@@ -619,7 +619,7 @@ async def list_messages(
     db: DbSession,
     limit: int = Query(50, ge=1, le=200),
     before: Annotated[datetime | None, Query()] = None,
-    after: Annotated[uuid.UUID | None, Query()] = None,
+    after: Annotated[uuid.UUID | Literal["start"] | None, Query()] = None,
 ) -> list[ChatMessageRead]:
     """Historial reciente o una pagina ascendente posterior al mensaje `after`."""
     await _require_member(db, conversation_id, current_user.id)
@@ -631,6 +631,8 @@ async def list_messages(
 
     stmt = select(ChatMessage).where(ChatMessage.conversation_id == conversation_id)
     if after is not None:
+        stmt = stmt.order_by(ChatMessage.created_at.asc(), ChatMessage.id.asc())
+    if after is not None and after != "start":
         # Scope the cursor to the authorized conversation, including for members
         # who also belong to another conversation. Never expose a foreign cursor.
         cursor = (
@@ -644,8 +646,8 @@ async def list_messages(
         stmt = stmt.where(
             (ChatMessage.created_at > cursor.created_at)
             | ((ChatMessage.created_at == cursor.created_at) & (ChatMessage.id > cursor.id))
-        ).order_by(ChatMessage.created_at.asc(), ChatMessage.id.asc())
-    else:
+        )
+    elif after is None:
         if before is not None:
             stmt = stmt.where(ChatMessage.created_at < before)
         stmt = stmt.order_by(ChatMessage.created_at.desc(), ChatMessage.id.desc())

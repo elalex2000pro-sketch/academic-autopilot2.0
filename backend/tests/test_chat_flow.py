@@ -248,6 +248,9 @@ def test_incremental_messages_paginate_without_gaps_or_duplicates(client):
             await session.commit()
 
     client.portal.call(seed)
+    start_page = client.get(base, headers=bob, params={"after": "start", "limit": 17})
+    assert start_page.status_code == 200
+    assert [item["id"] for item in start_page.json()] == [str(value) for value in ids[:17]]
     latest = client.get(base, headers=bob).json()
     assert [item["id"] for item in latest] == [str(value) for value in ids[-50:]]
     # The old history request remains available.
@@ -284,6 +287,7 @@ def test_incremental_messages_validate_cursor_and_membership(client):
     message = client.post(base, headers=alice, data={"content": "Privado"}).json()
     foreign = client.post(other_base, headers=alice, data={"content": "Otro hilo"}).json()
     assert client.get(base, params={"after": message["id"]}).status_code == 401
+    assert client.get(base, headers=outsider, params={"after": "start"}).status_code == 403
     assert client.get(base, headers=outsider, params={"after": message["id"]}).status_code == 403
     for cursor in [str(uuid.uuid4()), foreign["id"]]:
         response = client.get(base, headers=bob, params={"after": cursor})
