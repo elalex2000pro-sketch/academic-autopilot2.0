@@ -51,6 +51,11 @@ async function main() {
   let emptyCalls = 0;
   assert.equal((await client(async () => { emptyCalls++; return Response.json([]); }).messagesSince('c', 'known')).length, 0);
   assert.equal(emptyCalls, 1);
+  const fromStart = await client(async url => {
+    assert.equal(new URL(url).searchParams.get('after'), 'start');
+    return Response.json([{ id: 'first' }]);
+  }).messagesSince('empty-thread', null);
+  assert.equal(fromStart[0].id, 'first');
 
   let exactCalls = 0;
   assert.equal((await client(async () => {

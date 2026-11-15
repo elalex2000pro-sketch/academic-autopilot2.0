@@ -881,8 +881,8 @@ export const chatApi = {
     request<ChatUserModel[]>(`/api/v1/chat/conversations/${conversationId}/presence`),
   markAllDelivered: () =>
     request<void>("/api/v1/chat/delivered", { method: "POST" }),
-  conversations: () =>
-    request<ChatConversationModel[]>("/api/v1/chat/conversations"),
+  conversations: (signal?: AbortSignal) =>
+    request<ChatConversationModel[]>("/api/v1/chat/conversations", { signal }),
   users: (q: string) =>
     request<ChatUserModel[]>(`/api/v1/chat/users?q=${encodeURIComponent(q)}`),
   createConversation: (body: {
@@ -900,23 +900,24 @@ export const chatApi = {
       `/api/v1/chat/conversations/${conversationId}/members`,
       { method: "POST", body: JSON.stringify({ username }) },
     ),
-  messages: (conversationId: string, before?: string) =>
+  messages: (conversationId: string, before?: string, signal?: AbortSignal) =>
     request<ChatMessageModel[]>(
       `/api/v1/chat/conversations/${conversationId}/messages${
         before ? `?before=${encodeURIComponent(before)}` : ""
       }`,
+      { signal },
     ),
   // Recupera solo lo posterior al ultimo mensaje confirmado. No inicia polling
   // ni modifica estado de la vista; el llamador puede cancelar al cambiar de hilo.
   messagesSince: async (
     conversationId: string,
-    afterId: string,
+    afterId: string | null,
     signal?: AbortSignal,
   ): Promise<ChatMessageModel[]> => {
     const limit = 200;
     const messages: ChatMessageModel[] = [];
-    const seen = new Set<string>([afterId]);
-    let cursor = afterId;
+    const seen = new Set<string>(afterId ? [afterId] : []);
+    let cursor = afterId ?? "start";
     while (true) {
       signal?.throwIfAborted();
       const page = await request<ChatMessageModel[]>(
