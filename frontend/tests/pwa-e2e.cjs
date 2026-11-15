@@ -22,6 +22,7 @@ async function verifyPwa(browser, { WEB, API, token, user, office, output, pdfFi
     try {
       await page.goto(WEB + '/library');
       await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+      await page.waitForFunction(() => navigator.serviceWorker.controller.state === 'activated');
       const cdp = await context.newCDPSession(page);
       const manifest = await cdp.send('Page.getAppManifest');
       assert.deepEqual(manifest.errors, []);
@@ -62,6 +63,17 @@ async function verifyPwa(browser, { WEB, API, token, user, office, output, pdfFi
         notifications.forEach(notification => notification.close());
         return result;
       }, code);
+      if (!notified.shown) {
+        const diagnostic = await page.evaluate(async () => {
+          const registration = await navigator.serviceWorker.getRegistration();
+          let error;
+          try { await registration.showNotification('Diagnóstico PWA'); } catch (cause) { error = `${cause.name}: ${cause.message}`; }
+          const result = { secure: window.isSecureContext, permission: Notification.permission, worker: registration.active?.state, supported: typeof ServiceWorkerRegistration.prototype.showNotification, error };
+          (await registration.getNotifications()).forEach(notification => notification.close());
+          return result;
+        });
+        console.log('PWA notification diagnostic: ' + JSON.stringify(diagnostic));
+      }
       assert.deepEqual(notified, { shown: true, count: 1, url: '/library' });
 
       await page.locator('input[type=file]').setInputFiles({ name: 'pwa-local.pdf', mimeType: 'application/pdf', buffer: pdfFixture() });
