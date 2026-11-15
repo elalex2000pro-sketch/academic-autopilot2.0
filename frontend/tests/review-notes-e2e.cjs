@@ -19,6 +19,7 @@ const API='http://127.0.0.1:8000/api/v1',WEB='http://localhost:3000';
       }
       const c=await browser.newContext({viewport:{width,height:960},serviceWorkers:'block'});await c.addInitScript(({token,user})=>{localStorage.setItem('autopilot_token',token);localStorage.setItem('autopilot_user',JSON.stringify(user));localStorage.setItem('hasCompletedOnboarding_v1','true');},{token:account.access_token,user});
       const page=await c.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+      page.on('request',r=>{if(r.method()==='POST'&&(/\/api\/v1\/files(?:\/|$)/.test(r.url())||r.url().endsWith('/sources')))errors.push('No debe subir archivos ni crear fuentes implícitamente');});
       try{
         await page.goto(WEB+'/review?notebook='+note.id,{waitUntil:'networkidle'});await page.getByLabel('Pregunta al cuaderno',{exact:true}).waitFor();
         await page.getByLabel('Pregunta al cuaderno',{exact:true}).fill('¿Qué produce la mitocondria?');
@@ -27,7 +28,14 @@ const API='http://127.0.0.1:8000/api/v1',WEB='http://localhost:3000';
           assert.equal(await send.isEnabled(),false);await page.getByText('Escribe apuntes en el cuaderno o añade una fuente para empezar.',{exact:true}).waitFor({timeout:4000});
         }else{
           assert.equal(await send.isEnabled(),true,'Chat debe aceptar los apuntes o la fuente');await send.click();
-          if(kind==='missing-ai')await page.getByText('Para usar Chat y Studio, abre Ajustes y configura tu modelo y, si lo necesita, su clave de IA.',{exact:true}).waitFor({timeout:4000});
+          if(kind==='missing-ai'){
+            await page.getByText('Para usar Chat y Studio, abre Ajustes y configura tu modelo y, si lo necesita, su clave de IA.',{exact:true}).waitFor({timeout:4000});
+            if(width<1024)await page.getByRole('button',{name:'Studio',exact:true}).click();
+            const response=page.waitForResponse(r=>r.url().endsWith('/notebooks/'+note.id+'/chat')&&r.request().method()==='POST');
+            await page.getByRole('button',{name:'Tarjetas',exact:true}).click();const result=await(await response).json();
+            assert.ok(result.answer.includes('Ajustes'));assert.equal(result.actions.length,0);
+            await page.getByText('Para usar Chat y Studio, abre Ajustes y configura tu modelo y, si lo necesita, su clave de IA.',{exact:true}).first().waitFor();
+          }
           else{
             await page.getByText('Produce ATP',{exact:false}).first().waitFor({timeout:8000});
             for(const [label,endpoint] of [['Tarjetas','/flashcards'],['Cuestionario','/quizzes'],['Resumen','/notebooks/'+note.id]]){
