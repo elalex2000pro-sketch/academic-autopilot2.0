@@ -906,6 +906,39 @@ export const chatApi = {
         before ? `?before=${encodeURIComponent(before)}` : ""
       }`,
     ),
+  // Recupera solo lo posterior al ultimo mensaje confirmado. No inicia polling
+  // ni modifica estado de la vista; el llamador puede cancelar al cambiar de hilo.
+  messagesSince: async (
+    conversationId: string,
+    afterId: string,
+    signal?: AbortSignal,
+  ): Promise<ChatMessageModel[]> => {
+    const limit = 200;
+    const messages: ChatMessageModel[] = [];
+    const seen = new Set<string>([afterId]);
+    let cursor = afterId;
+    while (true) {
+      signal?.throwIfAborted();
+      const page = await request<ChatMessageModel[]>(
+        `/api/v1/chat/conversations/${conversationId}/messages?after=${encodeURIComponent(cursor)}&limit=${limit}`,
+        { signal },
+      );
+      signal?.throwIfAborted();
+      if (!page.length) return messages;
+      const nextCursor = page[page.length - 1].id;
+      if (seen.has(nextCursor)) {
+        throw new ApiError(502, "No se pudo avanzar al recuperar los mensajes.");
+      }
+      for (const message of page) {
+        if (!seen.has(message.id)) {
+          seen.add(message.id);
+          messages.push(message);
+        }
+      }
+      if (page.length < limit) return messages;
+      cursor = nextCursor;
+    }
+  },
   markRead: (conversationId: string, throughId?: string) =>
     request<void>(`/api/v1/chat/conversations/${conversationId}/read${throughId ? `?through=${encodeURIComponent(throughId)}` : ""}`, {
       method: "POST",
