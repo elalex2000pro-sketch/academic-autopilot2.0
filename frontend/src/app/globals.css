@@ -13,50 +13,50 @@
 @layer base {
   /* Paleta Muted Light / Soft Slate: pizarra fría, mate y sin blancos puros. */
   :root {
-    --background: 214 16% 91%;
-    --foreground: 213 18% 21%;
-    --card: 214 20% 94%;
-    --card-foreground: 213 18% 21%;
-    --primary: 216 100% 50%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 214 16% 89%;
-    --secondary-foreground: 213 18% 21%;
-    --muted: 214 14% 88%;
-    --muted-foreground: 214 12% 42%;
-    --accent: 216 45% 92%;
-    --accent-foreground: 216 90% 38%;
-    --destructive: 4 100% 59%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 212 18% 82%;
-    --input: 212 18% 78%;
-    --ring: 216 100% 50%;
-    --radius: 0.75rem;
-    --sidebar: 214 17% 92%;
-    --separator: 212 16% 84%;
+    --background: var(--theme-base-root-background);
+    --foreground: var(--theme-base-root-foreground);
+    --card: var(--theme-base-root-card);
+    --card-foreground: var(--theme-base-root-card-foreground);
+    --primary: var(--theme-base-root-primary);
+    --primary-foreground: var(--theme-base-root-primary-foreground);
+    --secondary: var(--theme-base-root-secondary);
+    --secondary-foreground: var(--theme-base-root-secondary-foreground);
+    --muted: var(--theme-base-root-muted);
+    --muted-foreground: var(--theme-base-root-muted-foreground);
+    --accent: var(--theme-base-root-accent);
+    --accent-foreground: var(--theme-base-root-accent-foreground);
+    --destructive: var(--theme-base-root-destructive);
+    --destructive-foreground: var(--theme-base-root-destructive-foreground);
+    --border: var(--theme-base-root-border);
+    --input: var(--theme-base-root-input);
+    --ring: var(--theme-base-root-ring);
+    --radius: var(--theme-base-root-radius);
+    --sidebar: var(--theme-base-root-sidebar);
+    --separator: var(--theme-base-root-separator);
     --mobile-nav-height: 68px;
     --mobile-nav-offset: 0px;
   }
 
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
-    --card: 222 40% 10%;
-    --card-foreground: 210 40% 98%;
-    --primary: 216 100% 55%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 222 28% 14%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 222 28% 13%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 216 80% 18%;
-    --accent-foreground: 216 100% 78%;
-    --destructive: 4 100% 62%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 222 20% 19%;
-    --input: 222 20% 22%;
-    --ring: 216 100% 58%;
-    --sidebar: 0 0% 4%;
-    --separator: 222 20% 18%;
+    --background: var(--theme-base-dark-background);
+    --foreground: var(--theme-base-dark-foreground);
+    --card: var(--theme-base-dark-card);
+    --card-foreground: var(--theme-base-dark-card-foreground);
+    --primary: var(--theme-base-dark-primary);
+    --primary-foreground: var(--theme-base-dark-primary-foreground);
+    --secondary: var(--theme-base-dark-secondary);
+    --secondary-foreground: var(--theme-base-dark-secondary-foreground);
+    --muted: var(--theme-base-dark-muted);
+    --muted-foreground: var(--theme-base-dark-muted-foreground);
+    --accent: var(--theme-base-dark-accent);
+    --accent-foreground: var(--theme-base-dark-accent-foreground);
+    --destructive: var(--theme-base-dark-destructive);
+    --destructive-foreground: var(--theme-base-dark-destructive-foreground);
+    --border: var(--theme-base-dark-border);
+    --input: var(--theme-base-dark-input);
+    --ring: var(--theme-base-dark-ring);
+    --sidebar: var(--theme-base-dark-sidebar);
+    --separator: var(--theme-base-dark-separator);
   }
 
   * {
@@ -702,51 +702,13 @@ html[data-performance="efficiency"] :is([data-spotlight], .glass-card, .glass-st
    el cubic-bezier es el fallback para navegadores sin soporte.
    -------------------------------------------------------------------------- */
 :root {
-  --ease-ultra: cubic-bezier(0.32, 1.12, 0.58, 1);
-  --duration-ultra: 0.55s;
+  --ease-ultra: var(--theme-base-root-ease-ultra);
+  --duration-ultra: var(--theme-base-root-duration-ultra);
 }
 
 @supports (transition-timing-function: linear(0, 1)) {
   :root {
-    --ease-ultra: linear(
-      0,
-      0.0308,
-      0.1079,
-      0.2121,
-      0.3288,
-      0.4473,
-      0.5602,
-      0.6627,
-      0.7522,
-      0.8276,
-      0.889,
-      0.9374,
-      0.974,
-      1.0005,
-      1.0186,
-      1.0298,
-      1.0358,
-      1.0378,
-      1.0369,
-      1.0342,
-      1.0304,
-      1.0261,
-      1.0216,
-      1.0172,
-      1.0133,
-      1.0098,
-      1.0069,
-      1.0045,
-      1.0026,
-      1.0012,
-      1.0001,
-      0.9994,
-      0.9989,
-      0.9987,
-      0.9986,
-      0.9986,
-      1
-    );
+    --ease-ultra: var(--theme-base-root-ease-ultra-linear);
   }
 }
 
@@ -1305,7 +1267,7 @@ html.dark .border-orange-100 {
 }
 
 html.dark .ring-indigo-100 {
-  --tw-ring-color: hsl(211 50% 30%);
+  --tw-ring-color: var(--theme-base-html-dark-ring-indigo-100-tw-ring-color);
 }
 html.dark .ring-slate-100 {
   --tw-ring-color: hsl(var(--border));
@@ -1320,68 +1282,68 @@ html.dark select option {
    Eventos del horario: colores sólidos del sistema, como en Calendario.
    -------------------------------------------------------------------------- */
 .tt-tone-0 {
-  --tone-bg: #2f6fdc;
-  --tone-text: #ffffff;
+  --tone-bg: var(--theme-base-tt-tone-0-tone-bg);
+  --tone-text: var(--theme-base-tt-tone-0-tone-text);
 }
 .tt-tone-1 {
-  --tone-bg: #a86a12;
-  --tone-text: #ffffff;
+  --tone-bg: var(--theme-base-tt-tone-1-tone-bg);
+  --tone-text: var(--theme-base-tt-tone-1-tone-text);
 }
 .tt-tone-2 {
-  --tone-bg: #257a3c;
-  --tone-text: #ffffff;
+  --tone-bg: var(--theme-base-tt-tone-2-tone-bg);
+  --tone-text: var(--theme-base-tt-tone-2-tone-text);
 }
 .tt-tone-3 {
-  --tone-bg: #c53b34;
-  --tone-text: #ffffff;
+  --tone-bg: var(--theme-base-tt-tone-3-tone-bg);
+  --tone-text: var(--theme-base-tt-tone-3-tone-text);
 }
 .tt-tone-4 {
-  --tone-bg: #7f50d0;
-  --tone-text: #ffffff;
+  --tone-bg: var(--theme-base-tt-tone-4-tone-bg);
+  --tone-text: var(--theme-base-tt-tone-4-tone-text);
 }
 .tt-tone-5 {
-  --tone-bg: #a55c37;
-  --tone-text: #ffffff;
+  --tone-bg: var(--theme-base-tt-tone-5-tone-bg);
+  --tone-text: var(--theme-base-tt-tone-5-tone-text);
 }
 .tt-tone-6 {
-  --tone-bg: #b04167;
-  --tone-text: #ffffff;
+  --tone-bg: var(--theme-base-tt-tone-6-tone-bg);
+  --tone-text: var(--theme-base-tt-tone-6-tone-text);
 }
 .tt-tone-7 {
-  --tone-bg: #147570;
-  --tone-text: #ffffff;
+  --tone-bg: var(--theme-base-tt-tone-7-tone-bg);
+  --tone-text: var(--theme-base-tt-tone-7-tone-text);
 }
 .tt-tone-break {
-  --tone-bg: #6e6e73;
-  --tone-text: #ffffff;
+  --tone-bg: var(--theme-base-tt-tone-break-tone-bg);
+  --tone-text: var(--theme-base-tt-tone-break-tone-text);
 }
 
 html.dark .tt-tone-0 {
-  --tone-bg: #3f8bf5;
+  --tone-bg: var(--theme-base-html-dark-tt-tone-0-tone-bg);
 }
 html.dark .tt-tone-1 {
-  --tone-bg: #d9971f;
+  --tone-bg: var(--theme-base-html-dark-tt-tone-1-tone-bg);
 }
 html.dark .tt-tone-2 {
-  --tone-bg: #3aa855;
+  --tone-bg: var(--theme-base-html-dark-tt-tone-2-tone-bg);
 }
 html.dark .tt-tone-3 {
-  --tone-bg: #e05a52;
+  --tone-bg: var(--theme-base-html-dark-tt-tone-3-tone-bg);
 }
 html.dark .tt-tone-4 {
-  --tone-bg: #9a6ee6;
+  --tone-bg: var(--theme-base-html-dark-tt-tone-4-tone-bg);
 }
 html.dark .tt-tone-5 {
-  --tone-bg: #d4754c;
+  --tone-bg: var(--theme-base-html-dark-tt-tone-5-tone-bg);
 }
 html.dark .tt-tone-6 {
-  --tone-bg: #d55c86;
+  --tone-bg: var(--theme-base-html-dark-tt-tone-6-tone-bg);
 }
 html.dark .tt-tone-7 {
-  --tone-bg: #23a39c;
+  --tone-bg: var(--theme-base-html-dark-tt-tone-7-tone-bg);
 }
 html.dark .tt-tone-break {
-  --tone-bg: #6e6e73;
+  --tone-bg: var(--theme-base-html-dark-tt-tone-break-tone-bg);
 }
 
 /* --------------------------------------------------------------------------

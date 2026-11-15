@@ -1,0 +1,167 @@
+/* R1: exact existing values. Shared by navigation and content.
+ * Compatibility aliases and selector precedence remain in their original files.
+ * No extra style or preference is enabled here. */
+:root {
+  --theme-base-root-background: 214 16% 91%;
+  --theme-base-root-foreground: 213 18% 21%;
+  --theme-base-root-card: 214 20% 94%;
+  --theme-base-root-card-foreground: 213 18% 21%;
+  --theme-base-root-primary: 216 100% 50%;
+  --theme-base-root-primary-foreground: 0 0% 100%;
+  --theme-base-root-secondary: 214 16% 89%;
+  --theme-base-root-secondary-foreground: 213 18% 21%;
+  --theme-base-root-muted: 214 14% 88%;
+  --theme-base-root-muted-foreground: 214 12% 42%;
+  --theme-base-root-accent: 216 45% 92%;
+  --theme-base-root-accent-foreground: 216 90% 38%;
+  --theme-base-root-destructive: 4 100% 59%;
+  --theme-base-root-destructive-foreground: 0 0% 100%;
+  --theme-base-root-border: 212 18% 82%;
+  --theme-base-root-input: 212 18% 78%;
+  --theme-base-root-ring: 216 100% 50%;
+  --theme-base-root-radius: 0.75rem;
+  --theme-base-root-sidebar: 214 17% 92%;
+  --theme-base-root-separator: 212 16% 84%;
+  --theme-base-dark-background: 222 47% 6%;
+  --theme-base-dark-foreground: 210 40% 98%;
+  --theme-base-dark-card: 222 40% 10%;
+  --theme-base-dark-card-foreground: 210 40% 98%;
+  --theme-base-dark-primary: 216 100% 55%;
+  --theme-base-dark-primary-foreground: 0 0% 100%;
+  --theme-base-dark-secondary: 222 28% 14%;
+  --theme-base-dark-secondary-foreground: 210 40% 98%;
+  --theme-base-dark-muted: 222 28% 13%;
+  --theme-base-dark-muted-foreground: 215 20% 65%;
+  --theme-base-dark-accent: 216 80% 18%;
+  --theme-base-dark-accent-foreground: 216 100% 78%;
+  --theme-base-dark-destructive: 4 100% 62%;
+  --theme-base-dark-destructive-foreground: 0 0% 100%;
+  --theme-base-dark-border: 222 20% 19%;
+  --theme-base-dark-input: 222 20% 22%;
+  --theme-base-dark-ring: 216 100% 58%;
+  --theme-base-dark-sidebar: 0 0% 4%;
+  --theme-base-dark-separator: 222 20% 18%;
+  --theme-base-root-ease-ultra: cubic-bezier(0.32, 1.12, 0.58, 1);
+  --theme-base-root-duration-ultra: 0.55s;
+  --theme-base-root-ease-ultra-linear: linear(
+      0,
+      0.0308,
+      0.1079,
+      0.2121,
+      0.3288,
+      0.4473,
+      0.5602,
+      0.6627,
+      0.7522,
+      0.8276,
+      0.889,
+      0.9374,
+      0.974,
+      1.0005,
+      1.0186,
+      1.0298,
+      1.0358,
+      1.0378,
+      1.0369,
+      1.0342,
+      1.0304,
+      1.0261,
+      1.0216,
+      1.0172,
+      1.0133,
+      1.0098,
+      1.0069,
+      1.0045,
+      1.0026,
+      1.0012,
+      1.0001,
+      0.9994,
+      0.9989,
+      0.9987,
+      0.9986,
+      0.9986,
+      1
+    );
+  --theme-base-html-dark-ring-indigo-100-tw-ring-color: hsl(211 50% 30%);
+  --theme-base-tt-tone-0-tone-bg: #2f6fdc;
+  --theme-base-tt-tone-0-tone-text: #ffffff;
+  --theme-base-tt-tone-1-tone-bg: #a86a12;
+  --theme-base-tt-tone-1-tone-text: #ffffff;
+  --theme-base-tt-tone-2-tone-bg: #257a3c;
+  --theme-base-tt-tone-2-tone-text: #ffffff;
+  --theme-base-tt-tone-3-tone-bg: #c53b34;
+  --theme-base-tt-tone-3-tone-text: #ffffff;
+  --theme-base-tt-tone-4-tone-bg: #7f50d0;
+  --theme-base-tt-tone-4-tone-text: #ffffff;
+  --theme-base-tt-tone-5-tone-bg: #a55c37;
+  --theme-base-tt-tone-5-tone-text: #ffffff;
+  --theme-base-tt-tone-6-tone-bg: #b04167;
+  --theme-base-tt-tone-6-tone-text: #ffffff;
+  --theme-base-tt-tone-7-tone-bg: #147570;
+  --theme-base-tt-tone-7-tone-text: #ffffff;
+  --theme-base-tt-tone-break-tone-bg: #6e6e73;
+  --theme-base-tt-tone-break-tone-text: #ffffff;
+  --theme-base-html-dark-tt-tone-0-tone-bg: #3f8bf5;
+  --theme-base-html-dark-tt-tone-1-tone-bg: #d9971f;
+  --theme-base-html-dark-tt-tone-2-tone-bg: #3aa855;
+  --theme-base-html-dark-tt-tone-3-tone-bg: #e05a52;
+  --theme-base-html-dark-tt-tone-4-tone-bg: #9a6ee6;
+  --theme-base-html-dark-tt-tone-5-tone-bg: #d4754c;
+  --theme-base-html-dark-tt-tone-6-tone-bg: #d55c86;
+  --theme-base-html-dark-tt-tone-7-tone-bg: #23a39c;
+  --theme-base-html-dark-tt-tone-break-tone-bg: #6e6e73;
+  --theme-v18-root-background: 240 20% 97%;
+  --theme-v18-root-v18-card-border: rgb(255 255 255 / 0.82);
+  --theme-v18-root-v18-card-border-hover: rgb(255 255 255 / 0.98);
+  --theme-v18-root-v18-card-bg: radial-gradient(120% 130% at 0% 0%, rgb(255 255 255 / 0.72), transparent 56%),
+    linear-gradient(145deg, rgb(255 255 255 / 0.56), rgb(247 247 250 / 0.44));
+  --theme-v18-root-v18-card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.92),
+    0 22px 54px -38px rgb(28 27 38 / 0.28);
+  --theme-v18-root-v18-card-hover-shadow: inset 0 1px 0 rgb(255 255 255 / 1),
+    0 30px 70px -38px rgb(73 67 112 / 0.22);
+  --theme-v18-root-v18-soft-border: rgb(255 255 255 / 0.6);
+  --theme-v18-root-v18-soft-bg: rgb(255 255 255 / 0.4);
+  --theme-v18-dark-background: 0 0% 4%;
+  --theme-v18-dark-v18-card-border: rgb(255 255 255 / 0.085);
+  --theme-v18-dark-v18-card-border-hover: rgb(129 140 248 / 0.32);
+  --theme-v18-dark-v18-card-bg: radial-gradient(130% 120% at 0% 0%, rgb(255 255 255 / 0.07), transparent 52%),
+    linear-gradient(145deg, rgb(24 24 27 / 0.72), rgb(10 10 10 / 0.78));
+  --theme-v18-dark-v18-card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.07),
+    0 28px 76px -42px rgb(0 0 0 / 0.96);
+  --theme-v18-dark-v18-card-hover-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1),
+    0 32px 80px -38px rgb(0 0 0 / 1),
+    0 0 0 1px rgb(99 102 241 / 0.08);
+  --theme-v18-dark-v18-soft-border: rgb(255 255 255 / 0.07);
+  --theme-v18-dark-v18-soft-bg: rgb(255 255 255 / 0.045);
+  --theme-v18-html-data-glass-pure-v18-card-border: rgb(255 255 255 / 0.4);
+  --theme-v18-html-data-glass-pure-v18-card-border-hover: rgb(255 255 255 / 0.62);
+  --theme-v18-html-data-glass-pure-v18-card-bg: radial-gradient(120% 130% at 0% 0%, rgb(255 255 255 / 0.2), transparent 56%),
+    linear-gradient(145deg, rgb(255 255 255 / 0.18), rgb(255 255 255 / 0.065));
+  --theme-v18-html-data-glass-pure-v18-card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.38),
+    0 24px 64px -40px rgb(28 27 38 / 0.24);
+  --theme-v18-html-data-glass-pure-v18-card-hover-shadow: inset 0 1px 0 rgb(255 255 255 / 0.52),
+    0 30px 74px -38px rgb(73 67 112 / 0.26);
+  --theme-v18-html-data-glass-pure-v18-soft-border: rgb(255 255 255 / 0.3);
+  --theme-v18-html-data-glass-pure-v18-soft-bg: rgb(255 255 255 / 0.1);
+  --theme-v18-html-dark-data-glass-pure-v18-card-border: rgb(255 255 255 / 0.13);
+  --theme-v18-html-dark-data-glass-pure-v18-card-border-hover: rgb(129 140 248 / 0.38);
+  --theme-v18-html-dark-data-glass-pure-v18-card-bg: radial-gradient(130% 120% at 0% 0%, rgb(255 255 255 / 0.09), transparent 56%),
+    linear-gradient(145deg, rgb(22 24 32 / 0.34), rgb(8 9 14 / 0.12));
+  --theme-v18-html-dark-data-glass-pure-v18-card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08),
+    0 28px 76px -42px rgb(0 0 0 / 0.8);
+  --theme-v18-html-dark-data-glass-pure-v18-card-hover-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12),
+    0 32px 80px -38px rgb(0 0 0 / 0.95);
+  --theme-v18-html-dark-data-glass-pure-v18-soft-border: rgb(255 255 255 / 0.08);
+  --theme-v18-html-dark-data-glass-pure-v18-soft-bg: rgb(255 255 255 / 0.035);
+  --theme-v18-html-data-cosmetic-theme-aurora-v18-card-border: rgb(175 82 222 / 0.42);
+  --theme-v18-html-data-cosmetic-theme-aurora-v18-card-border-hover: rgb(175 82 222 / 0.68);
+  --theme-v18-html-data-cosmetic-theme-aurora-v18-card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7),
+    0 24px 64px -38px rgb(124 58 237 / 0.22);
+  --theme-v18-html-dark-data-cosmetic-theme-aurora-v18-card-border: rgb(192 132 252 / 0.24);
+  --theme-v18-html-dark-data-cosmetic-theme-aurora-v18-card-border-hover: rgb(192 132 252 / 0.48);
+  --theme-v18-html-dark-data-cosmetic-theme-aurora-v18-card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1),
+    0 28px 76px -42px rgb(76 29 149 / 0.5);
+  --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter var", Inter, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter var", Inter, "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
