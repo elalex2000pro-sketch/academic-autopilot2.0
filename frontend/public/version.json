@@ -1,8 +1,8 @@
 {
   "version": "1.4.0",
-  "publishedAt": null,
+  "publishedAt": "2026-11-15T19:11:05Z",
   "generatedAt": "2026-11-15T18:45:24.118Z",
-  "sizeBytes": 112773375,
+  "sizeBytes": 112773372,
   "notes": [
     "El Chat recupera los mensajes pendientes al volver la conexión o regresar a la app.",
     "Repaso permite usar los apuntes guardados de un cuaderno en Chat y Studio, y explica cómo configurar la IA cuando falta.",
@@ -14,5 +14,5 @@
     "El instalador para Mac todavía no se ha probado."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases/tag/v1.4.0",
-  "enabled": false
+  "enabled": true
 }
