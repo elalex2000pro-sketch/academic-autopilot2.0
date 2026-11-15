@@ -4,14 +4,33 @@ on:
   push:
     tags:
       - "v*"
-    branches:
-      - "release/**"
 
 permissions:
-  contents: write
+  contents: read
+  actions: read
+  statuses: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
+  gate:
+    name: Validate release commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/release/check.cjs --remote
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
   windows:
+    needs: gate
     name: Windows x64
     runs-on: windows-latest
     defaults:
@@ -49,6 +68,7 @@ jobs:
           if-no-files-found: error
 
   macos:
+    needs: gate
     name: macOS x64
     runs-on: macos-latest
     defaults:
@@ -83,7 +103,9 @@ jobs:
           if-no-files-found: error
 
   publish:
-    name: Publish GitHub Release
+    name: Prepare draft only
+    permissions:
+      contents: write
     needs: [windows, macos]
     runs-on: ubuntu-latest
     steps:
@@ -92,18 +114,20 @@ jobs:
         with:
           path: release-assets
           merge-multiple: true
-      - name: Read release version
-        id: version
-        run: |
-          VERSION=$(node -p "require('./desktop/package.json').version")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-      - name: Publish GitHub release
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Generate manifest from actual installer
+        run: node scripts/release/metadata.cjs release-assets
+      - name: Create draft for final owner approval
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          gh release create "v${{ steps.version.outputs.version }}" \
+          VERSION=$(node scripts/release/check.cjs "$RELEASE_TAG")
+          gh release create "$RELEASE_TAG" \
             release-assets/* \
-            --target "${{ github.sha }}" \
-            --title "Academic Autopilot v${{ steps.version.outputs.version }}" \
-            --generate-notes \
-            --latest
+            --verify-tag \
+            --title "Academic Autopilot v$VERSION" \
+            --notes-file "docs/releases/$VERSION.md" \
+            --draft

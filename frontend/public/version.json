@@ -1,7 +1,7 @@
 {
   "version": "1.3.46",
   "publishedAt": "2026-11-11T18:43:40.712015+00:00",
-  "sizeBytes": 8388608,
+  "sizeBytes": null,
   "notes": [
     "Office: DOCX nativo con importación, exportación y avisos de compatibilidad.",
     "Búsqueda y reemplazo con deshacer agrupado y seis plantillas para documentos."
