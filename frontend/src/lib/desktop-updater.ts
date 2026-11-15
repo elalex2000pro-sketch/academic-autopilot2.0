@@ -35,6 +35,8 @@ export function getDesktopUpdateStatus(
   state: DesktopUpdaterState,
   currentVersion: string,
 ): DesktopUpdaterStatus {
+  if ((state.status === "available" || state.status === "downloading" || state.status === "ready") &&
+      (!state.version || !/^v?\d+\.\d+\.\d+$/.test(state.version))) return "error";
   if (
     state.version &&
     (state.status === "available" || state.status === "downloading" || state.status === "ready") &&

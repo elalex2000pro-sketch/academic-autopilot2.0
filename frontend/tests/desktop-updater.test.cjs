@@ -5,19 +5,49 @@ const test = require('node:test');
 const vm = require('node:vm');
 const ts = require('typescript');
 
-function loadTs(relative, requireModule) {
+function loadTs(relative, requireModule, globals = {}) {
   const file = path.join(__dirname, '..', relative);
   const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true },
   }).outputText;
   const exports = {};
-  vm.runInNewContext(code, { exports, require: requireModule, process: { env: {} } }, { filename: file });
+  vm.runInNewContext(code, { exports, require: requireModule, process: { env: {} }, ...globals }, { filename: file });
   return exports;
 }
 
 const versions = loadTs('src/lib/app-update.ts', id => {
   assert.equal(id, '../../package.json');
   return require('../package.json');
+});
+
+async function checkMetadata(payload,desktop=false) {
+  const client=loadTs('src/lib/app-update.ts',()=>require('../package.json'),{
+    Headers,AbortController,URL,setTimeout,clearTimeout,
+    navigator:{userAgent:desktop?'AcademicAutopilotDesktop/1.3.46':''},
+    fetch:async()=>({ok:true,json:async()=>payload}),
+  });
+  return (await client.checkForUpdates()).update;
+}
+const asset={name:'Academic-Autopilot-Setup.exe',size:12345,browser_download_url:'https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases/download/v1.4.0/Academic-Autopilot-Setup.exe'};
+test('ignora borradores y preliminares incluso si falta su bandera',async()=>{
+  for(const release of [{tag_name:'v1.4.0',draft:true},{tag_name:'v1.4.0',prerelease:true},{tag_name:'v1.4.0-beta.1'}])assert.equal(await checkMetadata([{...release,assets:[asset]}],true),null);
+  assert.equal(await checkMetadata({version:'1.4.0-beta.1'}),null);
+});
+test('no inventa instaladores si faltan metadatos o la URL no es válida',async()=>{
+  for(const assets of [undefined,null,[],[{name:asset.name}],[{...asset,browser_download_url:'http://github.com/file'}],[{...asset,name:'otro.exe'}]])assert.equal(await checkMetadata([{tag_name:'v1.4.0',assets}],true),null);
+  for(const manifest of [null,{}, {version:42}])assert.equal(await checkMetadata(manifest),null);
+});
+test('el tamaño es real o desconocido, nunca simulado',async()=>{
+  assert.equal((await checkMetadata([{tag_name:'v1.4.0',assets:[asset]}],true)).sizeBytes,12345);
+  for(const size of [undefined,null,-1,0,Infinity,1.5]){
+    assert.equal((await checkMetadata([{tag_name:'v1.4.0',assets:[{...asset,size}]}],true)).sizeBytes,null);
+    assert.equal((await checkMetadata({version:'1.4.0',sizeBytes:size})).sizeBytes,null);
+  }
+});
+test('notas opcionales ausentes no impiden una actualización válida',async()=>{
+  assert.equal((await checkMetadata({version:'1.4.0'})).notes.length,0);
+  assert.equal((await checkMetadata([{tag_name:'v1.4.0',assets:[asset]}],true)).version,'1.4.0');
+  assert.equal((await checkMetadata([{tag_name:'desktop-v1.4.0',assets:[asset]}],true)).version,'1.4.0');
 });
 const { getDesktopUpdateStatus } = loadTs('src/lib/desktop-updater.ts', id => {
   assert.equal(id, '@/lib/app-update');
@@ -56,8 +86,8 @@ test('no oculta errores, comprobaciones ni estados deshabilitados', () => {
   }
 });
 
-test('no inventa una comparación si el puente no proporciona versión', () => {
-  assert.equal(getDesktopUpdateStatus(snapshot('ready', null), '1.3.46'), 'ready');
+test('metadatos incompletos o preliminares del puente no ofrecen reiniciar', () => {
+  for(const version of [null,'','desconocida','1.4.0-beta.1'])for(const status of ['available','downloading','ready'])assert.equal(getDesktopUpdateStatus(snapshot(status,version),'1.3.46'),'error');
 });
 
 test('la validación no modifica ni persiste el estado recibido de Electron', () => {

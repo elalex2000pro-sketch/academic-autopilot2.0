@@ -312,18 +312,18 @@ async function fetchJson<T>(url: string, init: RequestInit = {}): Promise<T> {
 }
 
 function pickDesktopRelease(releases: GithubRelease[]): DesktopReleaseCandidate | null {
+  if (!Array.isArray(releases)) return null;
   for (const release of releases) {
     if (!release || release.draft || release.prerelease) continue;
 
     const tag = release.tag_name ?? "";
     // El workflow publica instaladores con tag `vX.Y.Z`; las versiones antiguas
     // usaban `desktop-`. Aceptamos ambas si la release trae instalador.
-    if (!/^(?:desktop[-/]|v\d)/i.test(tag)) continue;
+    if (!/^(?:desktop[-/]v?|v)\d+\.\d+\.\d+$/i.test(tag)) continue;
 
     const assets = release.assets ?? [];
-    const asset =
-      assets.find((item) => item.name === DESKTOP_INSTALLER_NAME) ??
-      assets.find((item) => /\.exe$/i.test(item.name ?? ""));
+    if (!Array.isArray(assets)) continue;
+    const asset = assets.find((item) => item?.name === DESKTOP_INSTALLER_NAME && validAssetUrl(item.browser_download_url));
 
     if (!asset) continue;
 
@@ -333,6 +333,16 @@ function pickDesktopRelease(releases: GithubRelease[]): DesktopReleaseCandidate 
     return { release, version, asset };
   }
   return null;
+}
+
+function validAssetUrl(value: unknown): boolean {
+  if (typeof value !== "string") return false;
+  try { const url = new URL(value); return url.protocol === "https:" && url.hostname === "github.com" && url.pathname.startsWith(`/${UPDATE_REPO}/releases/download/`); }
+  catch { return false; }
+}
+
+function realSize(value: unknown): number | null {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : null;
 }
 
 /**
@@ -365,7 +375,7 @@ export async function checkForUpdates(): Promise<UpdateCheckResult> {
         publishedAt: candidate.release.published_at ?? null,
         downloadUrl: candidate.asset.browser_download_url ?? DESKTOP_DOWNLOAD_URL,
         releaseUrl: candidate.release.html_url ?? GITHUB_LATEST_RELEASE_URL,
-        sizeBytes: typeof candidate.asset.size === "number" ? candidate.asset.size : null,
+        sizeBytes: realSize(candidate.asset.size),
         tag: candidate.release.tag_name ?? null,
       },
     };
@@ -375,7 +385,7 @@ export async function checkForUpdates(): Promise<UpdateCheckResult> {
     `${WEB_VERSION_URL}?t=${Date.now()}`,
   );
 
-  if (manifest.enabled === false) {
+  if (!manifest || manifest.enabled === false || typeof manifest.version !== "string" || !/^\d+\.\d+\.\d+$/.test(manifest.version)) {
     return { channel, currentVersion, update: null };
   }
 
@@ -399,10 +409,7 @@ export async function checkForUpdates(): Promise<UpdateCheckResult> {
       publishedAt: manifest.publishedAt ?? manifest.published_at ?? null,
       downloadUrl: manifest.downloadUrl ?? GITHUB_LATEST_RELEASE_URL,
       releaseUrl: manifest.releaseUrl ?? GITHUB_RELEASES_URL,
-      sizeBytes:
-        typeof manifest.sizeBytes === "number" && manifest.sizeBytes > 0
-          ? manifest.sizeBytes
-          : null,
+      sizeBytes: realSize(manifest.sizeBytes),
       tag: null,
     },
   };
