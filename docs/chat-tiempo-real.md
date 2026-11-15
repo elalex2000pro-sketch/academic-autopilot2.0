@@ -1,8 +1,9 @@
-# Tarea 2A — pasos 1 y 2, parada antes del paso 3
+# Tarea 2A — Chat con WebSocket y recuperación periódica
 
 Fecha: 15 de noviembre de 2026. Rama: `feat/chat-tiempo-real`, creada desde
-`main` actualizado, `cea6daf` (PR #3 y #4 fusionados). Sin PR, push, versión,
-tag ni despliegue de estos cambios. `docs/rediseno-plan.md` ya existía sin
+`main` actualizado, `cea6daf` (PR #3 y #4 fusionados). Los pasos 1 y 2 se cerraron
+sin PR ni push; el paso 3 autoriza ambos, sin fusión, versión, tag ni release.
+`docs/rediseno-plan.md` ya existía sin
 seguimiento y queda fuera de los commits.
 
 ## 1. Diagnóstico del despliegue
@@ -140,3 +141,122 @@ cancelación y reconciliación con mensajes optimistas/recibos. El proveedor es
 compartido y Clases requiere regresión sin modificarla.
 
 Office, Documentos, Biblioteca, extracciones C1–C6 y rediseño quedan fuera.
+
+## Paso 3 — autorizado el 15 de noviembre de 2026
+
+La autorización posterior del usuario levanta la parada anterior y permite
+integrar la lectura, subir esta rama y abrir PR sin fusionar. Los apartados
+anteriores conservan la evidencia de los pasos 1 y 2 y su estado en ese momento.
+
+### Comportamiento integrado
+
+- Con WebSocket conectado: respaldo cada **30 s** tras terminar la consulta.
+  Sin WebSocket: **5 s**. Errores consecutivos duplican la espera hasta **60 s**;
+  una lectura correcta restablece la frecuencia. No se solapan consultas.
+- Sin internet o con `document.visibilityState` oculto, se cancela el respaldo
+  y se limpia su temporizador. `online`, visibilidad, foco y `pageshow` solicitan
+  recuperación inmediata. En móvil, volver a la lista pausa las lecturas del
+  hilo, manteniendo el listado de conversaciones visible actualizado.
+- El proveedor global conserva los eventos REST/WS y las confirmaciones fuera
+  de Chat. Añade un contexto de conexión; escucha vuelta de red/foco/visibilidad.
+  Comprueba cada 10 s si han transcurrido más de 45 s sin actividad del socket y
+  lo cierra para reconectar. El servidor ya envía ping cada 15 s.
+- Un cursor REST propio avanza solo al completar la recuperación incremental.
+  Un evento WS nuevo no puede saltarse pendientes anteriores. IDs repetidos se
+  combinan y los estados entregado/leído no retroceden. Se reutiliza la
+  reconciliación optimista existente, sin extraer componentes ni burbujas.
+- Para hilos inicialmente vacíos se amplía el contrato con `after=start`.
+  `messagesSince(id, null, signal)` recupera desde el principio, paginado y con
+  los mismos permisos. No cambia el historial `before` ni su tamaño predeterminado.
+- Al volver/reconectar se leen además los últimos 50 para actualizar recibos
+  anteriores; esta lectura acotada no adelanta el cursor incremental.
+- Lecturas iniciales y de respaldo usan `AbortController`. La limpieza y el
+  número de apertura evitan respuestas tardías, incluso con cambios de hilo.
+  Si falla la primera carga, el respaldo puede reintentar sin borrar el borrador.
+
+### Cobertura reproducible
+
+`frontend/tests/chat-realtime-e2e.cjs`, con los mismos servidores aislados que
+`chat-e2e.cjs`, prueba recepción entre dos alumnos sin recarga, frecuencias
+30/5 s, errores 10/20 s, WebSocket bloqueado, cancelación con respuesta retenida,
+modo offline, recuperación de 61 pendientes al volver, hilo vacío con 205,
+reconexión con un evento nuevo anterior a la respuesta REST, conexión muda,
+salida por navegación interna, permisos y ausencia de duplicados optimistas.
+
+La API, SQLite y los mensajes son reales y temporales. Solo se simulan en el
+navegador reloj, visibilidad y fallos de red/WebSocket. La vuelta móvil es una
+simulación en viewport móvil, no una suspensión de iOS/Android físico.
+No se modifica Clases ni se relajan los recorridos existentes.
+
+La verificación de React revisa efectos, dependencias, cancelación, referencias
+y actualizaciones funcionales de estado; no introduce refactorizaciones visuales.
+
+### Cómo probar a mano con dos cuentas
+
+Antes de fusionar, utilizar esta rama tanto en backend como en frontend. Una
+preview de Vercel que siga apuntando al backend antiguo de `main` no verifica
+el contrato incremental nuevo. Se puede preparar un entorno local sin datos
+personales con dos terminales:
+
+1. Desde `backend/`:
+   ```powershell
+   ../.venv311/Scripts/python.exe -m uvicorn chat_test_server:app --app-dir tests --host 0.0.0.0 --port 8000
+   ```
+2. Desde `frontend/` (si no hay build de esta rama):
+   ```powershell
+   $env:NEXT_PUBLIC_API_URL='http://127.0.0.1:8000'
+   npm run build
+   npm start
+   ```
+3. Abrir `http://localhost:3000` en una ventana normal y otra de incógnito.
+   Registrar dos cuentas de prueba distintas; cada una usa su propio `@usuario`.
+4. Crear un chat entre ellas, abrirlo en ambas y enviar mensajes en los dos
+   sentidos. Deben aparecer sin F5, una sola vez y conservando sus recibos.
+5. En la ventana receptora, DevTools → Network → Request blocking, bloquear
+   **solo** `*://*/api/v1/ws*` y recargar esa ventana una vez para aplicar el bloqueo.
+   Abrir el hilo, enviar desde la otra cuenta y esperar aproximadamente 5 s.
+6. Cambiar la receptora a otra pestaña (dejándola oculta), enviar varios mensajes
+   y volver. Deben recuperarse de inmediato. Repetir con más de 50 pendientes;
+   comprobar que aparecen todos, sin repetir los que ya estaban.
+7. En DevTools de la receptora activar Offline; enviar desde la otra cuenta.
+   Quitar Offline: los pendientes deben llegar sin recargar. En un móvil real,
+   repetir cambiando de aplicación y recuperando la conexión.
+8. Quitar el bloqueo de WebSocket y esperar su reconexión. Enviar de nuevo y
+   cambiar rápido entre dos hilos; cada mensaje debe quedar en su conversación.
+9. Salir a Ajustes: no deben continuar peticiones de mensajes de respaldo.
+   El WebSocket global puede seguir confirmando entregas, como antes.
+
+Después de aprobar/fusionar, desplegar primero la API con `after`/`after=start`
+y después la web. Revisar la variable de Vercel del apartado 1. La comprobación
+pública repetida durante el paso 3 sigue resolviendo el socket hacia Vercel;
+no se han modificado ajustes de producción. Render gratuito conserva sus
+demoras al despertar; los intervalos no son una garantía durante su suspensión.
+
+### Cierre del paso 3
+
+- **Correcto:** build, typecheck y lint (los mismos siete avisos); 99 tests
+  backend; cliente incremental (451 mensajes en respuestas simuladas y 205
+  pendientes contra API real aislada); 13 recorridos nuevos de tiempo real;
+  regresiones existentes de Chat y Clases; smoke de 56 comprobaciones de
+  rutas/tamaños, además de sus acciones de Studio. Todos terminan con código 0.
+- API y web de pruebas: cero errores de ejecución en sus logs. Los servidores
+  propios se cierran al terminar. No se han usado cuentas de producción.
+- **Fallo/aviso preexistente:** los siete avisos lint, avisos de obsolescencia
+  pytest-asyncio/Starlette y del runner `next start` con `output: standalone`.
+  La web pública sigue resolviendo el socket hacia Vercel; falta corregir la
+  configuración indicada en el diagnóstico para usar WS directo a Render.
+- **Fallo nuevo al cierre:** ninguno detectado. Los primeros intentos del
+  recorrido nuevo necesitaron corregir selectores/precondiciones y la liberación
+  de una respuesta retenida del test; no se cambiaron las aserciones existentes
+  ni el código de Clases para hacerlas pasar.
+- **Pendiente:** revisión del PR y autorización de fusión; despliegue coordinado
+  API/web; comprobación autenticada en producción, en móvil físico y concurrencia
+  PostgreSQL real. La simulación de navegador no sustituye esas comprobaciones.
+- Artefactos finales: `C:/Users/elale/AppData/Local/Temp/chat-step3-1trpnQ`
+  (cinco comandos de integración con código 0, logs y smoke);
+  `C:/Users/elale/AppData/Local/Temp/chat-realtime-LTU6WI` (13 casos nuevos);
+  `C:/Users/elale/AppData/Local/Temp/autopilot-chat-browser-qpckp2` (Chat);
+  `C:/Users/elale/AppData/Local/Temp/class-tabs-14Ux8f` (Clases).
+
+No se crea versión, tag ni release, ni se fusiona el PR. Las zonas excluidas,
+modelos, migraciones y manifiestos de dependencias conservan su contenido.

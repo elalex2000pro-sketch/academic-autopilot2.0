@@ -29,3 +29,23 @@ Mapa completo en `AGENTS.md`; dudas en `docs/limpieza-pendiente.md`; resultados 
 En la tarea 1C se retiraron únicamente las tarjetas de NotebookLM, Canva y Word/Excel del grupo de herramientas externas de `settings-view.tsx`. Eran enlaces e instrucciones, sin rutas ni clientes exclusivos. Se conserva el acceso a Canva de IA Studio, fuera de Configuración.
 
 `api.exportTasksExcel()` sigue siendo compartido por `task-list.tsx` y el respaldo de Ajustes; `api.exportNotebooksExcel()` por `app/notebooks/page.tsx` y ese respaldo. Se mantienen ambos clientes y `/api/v1/exports/tasks.xlsx` y `/api/v1/exports/notebooks.xlsx` (`backend/app/api/v1/exports.py`). Academic Office y sus archivos, Biblioteca, Documentos, las importaciones DOCX/XLSX, los datos y las migraciones no se modifican.
+
+## Chat: recuperación automática (tarea 2A)
+
+Después de las extracciones C1–C5, la tarea 2A amplía exclusivamente la lógica
+de sincronización del coordinador y del proveedor; no inicia C6 ni rediseño.
+`realtime-provider.tsx` conserva el WebSocket global, sus eventos y los recibos;
+expone su conexión a Chat y reconecta al recuperar red/actividad o detectar
+ausencia de ping. Clases utiliza los mismos eventos y no cambia de código.
+
+`chat-view.tsx` consulta mensajes cada 30 segundos con WebSocket conectado y
+cada 5 si está desconectado; los errores espacian las consultas hasta 60 segundos.
+El respaldo se pausa sin internet o con la página oculta, se recupera al volver
+y cancela lecturas al cambiar de conversación o desmontar la vista. En móvil,
+la lista sigue actualizándose mientras el hilo está cerrado, sin consultar sus mensajes.
+
+`chatApi.messagesSince()` lee páginas posteriores a un cursor REST independiente
+de los eventos WS. El backend acepta `after=<UUID>` y `after=start` para un hilo
+que estaba vacío, con orden estable y permisos de miembro. Una lectura reciente
+acotada a 50 mensajes reconcilia recibos al volver/reconectar. No cambia esquemas,
+migraciones ni dependencias. Contrato, despliegue y pruebas en `docs/chat-tiempo-real.md`.
