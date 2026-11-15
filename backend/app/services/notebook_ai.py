@@ -107,6 +107,13 @@ async def load_sources(db, notebook, source_ids):
             chunk['url'] += '&section_id=' + chunk['section_id']
         if chunk.get('page'):
             chunk['url'] += '&page=' + str(chunk['page'])
+    # Los apuntes ya pertenecen al cuaderno autorizado; no crear adjuntos ni
+    # subir archivos. Solo se consultan al pedir Chat/Studio sin adjuntos elegidos.
+    if not source_ids and (notebook.content or '').strip():
+        meta = dict(source_id=str(notebook.id), title=f'Apuntes: {notebook.title}',
+                    page=None, page_end=None, url=f'/review?notebook={notebook.id}')
+        chunks.extend(fragments(notebook.content, meta))
+        inventory.append(dict(source_id=str(notebook.id), title=meta['title'], size_bytes=len(notebook.content.encode('utf-8'))))
     return chunks, inventory, warnings
 
 
@@ -253,7 +260,7 @@ async def chat(db, notebook, user, payload):
         except Exception:
             answer = 'No se pudo consultar el modelo de IA. Inténtalo de nuevo.'
     elif context:
-        answer = 'Configura un motor de IA en Ajustes para consultar las fuentes.'
+        answer = 'Para usar Chat y Studio, abre Ajustes y configura tu modelo y, si lo necesita, su clave de IA.'
     if actions:
         labels = {'create_flashcards': 'Tarjetas', 'create_quiz': 'Quiz', 'create_summary': 'Resumen'}
         answer = '\n'.join(

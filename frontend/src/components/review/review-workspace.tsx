@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import Link from "next/link";
 import { useRealtime } from "@/components/realtime-provider";
 import { api } from "@/lib/api";
 import type {
@@ -53,6 +54,8 @@ export function ReviewWorkspace({
   const notesRequested = useRef(false);
   const reduced = useReducedMotion();
   const indicatorId = useId();
+  const hasNotes = Boolean(notebook.content?.trim());
+  const hasMaterial = hasNotes || selected.length > 0;
 
   useEffect(() => {
     const media = window.matchMedia("(min-width: 1024px)");
@@ -101,7 +104,7 @@ export function ReviewWorkspace({
   });
 
   async function send(question: string) {
-    if (turnId.current || saving || loading || !selected.length) return;
+    if (turnId.current || saving || loading || !hasMaterial) return;
     const id = crypto.randomUUID();
     turnId.current = id;
     setStage("Enviando consulta…");
@@ -188,9 +191,16 @@ export function ReviewWorkspace({
     }
   }
 
-  const disabled = loading || Boolean(stage) || saving !== null || selected.length === 0;
+  const disabled = loading || Boolean(stage) || saving !== null || !hasMaterial;
   const content = {
-    Fuentes: (
+    Fuentes: hasNotes && sources.length === 0 ? (
+      <section aria-label="Fuentes" className="space-y-4">
+        <h2 className="font-semibold">Fuentes</h2>
+        <p className="text-sm">Apuntes guardados de este cuaderno.</p>
+        <Link href={`/notebooks?addSource=${notebook.id}`} className="text-sm underline">Añadir una fuente</Link>
+        {citation && <blockquote className="max-h-56 overflow-auto whitespace-pre-wrap break-words text-sm">{citation.fragment}</blockquote>}
+      </section>
+    ) : (
       <ReviewSources
         notebookId={notebook.id}
         sources={sources}
@@ -231,6 +241,10 @@ export function ReviewWorkspace({
 
   return (
     <div className="space-y-3">
+      {!loading && <p role="status" className="text-sm text-muted-foreground">
+        {!hasMaterial ? "Escribe apuntes en el cuaderno o añade una fuente para empezar." : hasNotes && selected.length === 0 ? "Al enviar una pregunta o pulsar una acción de Studio, se usarán los apuntes guardados de este cuaderno." : "Se usarán los adjuntos seleccionados al enviar una pregunta o pulsar una acción de Studio."}
+      </p>}
+      <p className="text-sm text-muted-foreground">Chat y Studio necesitan un modelo de IA configurado en <Link href="/settings" className="underline">Ajustes</Link>.</p>
       <div
         className="app-glass grid grid-cols-3 gap-1 rounded-xl p-1 lg:hidden"
         aria-label="Paneles de repaso"

@@ -28,6 +28,47 @@ def fake(monkeypatch, data):
     monkeypatch.setattr(ai_service,'_post_chat',post)
 
 
+def test_own_notes_answer_and_studio_without_attached_sources(client, monkeypatch):
+    c=client;a,_,x,_=setup(c)
+    note=c.post('/api/v1/notebooks',headers=a,json={'title':'Mis apuntes','content':'La mitocondria produce ATP mediante respiración celular.'}).json()
+    path='/api/v1/notebooks/'+note['id'];payload={'question':'¿Qué produce la mitocondria?','source_ids':[]}
+    captured=[]
+    async def post(profile,messages,*args):
+        captured.append(messages)
+        return {'content':json.dumps({'supported':True,'answer':'Produce ATP [1].'})}
+    monkeypatch.setattr(ai_service,'_post_chat',post)
+    r=c.post(path+'/chat',headers=a,json=payload);assert r.status_code==200,r.text
+    result=r.json();assert result['answer']=='Produce ATP [1].'
+    assert result['citations'][0]['fragment']==note['content']
+    assert captured and note['content'] in captured[0][0]['content']
+    assert c.get(path+'/sources',headers=a).json()==[]
+    assert c.post(path+'/chat',headers=x,json=payload).status_code==404
+    assert c.post(path+'/chat',headers=a,json={**payload,'source_ids':[str(uuid.uuid4())]}).status_code==404
+    for tool,args in [
+        ('create_flashcards',{'cards':[{'front':'¿Qué produce?','back':'ATP [1]'}]}),
+        ('create_quiz',{'title':'Repaso','questions':[{'question':'¿Producto?','options':['ATP','Oro'],'answer':0,'explanation':'ATP [1]'}]}),
+        ('create_summary',{'title':'Energía','content':'La mitocondria produce ATP [1].'}),
+    ]:
+        fake(monkeypatch,{'actions':[{'tool':tool,'arguments':args}]})
+        result=c.post(path+'/chat',headers=a,json={**payload,'question':'Crea '+tool}).json()
+        assert result['actions'][0]['ok'],result
+    assert c.get('/api/v1/flashcards',headers=a).json()
+    assert c.get('/api/v1/quizzes',headers=a).json()
+    assert '## Energía' in c.get(path,headers=a).json()['content']
+
+
+def test_own_notes_missing_ai_explains_settings_and_makes_no_call(client,monkeypatch):
+    from types import SimpleNamespace
+    c=client;a,_,_,_=setup(c)
+    note=c.post('/api/v1/notebooks',headers=a,json={'title':'Apuntes','content':'La mitocondria produce ATP.'}).json()
+    monkeypatch.setattr(ai_service,'resolve_profile',lambda user:SimpleNamespace(configured=False))
+    async def forbidden(*args):raise AssertionError('No debe llamar al proveedor sin configurar')
+    monkeypatch.setattr(ai_service,'_post_chat',forbidden)
+    result=c.post('/api/v1/notebooks/'+note['id']+'/chat',headers=a,json={'question':'Crea tarjetas','source_ids':[]}).json()
+    assert 'Ajustes' in result['answer'] and 'Chat y Studio' in result['answer']
+    assert result['actions']==[] and c.get('/api/v1/flashcards',headers=a).json()==[]
+
+
 def test_citations_abstention_and_permissions(client, monkeypatch):
     c=client; a,b,x,base=setup(c); path,source=seed(c,a)
     fake(monkeypatch,{'supported':True,'answer':'La mitocondria produce ATP [1].'})
