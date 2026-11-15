@@ -4,12 +4,12 @@ import { ChatThreadComposer } from "@/components/chat/chat-thread-composer";
 import { ChatThreadHeader } from "@/components/chat/chat-thread-header";
 import { ChatConversationList } from "@/components/chat/chat-conversation-list";
 import { ChatProfilePanel } from "@/components/chat/chat-profile-panel";
-import { MessageText, MessageTicks } from "@/components/chat/chat-message-content";
-import { readError, nameOf, conversationTitle, conversationSubtitle, initials, formatClock, messagePreview, formatDay, isImage, formatSize } from "@/lib/chat-format";
+import { ChatMessageBubble } from "@/components/chat/chat-message-bubble";
+import { readError, nameOf, conversationTitle, conversationSubtitle, initials, messagePreview, isImage, formatSize } from "@/lib/chat-format";
 import { createPortal } from "react-dom";
 import "./chat-workspace.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AtSign, Check, FileText, FolderOpen, Forward, Loader2, MessageSquarePlus, Paperclip, Plus, Save, Search, UserPlus, X } from "lucide-react";
+import { AtSign, Check, FileText, FolderOpen, Loader2, MessageSquarePlus, Paperclip, Plus, Save, Search, UserPlus, X } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { ChatBackgroundPicker } from "@/components/chat-background-picker";
 import {
@@ -1001,65 +1001,17 @@ export function ChatView() {
                     new Date(previous.created_at).toDateString() !==
                       new Date(message.created_at).toDateString();
                   return (
-                    <div key={message.id}>
-                      {newDay ? (
-                        <p className="my-5 text-center">
-                          <span className="chat-day-label">
-                            {formatDay(message.created_at)}
-                          </span>
-                        </p>
+                    <ChatMessageBubble
+                      key={message.id}
+                      message={message}
+                      mine={mine}
+                      newDay={newDay}
+                      kind={active.kind}
+                      attachment={message.attachment ? (
+                        <AttachmentCard message={message} />
                       ) : null}
-                      <div
-                        className={cn(
-                          "chat-message-row group",
-                          mine && "chat-message-row-mine",
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            "chat-bubble",
-                            mine ? "chat-bubble-mine" : "chat-bubble-received",
-                          )}
-                        >
-                          {!mine && active.kind === "group" ? (
-                            <p className="mb-1 flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                              {message.sender_username
-                                ? `@${message.sender_username}`
-                                : message.sender_name}
-                              {message.sender_verified ? (
-                                <VerifiedTick className="h-3 w-3" />
-                              ) : null}
-                            </p>
-                          ) : null}
-                          {message.attachment ? (
-                            <AttachmentCard message={message} />
-                          ) : null}
-                          {message.content ? (
-                            <MessageText text={message.content} />
-                          ) : null}
-                          <p className="chat-bubble-meta">
-                            <time dateTime={message.created_at}>
-                              {formatClock(message.created_at)}
-                            </time>
-                            <MessageTicks
-                              mine={mine}
-                              status={message.status}
-                              pending={message.pending}
-                            />
-                          </p>
-                        </div>
-                        {!message.pending ? (
-                          <button
-                            onClick={() => setForwarding(message)}
-                            aria-label="Reenviar mensaje"
-                            title="Reenviar"
-                            className="chat-forward"
-                          >
-                            <Forward className="h-3.5 w-3.5" />
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
+                      onForward={setForwarding}
+                    />
                   );
                 })
               )}
