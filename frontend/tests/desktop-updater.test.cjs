@@ -22,6 +22,7 @@ const versions = loadTs('src/lib/app-update.ts', id => {
 
 async function checkMetadata(payload,desktop=false) {
   const client=loadTs('src/lib/app-update.ts',()=>require('../package.json'),{
+    process:{env:{NEXT_PUBLIC_APP_VERSION:'1.3.46'}}, // versión de origen del ensayo, independiente del candidato
     Headers,AbortController,URL,setTimeout,clearTimeout,
     navigator:{userAgent:desktop?'AcademicAutopilotDesktop/1.3.46':''},
     fetch:async()=>({ok:true,json:async()=>payload}),
