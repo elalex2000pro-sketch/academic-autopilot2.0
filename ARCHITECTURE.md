@@ -23,3 +23,9 @@ App de estudio entre alumnos. Frontend Next.js/React, API FastAPI y escritorio E
 Preservar rutas, props, textos, estilos Liquid Glass y orden de efectos al extraer componentes. Cuidar selección/deshacer de CKEditor, eventos WebSocket, permisos y origen de los IPC. No modificar migraciones aplicadas ni dependencias durante la limpieza.
 
 Mapa completo en `AGENTS.md`; dudas en `docs/limpieza-pendiente.md`; resultados antes/después en `docs/limpieza-verificacion.md`.
+
+## Configuración: herramientas externas retiradas
+
+En la tarea 1C se retiraron únicamente las tarjetas de NotebookLM, Canva y Word/Excel del grupo de herramientas externas de `settings-view.tsx`. Eran enlaces e instrucciones, sin rutas ni clientes exclusivos. Se conserva el acceso a Canva de IA Studio, fuera de Configuración.
+
+`api.exportTasksExcel()` sigue siendo compartido por `task-list.tsx` y el respaldo de Ajustes; `api.exportNotebooksExcel()` por `app/notebooks/page.tsx` y ese respaldo. Se mantienen ambos clientes y `/api/v1/exports/tasks.xlsx` y `/api/v1/exports/notebooks.xlsx` (`backend/app/api/v1/exports.py`). Academic Office y sus archivos, Biblioteca, Documentos, las importaciones DOCX/XLSX, los datos y las migraciones no se modifican.
