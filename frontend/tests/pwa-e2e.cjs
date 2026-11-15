@@ -11,7 +11,9 @@ async function verifyPwa(browser, { WEB, API, token, user, office, output, pdfFi
     const profile = await fs.mkdtemp(path.join(output, `pwa-profile-${viewport.width}-`));
     const context = await browser.browserType().launchPersistentContext(profile, {
       headless: true, viewport, serviceWorkers: 'allow', permissions: ['notifications'],
-      ...(channel === 'chromium' ? {} : { channel }),
+      // Explicit chromium selects the full browser's new headless mode;
+      // headless-shell denies notifications even after granting permissions.
+      channel,
     });
     await context.addInitScript(({ token, user }) => {
       localStorage.setItem('autopilot_token', token);

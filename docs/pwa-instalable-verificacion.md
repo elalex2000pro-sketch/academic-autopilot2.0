@@ -65,12 +65,26 @@ Evidencia local:
 - `%TEMP%/pwa-instalable-smoke-fffwy9e7/pwa-transport-final/pwa-report.json`:
   auditoría final, transporte Office/WS, notificaciones, PDF y actualización.
 - En esa última carpeta, `pwa-offline-1440.png` y `pwa-offline-390.png`.
+- `%TEMP%/pwa-chromium-probe-fbghpb5n/pwa-transport-final/pwa-report.json`:
+  repetición correcta con Chromium completo, el mismo canal de la auditoría CI.
 
 Durante la preparación de la prueba, Chrome rechazó el contexto privado
 (`in-incognito`); se sustituyó por perfiles temporales normales. También se
 corrigió una carrera del test: ahora espera que el controlador nuevo concreto
 esté activado antes de comprobar la eliminación de cachés. No se excluyen
 errores de instalación ni se relajan las aserciones para hacer pasar el test.
+
+El primer CI detectó además que headless-shell deniega el permiso de avisos
+incluso tras concederlo con Playwright. Se reprodujo localmente y la auditoría
+selecciona el canal `chromium` explícito (navegador completo, headless moderno),
+conservando la comprobación real de `showNotification` y `getNotifications`.
+No se añade ningún navegador/dependencia al proyecto: ambos binarios ya se
+instalan con la orden de Chromium existente en CI. Un intento backend tuvo
+`database is locked` en la prueba de presencia; otro pasó sin cambios backend.
+
+Una pestaña abierta conserva su JavaScript en ejecución hasta navegar o
+recargar normalmente; activar el worker nuevo no recarga por la fuerza el
+editor. Esto evita perder cambios y no impide cargar la web nueva desde la red.
 
 ## Pendiente de Android físico
 
