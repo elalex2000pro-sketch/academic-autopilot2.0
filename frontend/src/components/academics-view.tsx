@@ -1,4 +1,6 @@
 "use client";
+import { GradeGroups } from "@/components/grade-groups";
+import { GradeClassificationFields, type GradeClassification } from "@/components/grade-classification-fields";
 
 import { motion } from "framer-motion";
 import { EditablePanels } from "@/components/layout/editable-panels";
@@ -221,6 +223,7 @@ export function AcademicsView() {
   const [gradeMax, setGradeMax] = useState("10");
   const [gradeWeight, setGradeWeight] = useState("");
   const [gradeDate, setGradeDate] = useState("");
+  const [gradeClassification, setGradeClassification] = useState<GradeClassification>({ trimester: null, unit: "" });
   const [gradeNotes, setGradeNotes] = useState("");
   const [gradeIsExam, setGradeIsExam] = useState(false);
   const [savingGrade, setSavingGrade] = useState(false);
@@ -619,6 +622,8 @@ export function AcademicsView() {
         graded_at: gradeDate || null,
         notes: gradeNotes.trim() || null,
         is_exam: gradeIsExam,
+        trimester: gradeClassification.trimester,
+        unit: gradeClassification.unit.trim() || null,
       });
       setGradeTitle("");
       setGradeScore("");
@@ -626,6 +631,7 @@ export function AcademicsView() {
       setGradeWeight("");
       setGradeDate("");
       setGradeNotes("");
+      setGradeClassification({ trimester: null, unit: "" });
       setGradeIsExam(false);
       notifyGradeChange();
       await load(true);
@@ -1251,6 +1257,7 @@ export function AcademicsView() {
                         className="mt-1"
                       />
                     </label>
+                    <div className="sm:col-span-2"><GradeClassificationFields value={gradeClassification} onChange={setGradeClassification} units={Array.from(new Set(selectedGrades.map((g) => g.unit).filter((v): v is string => !!v))).sort()} disabled={savingGrade} /></div>
                     <label className="block sm:col-span-2">
                       <span className="text-[10px] font-medium text-slate-500 dark:text-white/40">
                         Notas (opcional)
@@ -1296,94 +1303,7 @@ export function AcademicsView() {
                   </div>
                 </form>
 
-                <div className="rounded-3xl border border-slate-300/40 bg-slate-100/60 p-4 dark:border-white/10 dark:bg-white/[0.04]">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-[9.5px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-white/30">
-                      Historial
-                    </p>
-                    <span className="text-[10px] text-slate-400 dark:text-white/30">{selectedGrades.length}</span>
-                  </div>
-                  {selectedGrades.length === 0 ? (
-                    <div className="mt-3 rounded-2xl border border-dashed border-white/70 px-4 py-8 text-center text-[11.5px] text-slate-500 dark:border-white/10 dark:text-white/35">
-                      Todavía no hay exámenes ni trabajos. Añade el primero para empezar a calcular la media.
-                    </div>
-                  ) : (
-                    <div className="mt-2 space-y-1.5">
-                      {selectedGrades.map((grade) => {
-                        const percent = grade.percentage;
-                        return (
-                          <div
-                            key={grade.id}
-                            className="group flex items-center gap-3 rounded-2xl border border-transparent px-2.5 py-2.5 transition-colors hover:border-slate-400/45 hover:bg-slate-100/55 dark:hover:border-white/10 dark:hover:bg-white/[0.04]"
-                          >
-                            <span
-                              className={cn(
-                                "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[11px] font-semibold tabular-nums",
-                                percent === null
-                                  ? "bg-slate-500/10 text-slate-500 dark:bg-white/10 dark:text-white/45"
-                                  : percent >= 50
-                                    ? "bg-[#34C759]/12 text-[#1a9e3a] dark:bg-[#34C759]/15 dark:text-[#7ee69a]"
-                                    : "bg-[#FF3B30]/10 text-[#d92b22] dark:bg-[#FF3B30]/15 dark:text-[#ff8a80]",
-                              )}
-                            >
-                              {grade.score !== null ? grade.score : "—"}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex min-w-0 items-center gap-1.5">
-                                <p className="truncate text-[12px] font-medium text-slate-800 dark:text-white/80">
-                                  {grade.title}
-                                </p>
-                                {grade.is_exam && (
-                                  <span className="shrink-0 rounded-full bg-[#FF3B30]/10 px-1.5 py-0.5 text-[8.5px] font-semibold uppercase tracking-[0.06em] text-[#d92b22] dark:bg-[#FF3B30]/15 dark:text-[#ff8a80]">
-                                    Examen
-                                  </span>
-                                )}
-                              </div>
-                              <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-slate-500 dark:text-white/35">
-                                <span>{formatDate(grade.graded_at)}</span>
-                                {grade.weight !== null && <span>· peso {grade.weight}</span>}
-                                <span>· sobre {grade.max_score}</span>
-                                {grade.notes && <span className="truncate">· {grade.notes}</span>}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-[12px] font-semibold tabular-nums text-slate-800 dark:text-white/80">
-                                {percent === null ? "Pendiente" : `${percent.toFixed(1)}%`}
-                              </p>
-                              <p className="text-[9.5px] text-slate-400 dark:text-white/30">
-                                {percent === null ? "sin nota" : `${(percent / 10).toFixed(1)}/10`}
-                              </p>
-                            </div>
-                            {grade.is_exam && (
-                              <button
-                                type="button"
-                                onClick={() => setExamDialog({ mode: "edit", exam: grade })}
-                                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-400 opacity-100 transition-colors hover:bg-[#0066FF]/10 hover:text-[#0066FF] dark:text-white/25 dark:hover:text-[#8ab9ff] sm:opacity-0 sm:group-hover:opacity-100"
-                                aria-label={`Editar ${grade.title}`}
-                                title="Editar examen"
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => void removeGrade(grade.id)}
-                              disabled={deletingGradeId === grade.id}
-                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-400 opacity-100 transition-colors hover:bg-rose-500/10 hover:text-rose-500 disabled:opacity-40 sm:opacity-0 sm:group-hover:opacity-100"
-                              aria-label={`Eliminar ${grade.title}`}
-                            >
-                              {deletingGradeId === grade.id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-3.5 w-3.5" />
-                              )}
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                <GradeGroups grades={selectedGrades} terms={selectedSummary?.terms} onSaved={() => { notifyGradeChange(); void load(true); }} onEditExam={(grade) => setExamDialog({ mode: "edit", exam: grade })} onDelete={removeGrade} />
               </div>
             </div>
           </div>

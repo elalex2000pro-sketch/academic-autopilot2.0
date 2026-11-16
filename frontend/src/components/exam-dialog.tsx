@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 
+import { GradeClassificationFields, type GradeClassification } from "@/components/grade-classification-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,6 +74,8 @@ export function ExamDialog({
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [classification, setClassification] = useState<GradeClassification>({ trimester: null, unit: "" });
+  const [units, setUnits] = useState<string[]>([]);
   const scoreRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -84,6 +87,7 @@ export function ExamDialog({
     setMaxScore(exam ? String(exam.max_score) : "10");
     setScore(exam?.score !== null && exam?.score !== undefined ? String(exam.score) : "");
     setNotes(exam?.notes ?? "");
+    setClassification({ trimester: exam?.trimester ?? null, unit: exam?.unit ?? "" });
     setError(null);
     setConfirmDelete(false);
     setSaving(false);
@@ -109,6 +113,14 @@ export function ExamDialog({
     () => courses.find((course) => course.id === courseId) ?? null,
     [courses, courseId],
   );
+
+  useEffect(() => {
+    if (!open || !courseId) { setUnits([]); return; }
+    let cancelled = false;
+    setUnits([]);
+    void api.grades(courseId).then((grades) => { if (!cancelled) setUnits(Array.from(new Set(grades.map((g) => g.unit).filter((v): v is string => !!v))).sort()); }).catch(() => { if (!cancelled) setUnits([]); });
+    return () => { cancelled = true; };
+  }, [open, courseId]);
 
   const parsedMax = toNumber(maxScore) ?? 10;
   const parsedScore = toNumber(score);
@@ -176,6 +188,8 @@ export function ExamDialog({
         graded_at: date,
         notes: notes.trim() || null,
         is_exam: true,
+        trimester: classification.trimester,
+        unit: classification.unit.trim() || null,
       };
       const saved = exam
         ? await api.updateGrade(exam.id, body)
@@ -392,6 +406,7 @@ export function ExamDialog({
               </p>
             </div>
 
+            <div className="sm:col-span-2"><GradeClassificationFields value={classification} onChange={setClassification} units={units} disabled={saving || deleting} /></div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="exam-notes">Notas (opcional)</Label>
               <Input

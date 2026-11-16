@@ -322,6 +322,8 @@ export const api = {
     request<Grade[]>(`/api/v1/grades${courseId ? `?course_id=${courseId}` : ""}`),
   gradeSummary: () => request<GradeSummary>("/api/v1/grades/summary"),
   createGrade: (body: {
+    trimester?: number | null;
+    unit?: string | null;
     title: string;
     course_id?: string | null;
     score?: number | null;
@@ -334,6 +336,8 @@ export const api = {
   updateGrade: (
     id: string,
     body: {
+      trimester?: number | null;
+      unit?: string | null;
       title?: string;
       course_id?: string | null;
       score?: number | null;
