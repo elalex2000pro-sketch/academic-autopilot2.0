@@ -45,7 +45,7 @@ export default function GlobalError({
       >
         <main style={{ maxWidth: 560, textAlign: "center" }}>
           <h1 style={{ fontSize: 24, margin: "0 0 8px", letterSpacing: "-0.03em" }}>
-            Academic Autopilot no pudo arrancar
+            Atlantium no pudo arrancar
           </h1>
           <p style={{ fontSize: 14, lineHeight: 1.6, color: "#555" }}>
             Se produjo un error inesperado al cargar la aplicación. Puedes reintentar o

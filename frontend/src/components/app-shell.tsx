@@ -248,8 +248,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <Link
             href="/"
-            aria-label="Academic Autopilot · Inicio"
-            title="Academic Autopilot"
+            aria-label="Atlantium · Inicio"
+            title="Atlantium"
             className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white outline-none transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/55"
           >
             <Logo className={sidebarLayout.collapsed ? "h-8 w-8" : "h-10 w-10"} />
@@ -325,14 +325,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Link
                   href="/"
                   className="flex min-w-0 items-center gap-2.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-text-on-selection/25 dark:focus-visible:ring-white/35"
-                  aria-label="Academic Autopilot · Inicio"
+                  aria-label="Atlantium · Inicio"
                 >
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-inverse text-white">
                     <Logo className="h-6 w-6" />
                   </span>
                   <span className="min-w-0">
                     <span className="block truncate text-[12.5px] font-semibold leading-tight tracking-[-0.02em] text-text-on-selection dark:text-white/90">
-                      Academic Autopilot
+                      Atlantium
                     </span>
                     <span className="block truncate text-[9.5px] leading-tight text-black/45 dark:text-white/35">
                       Planificador de estudio

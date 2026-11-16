@@ -1,7 +1,7 @@
 {
-  "name": "Academic Autopilot",
-  "short_name": "Autopilot",
-  "description": "Tu copiloto académico: planificación, cuadernos, biblioteca y clases, también en tu escritorio.",
+  "name": "Atlantium",
+  "short_name": "Atlantium",
+  "description": "Atlantium, tu copiloto académico: planificación, cuadernos, biblioteca y clases, también en tu escritorio.",
   "id": "/",
   "start_url": "/",
   "scope": "/",

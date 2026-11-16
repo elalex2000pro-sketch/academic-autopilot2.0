@@ -625,13 +625,13 @@ export function SettingsView() {
     setNotice(
       granted
         ? "Notificaciones activadas: los mensajes del chat avisarán en el sistema."
-        : "El sistema bloqueó las notificaciones. Actívalas para Academic Autopilot en los ajustes de tu navegador u ordenador.",
+        : "El sistema bloqueó las notificaciones. Actívalas para Atlantium en los ajustes de tu navegador u ordenador.",
     );
   }, []);
 
   const handleTestNotification = useCallback(async () => {
     const shown = await showSystemNotification({
-      title: "Academic Autopilot",
+      title: "Atlantium",
       body: "Así se verán los avisos de mensajes nuevos del chat.",
       tag: "chat-test",
     });

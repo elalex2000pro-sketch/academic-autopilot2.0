@@ -15,12 +15,23 @@ test('todas las raíces de versión deben coincidir',()=>{
 });
 test('CI y ambos Vercel del mismo commit son obligatorios',()=>{
   const run={id:1,head_sha:'abc',head_branch:'main',event:'push',status:'completed',conclusion:'success'};
-  const statuses=['Vercel – academicautopilot','Vercel – academic-autopilot2-0'].map(context=>({id:1,context,state:'success'}));
+  const statuses=['Vercel – academic-autopilot2-0','Vercel – atlantium'].map(context=>({id:1,context,state:'success'}));
   checkRemote([run],statuses,'abc');
   for(const conclusion of ['failure',null,'cancelled'])assert.throws(()=>checkRemote([{...run,conclusion}],statuses,'abc'));
   for(const state of ['pending','failure','error'])assert.throws(()=>checkRemote([run],[{...statuses[0],state},statuses[1]],'abc'));
   assert.throws(()=>checkRemote([run],statuses.slice(1),'abc'));assert.throws(()=>checkRemote([run],statuses,'other'));
   assert.throws(()=>checkRemote([run,{...run,id:2,conclusion:'failure'}],statuses,'abc'));
+});
+
+test('la puerta exige academic-autopilot2-0 y atlantium e identifica cuál falta',()=>{
+  const run={id:1,head_sha:'abc',head_branch:'main',event:'push',status:'completed',conclusion:'success'};
+  const contexts=['Vercel – academic-autopilot2-0','Vercel – atlantium'];
+  const statuses=contexts.map(context=>({id:1,context,state:'success'}));
+  assert.doesNotThrow(()=>checkRemote([run],statuses,'abc'));
+  for(const context of contexts){
+    assert.throws(()=>checkRemote([run],statuses.filter(s=>s.context!==context),'abc'),error=>error.message.includes(context));
+    for(const state of ['pending','failure','error'])assert.throws(()=>checkRemote([run],statuses.map(s=>s.context===context?{...s,state}:s),'abc'),error=>error.message.includes(context));
+  }
 });
 test('el manifiesto usa bytes reales y las mismas notas, sin fecha de publicación inventada',()=>{
   const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'manifest-check-'));
