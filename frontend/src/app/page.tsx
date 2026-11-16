@@ -89,11 +89,14 @@ export default function DashboardPage() {
   const {
     activeTasks,
     overdueTasks,
+    deliveryTasks,
     loading: tasksLoading,
     error: tasksError,
     refresh: refreshTasks,
     completeTask,
     deleteTask,
+    declareDelivery,
+    undoDelivery,
   } = useTaskManager({ autoLoad: false });
 
   const refreshGradeData = useCallback(async (): Promise<GradeSummary | null> => {
@@ -496,12 +499,15 @@ export default function DashboardPage() {
           <TaskList
             tasks={tasks}
             historyTasks={overdueTasks}
+            deliveryTasks={deliveryTasks}
             loading={tasksLoading}
             error={tasksError}
             strikeHistory={autoStrikeOverdue}
             courses={courses}
             onComplete={completeTask}
             onDelete={deleteTask}
+            onDeclareDelivery={async (id, body) => { await declareDelivery(id, body); void load(); }}
+            onUndoDelivery={async (id) => { await undoDelivery(id); void load(); }}
             onTaskUpdated={() => void load()}
           />
 

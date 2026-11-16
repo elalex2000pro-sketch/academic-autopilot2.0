@@ -36,12 +36,16 @@ export interface TaskManager {
   activeTasks: Task[];
   overdueTasks: Task[];
   completedTasks: Task[];
+  /** Entregas incluye tambien completadas, aunque esten excluidas de pendientes. */
+  deliveryTasks: Task[];
   exclusions: TaskExclusions;
   loading: boolean;
   error: string | null;
   refresh: (options?: { silent?: boolean }) => Promise<Task[]>;
   completeTask: (id: string) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
+  declareDelivery: (id: string, body: { note?: string; url?: string }) => Promise<void>;
+  undoDelivery: (id: string) => Promise<void>;
 }
 
 /**
@@ -114,6 +118,22 @@ export function useTaskManager({
   );
 
   const partition = useMemo(() => partitionTasks(tasks, now), [tasks, now]);
+  const deliveryTasks = useMemo(() => {
+    const deleted = new Set(exclusions.deletedTaskIds);
+    return rawTasks.filter((task) => !deleted.has(task.id) && task.status !== "archived" && !task.parent_task_id);
+  }, [rawTasks, exclusions.deletedTaskIds]);
+
+  const declareDelivery = useCallback(async (id: string, body: { note?: string; url?: string }) => {
+    const saved = await api.declareTaskDelivery(id, body);
+    setRawTasks((current) => current.map((task) => task.id === id ? saved : task));
+  }, []);
+
+  const undoDelivery = useCallback(async (id: string) => {
+    const saved = await api.undoTaskDelivery(id);
+    if (saved.status !== "completed") restoreTaskExclusion("completed", id);
+    setExclusions(getTaskExclusions());
+    setRawTasks((current) => current.map((task) => task.id === id ? saved : task));
+  }, []);
 
   const completeTask = useCallback(async (id: string) => {
     const alreadyCompleted = getTaskExclusions().completedTaskIds.includes(id);
@@ -121,7 +141,8 @@ export function useTaskManager({
     markTaskCompleted(id);
     setExclusions(getTaskExclusions());
     try {
-      await api.completeTask(id);
+      const saved = await api.completeTask(id);
+      setRawTasks((current) => current.map((task) => task.id === id ? saved : task));
       if (!alreadyCompleted && user) awardTaskXp(user.id, id);
     } catch (cause) {
       if (!alreadyCompleted) {
@@ -152,11 +173,14 @@ export function useTaskManager({
     activeTasks: partition.active,
     overdueTasks: partition.overdue,
     completedTasks: partition.completed,
+    deliveryTasks,
     exclusions,
     loading,
     error,
     refresh,
     completeTask,
     deleteTask,
+    declareDelivery,
+    undoDelivery,
   };
 }

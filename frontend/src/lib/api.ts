@@ -381,6 +381,10 @@ export const api = {
   replan: () => request<OptimizedPlan>("/api/v1/tasks/replan", { method: "POST" }),
   completeTask: (id: string) =>
     request<Task>(`/api/v1/tasks/${id}/complete`, { method: "POST" }),
+  declareTaskDelivery: (id: string, body: { note?: string; url?: string }) =>
+    request<Task>(`/api/v1/tasks/${id}/delivery`, { method: "POST", body: JSON.stringify(body) }),
+  undoTaskDelivery: (id: string) =>
+    request<Task>(`/api/v1/tasks/${id}/delivery`, { method: "DELETE" }),
   deleteTask: (id: string) =>
     request<void>(`/api/v1/tasks/${id}`, { method: "DELETE" }),
   createTask: (body: {
