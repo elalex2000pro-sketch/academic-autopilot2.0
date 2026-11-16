@@ -11,6 +11,7 @@ import { useEffect } from "react";
 
 import { api } from "@/lib/api";
 import { buildNotifications } from "@/lib/notifications";
+import { isOverdueReminder, TASK_REMINDER_EVENT } from "@/lib/task-snooze";
 import {
   ensureSystemNotificationPermission,
   notifyOnce,
@@ -42,9 +43,12 @@ export function SystemNotifications() {
     if (!supportsSystemNotifications()) return;
 
     let cancelled = false;
+    let checking = false;
     let timer: ReturnType<typeof setInterval> | null = null;
 
     async function check(): Promise<void> {
+      if (checking || cancelled) return;
+      checking = true;
       try {
         const [tasks, grades, courses] = await Promise.all([
           api.tasks(),
@@ -58,6 +62,8 @@ export function SystemNotifications() {
           // Los avisos "task" son novedades recientes; el sistema solo debe
           // interrumpir por examenes y entregas.
           if (item.kind === "task") continue;
+          // El dialogo de la app se encarga de las vencidas por dia local.
+          if (item.kind === "deadline" && tasks.some((task) => item.id === `deadline:${task.id}` && isOverdueReminder(task))) continue;
           await notifyOnce(item.id, {
             title: item.kind === "exam" ? "Examen proximo" : "Entrega por vencer",
             body: `${item.title} · ${item.meta}`,
@@ -67,6 +73,8 @@ export function SystemNotifications() {
         }
       } catch {
         // Sin red o sin sesion: se reintenta en el siguiente ciclo.
+      } finally {
+        checking = false;
       }
     }
 
@@ -85,9 +93,12 @@ export function SystemNotifications() {
     }
 
     void start();
+    const changed = () => { if (systemNotificationPermission() === "granted") void check(); };
+    window.addEventListener(TASK_REMINDER_EVENT, changed);
 
     return () => {
       cancelled = true;
+      window.removeEventListener(TASK_REMINDER_EVENT, changed);
       if (timer) clearInterval(timer);
     };
   }, []);

@@ -378,6 +378,8 @@ export const api = {
     return request<Task[]>(`/api/v1/tasks${query ? `?${query}` : ""}`);
   },
   optimizedPlan: () => request<OptimizedPlan>("/api/v1/tasks/optimized"),
+  overduePrompts: () => request<{ tasks: Task[]; remaining: number }>("/api/v1/tasks/overdue-prompts", { method: "POST" }),
+  snoozeTask: (id: string, until: string | null) => request<Task>(`/api/v1/tasks/${id}/snooze`, { method: "PUT", body: JSON.stringify({ until }) }),
   replan: () => request<OptimizedPlan>("/api/v1/tasks/replan", { method: "POST" }),
   completeTask: (id: string) =>
     request<Task>(`/api/v1/tasks/${id}/complete`, { method: "POST" }),

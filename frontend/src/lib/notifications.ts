@@ -1,4 +1,5 @@
 import type { Course, Grade, Task } from "@/lib/types";
+import { isSnoozed } from "@/lib/task-snooze";
 
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
@@ -189,6 +190,7 @@ export function buildNotifications({
 
   for (const task of tasks) {
     if (task.status === "completed" || task.status === "archived") continue;
+    if (isSnoozed(task, now)) continue;
     const due = parseTime(task.due_at);
     if (!due) continue;
 
