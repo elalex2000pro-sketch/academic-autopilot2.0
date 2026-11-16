@@ -11,7 +11,7 @@ import { useEffect } from "react";
 
 import { api } from "@/lib/api";
 import { buildNotifications } from "@/lib/notifications";
-import { isOverdueReminder, TASK_REMINDER_EVENT } from "@/lib/task-snooze";
+import { isPastSchoolDay, TASK_REMINDER_EVENT } from "@/lib/task-snooze";
 import {
   ensureSystemNotificationPermission,
   notifyOnce,
@@ -63,7 +63,7 @@ export function SystemNotifications() {
           // interrumpir por examenes y entregas.
           if (item.kind === "task") continue;
           // El dialogo de la app se encarga de las vencidas por dia local.
-          if (item.kind === "deadline" && tasks.some((task) => item.id === `deadline:${task.id}` && isOverdueReminder(task))) continue;
+          if (item.kind === "deadline" && tasks.some((task) => item.id === `deadline:${task.id}` && isPastSchoolDay(task))) continue;
           await notifyOnce(item.id, {
             title: item.kind === "exam" ? "Examen proximo" : "Entrega por vencer",
             body: `${item.title} · ${item.meta}`,

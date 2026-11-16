@@ -28,6 +28,7 @@ test('el centro de avisos silencia el vencimiento sin alterar el plazo',()=>{
   const task={id:'a',title:'Tarea',status:'pending',due_at:'2030-03-29T10:00:00Z',snoozed_until:'2030-04-01T22:00:00Z'};
   const now=Date.parse('2030-03-30T10:00:00Z');
   assert.equal(buildNotifications({tasks:[task],grades:[],courses:[],now}).filter(n=>n.kind==='deadline').length,0);
+  assert.equal(buildNotifications({tasks:[task,{...task,id:'part',parent_task_id:task.id,snoozed_until:null}],grades:[],courses:[],now}).filter(n=>n.kind==='deadline').length,0);
   assert.equal(buildNotifications({tasks:[{...task,snoozed_until:null}],grades:[],courses:[],now}).filter(n=>n.kind==='deadline').length,1);
   assert.equal(task.due_at,'2030-03-29T10:00:00Z');
 });

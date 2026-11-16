@@ -16,7 +16,10 @@ export function isSnoozed(task: Pick<Task, "snoozed_until">, now = Date.now()): 
 }
 export function isOverdueReminder(task: Task, now = Date.now()): boolean {
   return !task.parent_task_id && task.status !== "completed" && task.status !== "archived" &&
-    (!task.delivery_status || task.delivery_status === "none") && !!task.due_at && reminderDay(Date.parse(task.due_at)) < reminderDay(now);
+    (!task.delivery_status || task.delivery_status === "none") && isPastSchoolDay(task, now);
+}
+export function isPastSchoolDay(task: Pick<Task, "due_at">, now = Date.now()): boolean {
+  return !!task.due_at && reminderDay(Date.parse(task.due_at)) < reminderDay(now);
 }
 export function snoozeLabel(task: Task): string | null {
   return task.snoozed_until ? `Aplazada hasta ${reminderDay(Date.parse(task.snoozed_until)).split("-").reverse().join("/")}` : null;
