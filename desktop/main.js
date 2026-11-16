@@ -34,6 +34,7 @@ const APP_URL = (
   process.env.AUTOPILOT_APP_URL || "https://academicautopilot.vercel.app"
 ).replace(/\/+$/, "");
 const APP_ORIGIN = new URL(APP_URL).origin;
+const TRUSTED_ORIGINS = new Set([APP_ORIGIN, "https://academicautopilot.vercel.app", "https://atlantium.vercel.app"]);
 const PARTITION = "persist:academic-autopilot";
 const SMOKE = process.env.AUTOPILOT_SMOKE === "1";
 const SMOKE_FILE = process.env.AUTOPILOT_SMOKE_FILE || "";
@@ -87,6 +88,44 @@ if (!gotTheLock) {
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
+  });
+}
+
+function attachLoadFailureHandlers(win) {
+  let offlineRequested = false;
+  let minimalRequested = false;
+  const showOffline = (description) => {
+    if (offlineRequested || minimalRequested || win.isDestroyed()) return;
+    offlineRequested = true;
+    void win.loadFile(path.join(__dirname, "offline.html"), {
+      query: { target: APP_URL, error: description },
+    }).catch(() => {});
+  };
+  win.webContents.on("did-start-navigation", (_event, url, _inPlace, isMainFrame) => {
+    if (isMainFrame && isAppUrl(url)) {
+      offlineRequested = false;
+      minimalRequested = false;
+    }
+  });
+  win.webContents.on("did-navigate", (_event, url, status) => {
+    if (isAppUrl(url) && status >= 400) showOffline(`HTTP ${status}`);
+  });
+  win.webContents.on("did-fail-load", (_event, code, description, url, isMainFrame) => {
+    if (!isMainFrame || code === -3 || win.isDestroyed()) return;
+    if (SMOKE) {
+      finishSmoke(false, `No se pudo cargar ${url}: ${description}`);
+      return;
+    }
+    if (minimalRequested) return;
+    if (url.startsWith("file:") && new URL(url).pathname.endsWith("/offline.html")) {
+      offlineRequested = true;
+      minimalRequested = true;
+      void win.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(
+        '<!doctype html><html lang="es"><title>Atlantium · Sin conexión</title><p>No se pudo conectar con el servidor ni mostrar la pantalla de ayuda. Cierra y vuelve a abrir la app para intentarlo de nuevo.</p></html>',
+      )).catch(() => {});
+      return;
+    }
+    showOffline(description || `Error ${code}`);
   });
 }
 
@@ -147,21 +186,7 @@ function createWindow(options = {}) {
     if (SMOKE) runSmokeTest();
   });
 
-  win.webContents.on(
-    "did-fail-load",
-    (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
-      if (!isMainFrame || win.isDestroyed()) return;
-      // -3 = ERR_ABORTED, suele ocurrir en redirecciones normales.
-      if (errorCode === -3) return;
-      if (SMOKE) {
-        finishSmoke(false, `No se pudo cargar ${validatedURL}: ${errorDescription}`);
-        return;
-      }
-      win.loadFile(path.join(__dirname, "offline.html"), {
-        query: { target: APP_URL, error: errorDescription || `Error ${errorCode}` },
-      });
-    },
-  );
+  attachLoadFailureHandlers(win);
 
   // Los enlaces de otras webs se abren en el navegador del sistema, no dentro
   // de la app. Las rutas internas siguen funcionando con normalidad.
@@ -544,7 +569,7 @@ function scheduleUpdateChecks() {
 function isTrustedRenderer(event) {
   try {
     const rawUrl = event.senderFrame?.url || event.sender.getURL();
-    return new URL(rawUrl).origin === APP_ORIGIN;
+    return isAppOrigin(rawUrl);
   } catch {
     return false;
   }
@@ -656,7 +681,7 @@ function configureSession(appSession) {
 function isAppUrl(targetUrl) {
   try {
     const url = new URL(targetUrl);
-    return url.origin === APP_ORIGIN && url.protocol === "https:";
+    return TRUSTED_ORIGINS.has(url.origin) && url.protocol === "https:";
   } catch {
     return false;
   }
@@ -664,7 +689,7 @@ function isAppUrl(targetUrl) {
 
 function isAppOrigin(origin) {
   try {
-    return new URL(origin).origin === APP_ORIGIN;
+    return TRUSTED_ORIGINS.has(new URL(origin).origin);
   } catch {
     return false;
   }
@@ -701,7 +726,7 @@ function runSmokeTest() {
       const ok =
         result &&
         typeof result.href === "string" &&
-        result.href.startsWith(APP_ORIGIN) &&
+        isAppOrigin(result.href) &&
         String(result.userAgent).includes("AcademicAutopilotDesktop/") &&
         (["Academic Autopilot", "Atlantium"].some((name) =>
           String(result.title).includes(name) || String(result.text).includes(name)));
