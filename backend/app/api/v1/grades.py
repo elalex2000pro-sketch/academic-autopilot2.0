@@ -16,6 +16,8 @@ from app.schemas.grade import (
     GradeRead,
     GradeSummary,
     GradeUpdate,
+    TermGradeSummary,
+    UnitGradeSummary,
 )
 from app.services.realtime import notify
 
@@ -78,6 +80,7 @@ async def grade_summary(current_user: CurrentUser, db: DbSession) -> GradeSummar
                 average_percent=_weighted_average(pairs),
                 graded_count=len(pairs),
                 total_weight=round(sum(weights), 2) if weights else None,
+                terms=_classification_summary(items),
             )
         )
 
@@ -131,6 +134,25 @@ async def _get_owned_grade(
 async def _course_name_map(db: DbSession, user: User) -> dict:
     result = await db.execute(select(Course.id, Course.name).where(Course.user_id == user.id))
     return {row.id: row.name for row in result.all()}
+
+
+def _classification_summary(items: list[Grade]) -> list[TermGradeSummary]:
+    terms: dict[int | None, list[Grade]] = {}
+    for grade in items:
+        terms.setdefault(grade.trimester, []).append(grade)
+    result = []
+    for trimester in sorted(terms, key=lambda value: value if value is not None else 4):
+        grades = terms[trimester]
+        pairs = [(g.percentage, g.weight) for g in grades if g.percentage is not None]
+        units: dict[str | None, list[Grade]] = {}
+        for grade in grades:
+            units.setdefault(grade.unit, []).append(grade)
+        summaries = []
+        for unit in sorted(units, key=lambda value: (value is None, value or "")):
+            unit_pairs = [(g.percentage, g.weight) for g in units[unit] if g.percentage is not None]
+            summaries.append(UnitGradeSummary(unit=unit, average_percent=_weighted_average(unit_pairs), graded_count=len(unit_pairs)))
+        result.append(TermGradeSummary(trimester=trimester, average_percent=_weighted_average(pairs), graded_count=len(pairs), units=summaries))
+    return result
 
 
 def _weighted_average(pairs: list[tuple[float, float | None]]) -> float | None:

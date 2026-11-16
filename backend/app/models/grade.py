@@ -5,7 +5,7 @@ import uuid
 from datetime import date
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Date, Float, ForeignKey, String, Text
+from sqlalchemy import Boolean, Date, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -34,6 +34,8 @@ class Grade(UUIDPkMixin, TimestampMixin, Base):
     weight: Mapped[float | None] = mapped_column(Float)
     graded_at: Mapped[date | None] = mapped_column(Date)
     notes: Mapped[str | None] = mapped_column(Text)
+    trimester: Mapped[int | None] = mapped_column(Integer)
+    unit: Mapped[str | None] = mapped_column(String(80))
     # Un examen pendiente es una nota sin puntuacion (score = None) marcada
     # con is_exam. Al registrar la nota entra en la media ponderada.
     is_exam: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
