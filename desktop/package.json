@@ -1,6 +1,6 @@
 {
   "name": "academic-autopilot-desktop",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "private": true,
   "description": "App de escritorio de Atlantium",
   "author": "Atlantium",
@@ -22,7 +22,7 @@
   "build": {
     "appId": "com.academicautopilot.desktop.iconfix1",
     "productName": "Atlantium",
-    "copyright": "Copyright © 2026 Atlantium",
+    "copyright": "Copyright Â© 2026 Atlantium",
     "asar": true,
     "directories": {
       "output": "dist",
