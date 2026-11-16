@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime, timezone
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_serializer
 
 from app.models.enums import DeliveryStatus, SourcePlatform, TaskPriority, TaskStatus
 
@@ -38,6 +38,10 @@ class TaskDeliveryDeclare(BaseModel):
     url: HttpUrl | None = Field(default=None, max_length=2048)
 
 
+class TaskSnooze(BaseModel):
+    until: date | None = None
+
+
 class TaskRead(TaskBase):
     model_config = ConfigDict(from_attributes=True)
 
@@ -48,6 +52,7 @@ class TaskRead(TaskBase):
     external_id: str
     status: TaskStatus
     delivery_status: DeliveryStatus = DeliveryStatus.none
+    snoozed_until: datetime | None = None
     delivered_at: datetime | None = None
     delivery_note: str | None = None
     delivery_url: str | None = None
@@ -57,6 +62,16 @@ class TaskRead(TaskBase):
     parent_task_id: uuid.UUID | None
     created_at: datetime
     updated_at: datetime
+
+    @field_serializer("snoozed_until")
+    def serialize_snooze(self, value: datetime | None):
+        # SQLite de pruebas pierde el offset; las fechas se guardan en UTC.
+        return value.replace(tzinfo=timezone.utc) if value and value.tzinfo is None else value
+
+
+class OverduePrompts(BaseModel):
+    tasks: list[TaskRead]
+    remaining: int
 
 
 class OptimizedPlanItem(BaseModel):
