@@ -52,6 +52,7 @@ function pdfFixture() {
 }
 async function main() {
   execFileSync(process.execPath, ['--test', path.join(__dirname, 'task-delivery.test.cjs')], { stdio: 'inherit' });
+  execFileSync(process.execPath, ['--test', path.join(__dirname, 'task-snooze.test.cjs')], { stdio: 'inherit' });
   const output = process.env.SMOKE_OUTPUT || await fs.mkdtemp(path.join(os.tmpdir(), 'academic-smoke-'));
   await fs.mkdir(output, { recursive: true });
   console.log('Smoke artifacts: ' + output);
@@ -79,6 +80,10 @@ async function main() {
     for (const viewport of [{ width: 1440, height: 960 }, { width: 390, height: 844 }]) {
       await require('./task-delivery-e2e.cjs').verifyTaskDeliveries(browser, { API, WEB, output, viewport });
     }
+    return;
+  }
+  if (process.argv.includes('--snooze-only')) {
+    for (const viewport of [{ width: 1440, height: 960 }, { width: 390, height: 844 }]) await require('./task-snooze-e2e.cjs').verifyTaskSnooze(browser, { API, WEB, output, viewport });
     return;
   }
   if (process.env.SMOKE_WEB_MODE === 'start') {
@@ -122,6 +127,7 @@ async function main() {
       if (!process.argv.includes('--studio-only')) {
       for (const route of ['/', '/planner', '/calendar', '/schedule', '/academics', '/classes', `/classes/${group.id}`, '/chat', '/review', '/notebooks', '/documents', '/office', `/office/${office.id}`, '/focus', '/settings', '/files', '/studio', '/studio?mode=audio', '/studio?mode=document', '/library']) await visit(route);
       reports.push(await require('./task-delivery-e2e.cjs').verifyTaskDeliveries(browser, { API, WEB, output, viewport }));
+      await require('./task-snooze-e2e.cjs').verifyTaskSnooze(browser, { API, WEB, output, viewport });
       // The reader is local IndexedDB, not /books. Import an actual PDF through its UI.
       await page.locator('input[type=file]').setInputFiles({ name: 'smoke-reader.pdf', mimeType: 'application/pdf', buffer: pdfFixture() });
       const link = page.locator('a[href^="/library/"]:visible').first(); await link.waitFor({ timeout: 30000 });

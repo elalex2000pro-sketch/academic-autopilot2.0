@@ -23,6 +23,8 @@ async function verifyTaskDeliveries(browser, { API, WEB, output, viewport }) {
   const done = await request('/tasks', token, 'POST', { title: 'Completada sin entregar', due_at: '2041-05-20T12:00:00Z' });
   const noDate = await request('/tasks', token, 'POST', { title: 'Tarea sin fecha' });
   const screenshots = [];
+  // Este recorrido comprueba Entregas; el emergente se prueba por separado.
+  await request('/tasks/overdue-prompts', token, 'POST');
 
   for (const theme of ['light', 'dark']) {
     const context = await browser.newContext({ viewport, serviceWorkers: 'block' });
