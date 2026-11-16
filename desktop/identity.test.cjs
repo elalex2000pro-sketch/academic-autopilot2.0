@@ -32,7 +32,7 @@ test('el perfil legado se fija antes del actualizador, nombre y sesiones', () =>
 
 test('la marca cambia sin cambiar identidad, instaladores o feed', () => {
   assert.equal(config.name, 'academic-autopilot-desktop');
-  assert.equal(config.version, '1.4.0');
+  assert.equal(config.version, require('../frontend/package.json').version);
   assert.equal(config.build.productName, 'Atlantium');
   assert.equal(config.build.appId, 'com.academicautopilot.desktop.iconfix1');
   assert.equal(config.build.win.executableName, 'Academic Autopilot 1310');

@@ -31,7 +31,7 @@ async function checkMetadata(payload,desktop=false,currentVersion='1.3.46',reque
   return (await client.checkForUpdates()).update;
 }
 const asset={name:'Academic-Autopilot-Setup.exe',size:12345,browser_download_url:'https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases/download/v1.4.0/Academic-Autopilot-Setup.exe'};
-const publishedManifest=require('../public/version.json');
+const publishedManifest=require('./fixtures/version-1.4.0.json');
 test('el manifiesto publicado ofrece 1.4.0 a 1.3.46 con sus datos definitivos',async()=>{
   const update=await checkMetadata(publishedManifest);
   assert.equal(update.version,'1.4.0');
