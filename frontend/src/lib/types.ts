@@ -231,6 +231,7 @@ export interface Task {
   status: TaskStatus;
   /** Opcionales para las copias locales anteriores a la migracion. */
   delivery_status?: DeliveryStatus;
+  snoozed_until?: string | null;
   delivered_at?: string | null;
   delivery_note?: string | null;
   delivery_url?: string | null;

@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 
 import { TaskDialog } from "@/components/task-dialog";
+import { TaskSnoozeControls } from "@/components/task-snooze-controls";
+import { snoozeLabel } from "@/lib/task-snooze";
 import { TaskDeliveries } from "@/components/task-deliveries";
 import { TaskDeliveryControls, type TaskDeliveryActions } from "@/components/task-delivery-controls";
 import { Button } from "@/components/ui/button";
@@ -151,6 +153,8 @@ function TaskListComponent({
     return (
       <div
         key={task.id}
+        role="article"
+        aria-label={task.title}
         className={cn(
           "rounded-2xl transition-colors",
           expanded
@@ -206,6 +210,7 @@ function TaskListComponent({
                   )}
                 >
                   {task.title}
+                  {snoozeLabel(task) && <span className="block text-[10px] text-primary">{snoozeLabel(task)}</span>}
                 </span>
                 {isHistory && (
                   <span className="shrink-0 rounded-full bg-rose-500/10 px-1.5 py-0.5 text-[8.5px] font-semibold uppercase tracking-[0.05em] text-rose-600 dark:text-rose-300">
@@ -329,6 +334,7 @@ function TaskListComponent({
             </div>
 
             {!task.parent_task_id && <TaskDeliveryControls task={task} onDeclareDelivery={onDeclareDelivery} onUndoDelivery={onUndoDelivery} />}
+            <TaskSnoozeControls task={task} onSaved={(saved) => void onTaskUpdated?.(saved)} />
 
             {confirming ? (
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-200/70 bg-rose-50/70 px-3 py-2 dark:border-rose-400/20 dark:bg-rose-500/10">

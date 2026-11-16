@@ -18,6 +18,7 @@ import { OfflineStatus } from "@/components/offline-status";
 import { PageTransition } from "@/components/page-transition";
 import { usePreferences } from "@/components/preferences-provider";
 import { SystemNotifications } from "@/components/system-notifications";
+import { OverdueTaskPrompt } from "@/components/overdue-task-prompt";
 import { ThemeCycleButton } from "@/components/theme-toggle";
 import { WindowControls } from "@/components/window-controls";
 import { Button } from "@/components/ui/button";
@@ -218,6 +219,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <NotificationCenter>
       <SystemNotifications />
+      <OverdueTaskPrompt key={user.id} />
       <div
         className={cn(
           "app-shell flex min-h-dvh flex-col bg-transparent md:flex-row",

@@ -1,4 +1,5 @@
 import type { Course, Grade, Task } from "@/lib/types";
+import { isSnoozed } from "@/lib/task-snooze";
 
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
@@ -186,9 +187,11 @@ export function buildNotifications({
   }
 
   const deadlineTaskIds = new Set<string>();
+  const snoozedIds = new Set(tasks.filter((task) => isSnoozed(task, now)).map((task) => task.id));
 
   for (const task of tasks) {
     if (task.status === "completed" || task.status === "archived") continue;
+    if (snoozedIds.has(task.id) || (task.parent_task_id && snoozedIds.has(task.parent_task_id))) continue;
     const due = parseTime(task.due_at);
     if (!due) continue;
 

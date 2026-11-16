@@ -3,9 +3,10 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentUser, DbSession
@@ -20,11 +21,35 @@ from app.schemas.task import (
     TaskDeliveryDeclare,
     TaskRead,
     TaskUpdate,
+    TaskSnooze,
+    OverduePrompts,
 )
 from app.services.planner_service import replan_user
 from app.services.realtime import notify
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+REMINDER_ZONE = ZoneInfo("Europe/Madrid")
+
+
+@router.post("/overdue-prompts", response_model=OverduePrompts)
+async def claim_overdue_prompts(current_user: CurrentUser, db: DbSession) -> OverduePrompts:
+    today = datetime.now(REMINDER_ZONE).date()
+    boundary = datetime.combine(today, datetime.min.time(), REMINDER_ZONE).astimezone(timezone.utc)
+    result = await db.execute(select(Task).where(
+        Task.user_id == current_user.id, Task.parent_task_id.is_(None),
+        Task.status.in_([TaskStatus.pending, TaskStatus.in_progress]),
+        Task.delivery_status == DeliveryStatus.none, Task.due_at < boundary,
+        or_(Task.snoozed_until.is_(None), Task.snoozed_until <= boundary),
+        or_(Task.overdue_prompted_on.is_(None), Task.overdue_prompted_on < today),
+    ).order_by(Task.due_at, Task.id).with_for_update(skip_locked=True))
+    tasks = list(result.scalars().all())
+    for task in tasks:
+        task.overdue_prompted_on = today
+    await db.commit()
+    for task in tasks[:5]:
+        await db.refresh(task)
+    return OverduePrompts(tasks=[TaskRead.model_validate(t) for t in tasks[:5]], remaining=max(0, len(tasks)-5))
 
 
 @router.get("/optimized", response_model=OptimizedPlan)
@@ -109,6 +134,21 @@ async def update_task(
     await db.commit()
     await db.refresh(task)
     notify(current_user.id, "tasks", {"action": "updated", "id": str(task.id)})
+    return task
+
+
+@router.put("/{task_id}/snooze", response_model=TaskRead)
+async def snooze_task(task_id: uuid.UUID, payload: TaskSnooze, current_user: CurrentUser, db: DbSession) -> Task:
+    task = await _get_owned_task(db, current_user.id, task_id)
+    if payload.until is not None:
+        if payload.until <= datetime.now(REMINDER_ZONE).date():
+            raise HTTPException(status_code=422, detail="Elige una fecha posterior a hoy.")
+        if task.status in (TaskStatus.completed, TaskStatus.archived) or task.delivery_status != DeliveryStatus.none:
+            raise HTTPException(status_code=409, detail="Esta tarea ya no necesita un recordatorio.")
+    task.snoozed_until = datetime.combine(payload.until, datetime.min.time(), REMINDER_ZONE).astimezone(timezone.utc) if payload.until else None
+    await db.commit()
+    await db.refresh(task)
+    notify(current_user.id, "tasks", {"action": "snoozed", "id": str(task.id)})
     return task
 
 

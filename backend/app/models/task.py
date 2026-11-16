@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    Date,
     DateTime,
     Enum as SAEnum,
     ForeignKey,
@@ -68,6 +69,8 @@ class Task(UUIDPkMixin, TimestampMixin, Base):
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     delivery_note: Mapped[str | None] = mapped_column(String(2000))
     delivery_url: Mapped[str | None] = mapped_column(String(2048))
+    snoozed_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    overdue_prompted_on: Mapped[date | None] = mapped_column(Date)
     delivery_previous_status: Mapped[TaskStatus | None] = mapped_column(
         SAEnum(TaskStatus, name="delivery_previous_status", native_enum=False, length=16),
     )

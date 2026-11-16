@@ -16,6 +16,7 @@ import {
   type TaskExclusions,
 } from "@/lib/task-store";
 import type { Task } from "@/lib/types";
+import { TASK_REMINDER_EVENT } from "@/lib/task-snooze";
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
@@ -111,6 +112,12 @@ export function useTaskManager({
     if (!autoLoad) return;
     void refresh({ silent: true }).catch(() => undefined);
   }, [autoLoad, refresh]);
+
+  useEffect(() => {
+    const changed = () => { void refresh({ silent: true }).catch(() => undefined); };
+    window.addEventListener(TASK_REMINDER_EVENT, changed);
+    return () => window.removeEventListener(TASK_REMINDER_EVENT, changed);
+  }, [refresh]);
 
   const tasks = useMemo(
     () => applyTaskExclusions(rawTasks, exclusions),

@@ -23,6 +23,8 @@ async function verifyTaskDeliveries(browser, { API, WEB, output, viewport }) {
   const done = await request('/tasks', token, 'POST', { title: 'Completada sin entregar', due_at: '2041-05-20T12:00:00Z' });
   const noDate = await request('/tasks', token, 'POST', { title: 'Tarea sin fecha' });
   const screenshots = [];
+  // Este recorrido comprueba Entregas; el emergente se prueba por separado.
+  await request('/tasks/overdue-prompts', token, 'POST');
 
   for (const theme of ['light', 'dark']) {
     const context = await browser.newContext({ viewport, serviceWorkers: 'block' });
@@ -60,7 +62,7 @@ async function verifyTaskDeliveries(browser, { API, WEB, output, viewport }) {
       assert.deepEqual(titles, [late.title, paper.title, done.title, noDate.title]);
       assert.match(await pending.getByRole('article', { name: late.title }).innerText(), /Vencida/);
       const doneCard = pending.getByRole('article', { name: done.title });
-      assert.match(await doneCard.innerText(), /Completada en Atlantium; sin entrega registrada/);
+      await doneCard.getByText('Completada en Atlantium; sin entrega registrada.', { exact: true }).waitFor();
 
       for (const [index, platform] of ['Moodle', 'Classroom'].entries()) {
         const card = page.getByRole('article', { name: confirmationFixtures[index].title, exact: true });
