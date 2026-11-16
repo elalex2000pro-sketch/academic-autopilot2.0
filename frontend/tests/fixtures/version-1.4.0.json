@@ -4,14 +4,14 @@
   "generatedAt": "2026-11-15T18:45:24.118Z",
   "sizeBytes": 112773372,
   "notes": [
-    "El Chat recupera los mensajes pendientes al volver la conexiÃ³n o regresar a la app.",
-    "Repaso permite usar los apuntes guardados de un cuaderno en Chat y Studio, y explica cÃ³mo configurar la IA cuando falta.",
-    "La app queda preparada para ofrecer distintos estilos mÃ¡s adelante, sin cambiar su aspecto actual.",
-    "Se corrige un conflicto de guardado de Office al cambiar de documento o importar; el horario permite desplazarse y editar los Ãºltimos dÃ­as en mÃ³vil.",
+    "El Chat recupera los mensajes pendientes al volver la conexión o regresar a la app.",
+    "Repaso permite usar los apuntes guardados de un cuaderno en Chat y Studio, y explica cómo configurar la IA cuando falta.",
+    "La app queda preparada para ofrecer distintos estilos más adelante, sin cambiar su aspecto actual.",
+    "Se corrige un conflicto de guardado de Office al cambiar de documento o importar; el horario permite desplazarse y editar los últimos días en móvil.",
     "El aviso de actualizar ya no ofrece versiones iguales o anteriores a la instalada.",
-    "ConfiguraciÃ³n se simplifica: se retiran las tarjetas de Canva, NotebookLM y Word/Excel.",
-    "El instalador de Windows no estÃ¡ firmado y Windows puede mostrar un aviso de seguridad.",
-    "El instalador para Mac todavÃ­a no se ha probado."
+    "Configuración se simplifica: se retiran las tarjetas de Canva, NotebookLM y Word/Excel.",
+    "El instalador de Windows no está firmado y Windows puede mostrar un aviso de seguridad.",
+    "El instalador para Mac todavía no se ha probado."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases/tag/v1.4.0",
   "enabled": true

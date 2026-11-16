@@ -22,7 +22,7 @@
   "build": {
     "appId": "com.academicautopilot.desktop.iconfix1",
     "productName": "Atlantium",
-    "copyright": "Copyright Â© 2026 Atlantium",
+    "copyright": "Copyright © 2026 Atlantium",
     "asar": true,
     "directories": {
       "output": "dist",
