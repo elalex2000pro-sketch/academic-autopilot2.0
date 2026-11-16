@@ -23,7 +23,7 @@ test('CI y ambos Vercel del mismo commit son obligatorios',()=>{
   assert.throws(()=>checkRemote([run,{...run,id:2,conclusion:'failure'}],statuses,'abc'));
 });
 
-test('la puerta exige academicautopilot y atlantium e identifica cuál falta',()=>{
+test('la puerta exige academic-autopilot2-0 y atlantium e identifica cuál falta',()=>{
   const run={id:1,head_sha:'abc',head_branch:'main',event:'push',status:'completed',conclusion:'success'};
   const contexts=['Vercel – academicautopilot','Vercel – atlantium'];
   const statuses=contexts.map(context=>({id:1,context,state:'success'}));
