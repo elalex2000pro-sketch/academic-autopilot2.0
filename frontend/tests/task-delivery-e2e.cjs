@@ -62,7 +62,7 @@ async function verifyTaskDeliveries(browser, { API, WEB, output, viewport }) {
       assert.deepEqual(titles, [late.title, paper.title, done.title, noDate.title]);
       assert.match(await pending.getByRole('article', { name: late.title }).innerText(), /Vencida/);
       const doneCard = pending.getByRole('article', { name: done.title });
-      assert.match(await doneCard.innerText(), /Completada en Atlantium; sin entrega registrada/);
+      await doneCard.getByText('Completada en Atlantium; sin entrega registrada.', { exact: true }).waitFor();
 
       for (const [index, platform] of ['Moodle', 'Classroom'].entries()) {
         const card = page.getByRole('article', { name: confirmationFixtures[index].title, exact: true });
