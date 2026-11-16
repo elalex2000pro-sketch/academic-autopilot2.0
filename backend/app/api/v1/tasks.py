@@ -11,12 +11,13 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import CurrentUser, DbSession
 from app.core.config import settings
 from app.models.course import Course
-from app.models.enums import SourcePlatform, TaskPriority, TaskStatus
+from app.models.enums import DeliveryStatus, SourcePlatform, TaskPriority, TaskStatus
 from app.models.task import Task
 from app.schemas.task import (
     OptimizedPlan,
     OptimizedPlanItem,
     TaskCreate,
+    TaskDeliveryDeclare,
     TaskRead,
     TaskUpdate,
 )
@@ -97,11 +98,80 @@ async def update_task(
     task_id: uuid.UUID, payload: TaskUpdate, current_user: CurrentUser, db: DbSession
 ) -> Task:
     task = await _get_owned_task(db, current_user.id, task_id)
+    if (
+        task.delivery_status != DeliveryStatus.none
+        and payload.status is not None
+        and payload.status not in (TaskStatus.completed, TaskStatus.archived)
+    ):
+        raise HTTPException(status_code=409, detail="Deshaz la entrega antes de cambiar el estado de la tarea.")
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(task, field, value)
     await db.commit()
     await db.refresh(task)
     notify(current_user.id, "tasks", {"action": "updated", "id": str(task.id)})
+    return task
+
+
+@router.post("/{task_id}/delivery", response_model=TaskRead)
+async def declare_delivery(
+    task_id: uuid.UUID, payload: TaskDeliveryDeclare, current_user: CurrentUser, db: DbSession
+) -> Task:
+    """Declaracion del alumno: no envia archivos ni escribe en la plataforma."""
+    task = await _get_owned_task(db, current_user.id, task_id)
+    if task.delivery_status == DeliveryStatus.confirmed:
+        raise HTTPException(status_code=409, detail="La entrega esta confirmada por la plataforma y no se puede modificar.")
+    if task.status == TaskStatus.archived:
+        raise HTTPException(status_code=409, detail="No se puede declarar la entrega de una tarea archivada.")
+    if task.parent_task_id is not None:
+        raise HTTPException(status_code=409, detail="Marca la entrega en la tarea original, no en una parte del plan.")
+    # Idempotente: una segunda peticion no pierde el estado previo ni la fecha.
+    if task.delivery_status == DeliveryStatus.none:
+        task.delivery_previous_status = task.status
+        task.delivery_status = DeliveryStatus.declared
+        task.delivered_at = datetime.now(timezone.utc)
+        task.delivery_note = (payload.note or "").strip() or None
+        task.delivery_url = str(payload.url) if payload.url else None
+        task.status = TaskStatus.completed
+        # Las partes del plan no son entregas distintas. Guardar su estado
+        # permite retirarlas de la agenda y restaurarlas al deshacer.
+        result = await db.execute(select(Task).where(
+            Task.parent_task_id == task.id,
+            Task.status.in_([TaskStatus.pending, TaskStatus.in_progress]),
+        ).with_for_update())
+        for subtask in result.scalars().all():
+            subtask.delivery_previous_status = subtask.status
+            subtask.status = TaskStatus.completed
+    await db.commit()
+    await db.refresh(task)
+    notify(current_user.id, "tasks", {"action": "delivery_declared", "id": str(task.id)})
+    return task
+
+
+@router.delete("/{task_id}/delivery", response_model=TaskRead)
+async def undo_delivery(task_id: uuid.UUID, current_user: CurrentUser, db: DbSession) -> Task:
+    task = await _get_owned_task(db, current_user.id, task_id)
+    if task.delivery_status == DeliveryStatus.confirmed:
+        raise HTTPException(status_code=409, detail="La entrega esta confirmada por la plataforma y no se puede deshacer.")
+    if task.delivery_status == DeliveryStatus.declared:
+        # Archivar sigue siendo una decision independiente del usuario.
+        if task.status != TaskStatus.archived:
+            task.status = task.delivery_previous_status or TaskStatus.pending
+        task.delivery_status = DeliveryStatus.none
+        task.delivered_at = None
+        task.delivery_note = None
+        task.delivery_url = None
+        task.delivery_previous_status = None
+        result = await db.execute(select(Task).where(
+            Task.parent_task_id == task.id,
+            Task.delivery_previous_status.is_not(None),
+        ).with_for_update())
+        for subtask in result.scalars().all():
+            if task.status != TaskStatus.archived and subtask.status == TaskStatus.completed:
+                subtask.status = subtask.delivery_previous_status
+            subtask.delivery_previous_status = None
+    await db.commit()
+    await db.refresh(task)
+    notify(current_user.id, "tasks", {"action": "delivery_undone", "id": str(task.id)})
     return task
 
 
@@ -158,7 +228,7 @@ async def delete_task(task_id: uuid.UUID, current_user: CurrentUser, db: DbSessi
 # --------------------------------------------------------------------------- #
 async def _get_owned_task(db: DbSession, user_id: uuid.UUID, task_id: uuid.UUID) -> Task:
     result = await db.execute(
-        select(Task).where(Task.id == task_id, Task.user_id == user_id)
+        select(Task).where(Task.id == task_id, Task.user_id == user_id).with_for_update()
     )
     task = result.scalar_one_or_none()
     if task is None:

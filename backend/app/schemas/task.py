@@ -4,9 +4,9 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
-from app.models.enums import SourcePlatform, TaskPriority, TaskStatus
+from app.models.enums import DeliveryStatus, SourcePlatform, TaskPriority, TaskStatus
 
 
 class TaskBase(BaseModel):
@@ -31,6 +31,13 @@ class TaskUpdate(BaseModel):
     priority: TaskPriority | None = None
 
 
+class TaskDeliveryDeclare(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    note: str | None = Field(default=None, max_length=2000)
+    url: HttpUrl | None = Field(default=None, max_length=2048)
+
+
 class TaskRead(TaskBase):
     model_config = ConfigDict(from_attributes=True)
 
@@ -40,6 +47,10 @@ class TaskRead(TaskBase):
     source: SourcePlatform
     external_id: str
     status: TaskStatus
+    delivery_status: DeliveryStatus = DeliveryStatus.none
+    delivered_at: datetime | None = None
+    delivery_note: str | None = None
+    delivery_url: str | None = None
     priority: TaskPriority
     target_start_at: datetime | None
     target_end_at: datetime | None
