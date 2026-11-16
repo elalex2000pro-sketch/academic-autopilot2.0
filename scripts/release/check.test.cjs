@@ -15,7 +15,7 @@ test('todas las raíces de versión deben coincidir',()=>{
 });
 test('CI y ambos Vercel del mismo commit son obligatorios',()=>{
   const run={id:1,head_sha:'abc',head_branch:'main',event:'push',status:'completed',conclusion:'success'};
-  const statuses=['Vercel – academicautopilot','Vercel – atlantium'].map(context=>({id:1,context,state:'success'}));
+  const statuses=['Vercel – academic-autopilot2-0','Vercel – atlantium'].map(context=>({id:1,context,state:'success'}));
   checkRemote([run],statuses,'abc');
   for(const conclusion of ['failure',null,'cancelled'])assert.throws(()=>checkRemote([{...run,conclusion}],statuses,'abc'));
   for(const state of ['pending','failure','error'])assert.throws(()=>checkRemote([run],[{...statuses[0],state},statuses[1]],'abc'));
@@ -25,7 +25,7 @@ test('CI y ambos Vercel del mismo commit son obligatorios',()=>{
 
 test('la puerta exige academic-autopilot2-0 y atlantium e identifica cuál falta',()=>{
   const run={id:1,head_sha:'abc',head_branch:'main',event:'push',status:'completed',conclusion:'success'};
-  const contexts=['Vercel – academicautopilot','Vercel – atlantium'];
+  const contexts=['Vercel – academic-autopilot2-0','Vercel – atlantium'];
   const statuses=contexts.map(context=>({id:1,context,state:'success'}));
   assert.doesNotThrow(()=>checkRemote([run],statuses,'abc'));
   for(const context of contexts){

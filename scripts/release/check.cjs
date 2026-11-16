@@ -11,7 +11,7 @@ function checkVersions(root=ROOT,tag){
 function checkRemote(runs,statuses,sha){
   const run=runs.filter(r=>r.head_sha===sha&&r.head_branch==='main'&&r.event==='push').sort((a,b)=>b.id-a.id)[0];
   assert.ok(run?.status==='completed'&&run.conclusion==='success','El último CI de main para este commit no está verde');
-  for(const context of ['Vercel – academicautopilot','Vercel – atlantium']){
+  for(const context of ['Vercel – academic-autopilot2-0','Vercel – atlantium']){
     const status=statuses.filter(s=>s.context===context).sort((a,b)=>b.id-a.id)[0];
     assert.ok(status,'Falta el contexto '+context);
     assert.equal(status?.state,'success',context+' debe estar verde');
