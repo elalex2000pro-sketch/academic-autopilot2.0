@@ -1,7 +1,8 @@
 {
   "version": "1.5.0",
-  "publishedAt": null,
-  "sizeBytes": null,
+  "publishedAt": "2026-11-16T22:53:54Z",
+  "generatedAt": "2026-11-16T22:47:18.504Z",
+  "sizeBytes": 112773845,
   "notes": [
     "La app ahora se llama Atlantium, también en el escritorio, conservando tus datos y tu sesión.",
     "Puedes marcar tareas como entregadas aunque las hayas enviado por otro medio, y consultarlas en Entregas.",
@@ -13,5 +14,5 @@
     "El instalador para Mac todavía no se ha probado."
   ],
   "releaseUrl": "https://github.com/elalex2000pro-sketch/academic-autopilot2.0/releases/tag/v1.5.0",
-  "enabled": false
+  "enabled": true
 }

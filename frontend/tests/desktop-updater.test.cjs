@@ -118,3 +118,17 @@ test('la validación no modifica ni persiste el estado recibido de Electron', ()
   assert.equal(state.progress, 100);
   assert.equal(state.version, '1.3.46');
 });
+
+
+test('el manifiesto web actual respeta el estado del lanzamiento y la version instalada',async()=>{
+  const manifest=require('../public/version.json');
+  if(manifest.enabled===false){
+    assert.equal(await checkMetadata(manifest,false,'0.0.0'),null);
+    return;
+  }
+  assert.ok(Number.isSafeInteger(manifest.sizeBytes)&&manifest.sizeBytes>0);
+  assert.ok(Number.isFinite(Date.parse(manifest.publishedAt)));
+  assert.equal((await checkMetadata(manifest,false,'0.0.0')).version,manifest.version);
+  assert.equal(await checkMetadata(manifest,false,manifest.version),null);
+  assert.equal(await checkMetadata(manifest,false,'999.0.0'),null);
+});
