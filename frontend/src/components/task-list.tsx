@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 
 import { TaskDialog } from "@/components/task-dialog";
+import { TaskDeliveries } from "@/components/task-deliveries";
+import { TaskDeliveryControls, type TaskDeliveryActions } from "@/components/task-delivery-controls";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { formatDueLabel } from "@/lib/task-utils";
@@ -61,9 +63,10 @@ function formatFullDue(iso: string | null): string {
 
 type TaskAction = "complete" | "delete";
 
-interface TaskListProps {
+interface TaskListProps extends TaskDeliveryActions {
   /** Tareas activas: ya filtradas por vencimiento y exclusiones. */
   tasks: Task[];
+  deliveryTasks: Task[];
   /** Tareas vencidas, visibles solo al desplegar el historial. */
   historyTasks?: Task[];
   loading?: boolean;
@@ -81,6 +84,7 @@ interface TaskListProps {
 
 function TaskListComponent({
   tasks,
+  deliveryTasks,
   historyTasks = [],
   loading = false,
   error = null,
@@ -89,9 +93,12 @@ function TaskListComponent({
   onComplete,
   onDelete,
   onTaskUpdated,
+  onDeclareDelivery,
+  onUndoDelivery,
   className,
 }: TaskListProps) {
   const [showHistory, setShowHistory] = useState(false);
+  const [view, setView] = useState<"pending" | "deliveries">("pending");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [busy, setBusy] = useState<{ id: string; action: TaskAction } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -321,6 +328,8 @@ function TaskListComponent({
               </dl>
             </div>
 
+            {!task.parent_task_id && <TaskDeliveryControls task={task} onDeclareDelivery={onDeclareDelivery} onUndoDelivery={onUndoDelivery} />}
+
             {confirming ? (
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-200/70 bg-rose-50/70 px-3 py-2 dark:border-rose-400/20 dark:bg-rose-500/10">
                 <p className="text-[11px] font-medium text-rose-700 dark:text-rose-200">
@@ -421,6 +430,17 @@ function TaskListComponent({
         </button>
       </div>
 
+      <div role="tablist" aria-label="Vista de tareas" className="mt-3 flex flex-wrap gap-2" onKeyDown={(event) => {
+        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+        event.preventDefault();
+        const next = event.key === "Home" ? "pending" : event.key === "End" ? "deliveries" : view === "pending" ? "deliveries" : "pending";
+        setView(next);
+        document.getElementById(next === "pending" ? "tasks-pending-tab" : "tasks-deliveries-tab")?.focus();
+      }}>
+        <Button id="tasks-pending-tab" type="button" role="tab" tabIndex={view === "pending" ? 0 : -1} aria-selected={view === "pending"} aria-controls="tasks-panel" size="sm" variant={view === "pending" ? "secondary" : "ghost"} onClick={() => setView("pending")}>Pendientes</Button>
+        <Button id="tasks-deliveries-tab" type="button" role="tab" tabIndex={view === "deliveries" ? 0 : -1} aria-selected={view === "deliveries"} aria-controls="tasks-panel" size="sm" variant={view === "deliveries" ? "secondary" : "ghost"} onClick={() => setView("deliveries")}>Entregas</Button>
+      </div>
+
       {visibleError && (
         <p
           role="alert"
@@ -430,6 +450,8 @@ function TaskListComponent({
         </p>
       )}
 
+      <div id="tasks-panel" role="tabpanel" aria-labelledby={view === "pending" ? "tasks-pending-tab" : "tasks-deliveries-tab"}>
+      {view === "deliveries" ? <TaskDeliveries tasks={deliveryTasks} courses={courses} onDeclareDelivery={onDeclareDelivery} onUndoDelivery={onUndoDelivery} /> : <>
       <div className="mt-3 space-y-0.5">
         {loading && !hasTasks && !hasHistory && (
           <div className="space-y-1.5">
@@ -495,6 +517,9 @@ function TaskListComponent({
           )}
         </div>
       )}
+
+      </>}
+      </div>
 
       <TaskDialog
         open={Boolean(editingTask)}

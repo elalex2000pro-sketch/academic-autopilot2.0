@@ -5,7 +5,7 @@
  */
 const { chromium } = require('playwright-core');
 const assert = require('node:assert/strict');
-const { spawn } = require('node:child_process');
+const { spawn, execFileSync } = require('node:child_process');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
@@ -51,6 +51,7 @@ function pdfFixture() {
   return Buffer.from(value);
 }
 async function main() {
+  execFileSync(process.execPath, ['--test', path.join(__dirname, 'task-delivery.test.cjs')], { stdio: 'inherit' });
   const output = process.env.SMOKE_OUTPUT || await fs.mkdtemp(path.join(os.tmpdir(), 'academic-smoke-'));
   await fs.mkdir(output, { recursive: true });
   console.log('Smoke artifacts: ' + output);
@@ -74,6 +75,12 @@ async function main() {
   await request('/notebooks', token, 'POST', { title: 'Cuaderno de humo' });
   const channel = process.env.SMOKE_BROWSER_CHANNEL || 'chrome';
   browser = await chromium.launch({ headless: true, args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'], ...(channel === 'chromium' ? {} : { channel }) });
+  if (process.argv.includes('--deliveries-only')) {
+    for (const viewport of [{ width: 1440, height: 960 }, { width: 390, height: 844 }]) {
+      await require('./task-delivery-e2e.cjs').verifyTaskDeliveries(browser, { API, WEB, output, viewport });
+    }
+    return;
+  }
   if (process.env.SMOKE_WEB_MODE === 'start') {
     await require('./pwa-e2e.cjs').verifyPwa(browser, { WEB, API, token, user, office, output, pdfFixture });
   }
@@ -114,6 +121,7 @@ async function main() {
     try {
       if (!process.argv.includes('--studio-only')) {
       for (const route of ['/', '/planner', '/calendar', '/schedule', '/academics', '/classes', `/classes/${group.id}`, '/chat', '/review', '/notebooks', '/documents', '/office', `/office/${office.id}`, '/focus', '/settings', '/files', '/studio', '/studio?mode=audio', '/studio?mode=document', '/library']) await visit(route);
+      reports.push(await require('./task-delivery-e2e.cjs').verifyTaskDeliveries(browser, { API, WEB, output, viewport }));
       // The reader is local IndexedDB, not /books. Import an actual PDF through its UI.
       await page.locator('input[type=file]').setInputFiles({ name: 'smoke-reader.pdf', mimeType: 'application/pdf', buffer: pdfFixture() });
       const link = page.locator('a[href^="/library/"]:visible').first(); await link.waitFor({ timeout: 30000 });

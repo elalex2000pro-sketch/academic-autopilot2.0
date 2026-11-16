@@ -2,6 +2,7 @@
 
 export type TaskPriority = "urgent" | "long_project" | "short_task";
 export type TaskStatus = "pending" | "in_progress" | "completed" | "archived";
+export type DeliveryStatus = "none" | "declared" | "confirmed";
 export type SourcePlatform = "moodle" | "google_classroom" | "manual";
 export type Provider = "moodle" | "google_classroom" | "all";
 export type SyncStatus = "success" | "partial" | "error";
@@ -228,6 +229,11 @@ export interface Task {
   estimated_minutes: number;
   priority: TaskPriority;
   status: TaskStatus;
+  /** Opcionales para las copias locales anteriores a la migracion. */
+  delivery_status?: DeliveryStatus;
+  delivered_at?: string | null;
+  delivery_note?: string | null;
+  delivery_url?: string | null;
   target_start_at: string | null;
   target_end_at: string | null;
   parent_task_id: string | null;

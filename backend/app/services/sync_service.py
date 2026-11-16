@@ -25,6 +25,7 @@ from app.core.logging import get_logger
 from app.db.base import utcnow
 from app.models.course import Course
 from app.models.enums import (
+    DeliveryStatus,
     IntegrationStatus,
     Provider,
     SourcePlatform,
@@ -256,6 +257,10 @@ async def _upsert_tasks(
                         if item.completion_known and item.completed
                         else TaskStatus.pending
                     ),
+                    delivery_status=(DeliveryStatus.confirmed if item.completion_known and item.completed else DeliveryStatus.none),
+                    # Los conectores actuales no dan la fecha original: se registra
+                    # cuando se verifica por primera vez, sin inventarla.
+                    delivered_at=utcnow() if item.completion_known and item.completed else None,
                 )
             )
             created += 1
@@ -282,6 +287,11 @@ async def _upsert_tasks(
         # externa puede no reflejar esa accion (o no permitir leer entregas).
         if item.completion_known and item.completed and current.status != TaskStatus.completed:
             current.status, changed = TaskStatus.completed, True
+        if item.completion_known and item.completed and current.delivery_status != DeliveryStatus.confirmed:
+            current.delivery_status = DeliveryStatus.confirmed
+            current.delivered_at = current.delivered_at or utcnow()
+            current.delivery_previous_status = None
+            changed = True
 
         if changed:
             updated += 1
@@ -338,7 +348,7 @@ async def _course_map(session: AsyncSession, user_id: uuid.UUID, source: SourceP
 
 async def _task_map(session: AsyncSession, user_id: uuid.UUID, source: SourcePlatform) -> dict:
     result = await session.execute(
-        select(Task).where(Task.user_id == user_id, Task.source == source)
+        select(Task).where(Task.user_id == user_id, Task.source == source).with_for_update()
     )
     return {t.external_id: t for t in result.scalars().all()}
 

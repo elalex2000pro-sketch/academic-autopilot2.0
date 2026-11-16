@@ -18,7 +18,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPkMixin
-from app.models.enums import SourcePlatform, TaskPriority, TaskStatus
+from app.models.enums import DeliveryStatus, SourcePlatform, TaskPriority, TaskStatus
 
 if TYPE_CHECKING:
     from app.models.course import Course
@@ -58,6 +58,18 @@ class Task(UUIDPkMixin, TimestampMixin, Base):
         SAEnum(TaskStatus, name="task_status", native_enum=True),
         default=TaskStatus.pending,
         nullable=False,
+    )
+
+    # La entrega es independiente de completar una tarea dentro de la app.
+    delivery_status: Mapped[DeliveryStatus] = mapped_column(
+        SAEnum(DeliveryStatus, name="task_delivery_status", native_enum=False, length=16),
+        default=DeliveryStatus.none, server_default="none", nullable=False,
+    )
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    delivery_note: Mapped[str | None] = mapped_column(String(2000))
+    delivery_url: Mapped[str | None] = mapped_column(String(2048))
+    delivery_previous_status: Mapped[TaskStatus | None] = mapped_column(
+        SAEnum(TaskStatus, name="delivery_previous_status", native_enum=False, length=16),
     )
 
     # Bloque asignado por el motor de planificacion.

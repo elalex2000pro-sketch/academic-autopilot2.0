@@ -9,7 +9,7 @@ import pytest
 from app.api.v1 import tasks as tasks_api
 from app.connectors.base import ConnectorError, NormalizedTask
 from app.connectors.google_classroom import GoogleClassroomConnector
-from app.models.enums import Provider, TaskStatus
+from app.models.enums import DeliveryStatus, Provider, TaskStatus
 from app.services import sync_service
 
 
@@ -58,6 +58,8 @@ def _existing_task(**overrides: object) -> SimpleNamespace:
         "description": None,
         "course_id": None,
         "status": TaskStatus.pending,
+        "delivery_status": DeliveryStatus.none,
+        "delivered_at": None,
     }
     values.update(overrides)
     return SimpleNamespace(**values)

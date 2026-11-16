@@ -33,6 +33,12 @@ class TaskStatus(str, enum.Enum):
     archived = "archived"
 
 
+class DeliveryStatus(str, enum.Enum):
+    none = "none"
+    declared = "declared"
+    confirmed = "confirmed"
+
+
 class IntegrationStatus(str, enum.Enum):
     connected = "connected"
     error = "error"
