@@ -1,4 +1,4 @@
-# Academic Autopilot — versión [PENDIENTE]
+# Atlantium — versión [PENDIENTE]
 
 ## Novedades
 - [PENDIENTE] Explica qué puede hacer ahora el alumno.

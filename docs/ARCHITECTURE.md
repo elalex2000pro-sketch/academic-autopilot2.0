@@ -2,7 +2,7 @@
 
 ## 1. Vision general
 
-Academic Autopilot es un **monorepo** con dos aplicaciones desacopladas que se comunican por HTTP/JSON:
+Atlantium es un **monorepo** con dos aplicaciones desacopladas que se comunican por HTTP/JSON:
 
 - **`backend/`** — API REST en FastAPI. Contiene los conectores a Moodle/Classroom, el motor de
   planificacion y un worker en background que sincroniza periodicamente.

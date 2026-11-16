@@ -1,6 +1,9 @@
-# Academic Autopilot para Windows y macOS
+# Atlantium para Windows y macOS
 
-App de escritorio que abre Academic Autopilot en una ventana propia, con sesión persistente y sin
+> Los nombres técnicos antiguos se conservan por compatibilidad. Consulta
+> [Identificadores que no se renombran y por qué](../README.md#identificadores-que-no-se-renombran-y-por-qué).
+
+App de escritorio que abre Atlantium en una ventana propia, con sesión persistente y sin
 depender del navegador. Carga la web de producción y conserva la copia local de datos que ya usa la
 PWA.
 

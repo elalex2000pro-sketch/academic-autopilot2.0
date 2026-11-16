@@ -1,4 +1,31 @@
-# Academic Autopilot
+# Atlantium
+
+## Identificadores que no se renombran y por qué
+
+El producto se llama **Atlantium**; **Academic Office** conserva su nombre.
+Los nombres técnicos siguientes se mantienen por compatibilidad con las
+instalaciones y los datos existentes. No deben sustituirse mediante un cambio
+global de texto:
+
+| Identificador conservado | Motivo |
+|---|---|
+| `academic-autopilot-desktop`; userData/sessionData en `%APPDATA%\academic-autopilot-desktop` (Windows) | Mantener el perfil, la sesión, los ajustes y los borradores existentes. |
+| Partición `persist:academic-autopilot` | Conservar cookies, IndexedDB, PDF locales y cachés del escritorio. |
+| appId/AUMID `com.academicautopilot.desktop.iconfix1` y GUID NSIS `7D4A2C91-3B6E-4F8A-9C1D-2E5B7A9F4C60` | Mantener la identidad de instalación y actualización. |
+| `Academic Autopilot 1310` (executableName) | Conservar el ejecutable y el nombre de carpeta calculado por NSIS. No es el nombre comercial. |
+| `Academic-Autopilot-Setup.exe` y `Academic-Autopilot-${version}-mac.${ext}` | Mantener enlaces de descarga y compatibilidad con los manifiestos de actualización. |
+| Feed GitHub: owner `elalex2000pro-sketch`, repo `academic-autopilot2.0` | Las instalaciones existentes usan esa dirección, que redirige al repositorio actual `Atlantium`. Conservar también los nombres `latest.yml` y `latest-mac.yml`. |
+| `AcademicAutopilotDesktop/<version>`, puente `autopilotDesktop`, nombres de IndexedDB y claves locales `autopilot`/`academic-autopilot` | Son contratos internos, no texto de marca; cambiarlos requiere un plan de compatibilidad. |
+| `https://academicautopilot.vercel.app` | Sigue siendo la URL de arranque de instalaciones de escritorio existentes. |
+
+**No quitar ni redirigir `academicautopilot.vercel.app` mientras haya
+instalaciones de escritorio que lo carguen.** Debe servir la aplicación
+directamente. Un origen distinto tiene su propio almacenamiento: una
+redirección no traslada cookies, IndexedDB ni PDF locales.
+
+Las rutas de ejemplo como `academic-autopilot/`, los nombres de servicios y las
+URLs técnicas antiguas se conservan. Las notas de versiones, informes y planes
+ya ejecutados describen su momento histórico y no se reescriben.
 
 Gestor academico autonomo: sincroniza tareas de **Moodle** y **Google Classroom**, las prioriza,
 las reparte en tus huecos libres y te muestra un **plan de trabajo diario** con bloques de tiempo
