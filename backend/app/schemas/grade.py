@@ -15,6 +15,8 @@ class GradeBase(BaseModel):
     weight: float | None = Field(default=None, ge=0)
     graded_at: date | None = None
     notes: str | None = None
+    trimester: int | None = Field(default=None, ge=1, le=3, strict=True)
+    unit: str | None = Field(default=None, max_length=80)
     # True para examenes: se muestran en el calendario del planificador.
     is_exam: bool = False
 
@@ -24,6 +26,8 @@ class GradeCreate(GradeBase):
 
 
 class GradeUpdate(BaseModel):
+    trimester: int | None = Field(default=None, ge=1, le=3, strict=True)
+    unit: str | None = Field(default=None, max_length=80)
     title: str | None = Field(default=None, min_length=1, max_length=300)
     course_id: uuid.UUID | None = None
     score: float | None = Field(default=None, ge=0)
@@ -44,12 +48,26 @@ class GradeRead(GradeBase):
     updated_at: datetime
 
 
+class UnitGradeSummary(BaseModel):
+    unit: str | None
+    average_percent: float | None
+    graded_count: int
+
+
+class TermGradeSummary(BaseModel):
+    trimester: int | None
+    average_percent: float | None
+    graded_count: int
+    units: list[UnitGradeSummary]
+
+
 class CourseGradeSummary(BaseModel):
     course_id: uuid.UUID | None
     course_name: str | None
     average_percent: float | None
     graded_count: int
     total_weight: float | None
+    terms: list[TermGradeSummary] = Field(default_factory=list)
 
 
 class GradeSummary(BaseModel):

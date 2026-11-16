@@ -36,6 +36,8 @@ export interface Course {
 }
 
 export interface Grade {
+  trimester?: number | null;
+  unit?: string | null;
   id: string;
   course_id: string | null;
   title: string;
@@ -60,11 +62,19 @@ export interface ImportantDate {
 }
 
 export interface CourseGradeSummary {
+  terms?: TermGradeSummary[];
   course_id: string | null;
   course_name: string | null;
   average_percent: number | null;
   graded_count: number;
   total_weight: number | null;
+}
+
+export interface TermGradeSummary {
+  trimester: number | null;
+  average_percent: number | null;
+  graded_count: number;
+  units: { unit: string | null; average_percent: number | null; graded_count: number }[];
 }
 
 export interface GradeSummary {
