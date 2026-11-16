@@ -2,8 +2,8 @@
   "name": "academic-autopilot-desktop",
   "version": "1.4.0",
   "private": true,
-  "description": "App de escritorio de Academic Autopilot",
-  "author": "Academic Autopilot",
+  "description": "App de escritorio de Atlantium",
+  "author": "Atlantium",
   "license": "UNLICENSED",
   "main": "main.js",
   "scripts": {
@@ -21,8 +21,8 @@
   },
   "build": {
     "appId": "com.academicautopilot.desktop.iconfix1",
-    "productName": "Academic Autopilot",
-    "copyright": "Copyright © 2026 Academic Autopilot",
+    "productName": "Atlantium",
+    "copyright": "Copyright © 2026 Atlantium",
     "asar": true,
     "directories": {
       "output": "dist",
@@ -75,7 +75,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
-      "shortcutName": "Academic Autopilot",
+      "shortcutName": "Atlantium",
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": false,
       "installerIcon": "build/icon.ico",

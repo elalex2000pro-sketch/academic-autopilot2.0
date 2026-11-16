@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+require('../../desktop/identity.test.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');

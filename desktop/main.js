@@ -14,6 +14,13 @@ const {
 const fs = require("node:fs");
 const path = require("node:path");
 
+// Identidad de datos de las instalaciones publicadas, independiente de la marca.
+const LEGACY_USER_DATA = path.join(app.getPath("appData"), "academic-autopilot-desktop");
+fs.mkdirSync(LEGACY_USER_DATA, { recursive: true });
+app.setPath("userData", LEGACY_USER_DATA);
+app.setPath("sessionData", LEGACY_USER_DATA);
+app.setName("Atlantium");
+
 // electron-updater se carga de forma tolerante para que `npm start` siga
 // funcionando aunque las dependencias aún no se hayan instalado.
 let autoUpdater = null;
@@ -108,7 +115,7 @@ function createWindow(options = {}) {
         : "#eef3fa",
     frame: !useCustomTitlebar,
     hasShadow: true,
-    title: "Academic Autopilot",
+    title: "Atlantium",
     icon: ICON_PATH,
     autoHideMenuBar: true,
     ...(useCustomTitlebar && isMac
@@ -286,7 +293,7 @@ function registerWindowControls() {
   // Avisos nativos lanzados desde el renderer (tareas, examenes, chat).
   ipcMain.handle("notifications:show", (event, payload) => {
     if (!Notification.isSupported()) return { ok: false };
-    const title = typeof payload?.title === "string" ? payload.title : "Academic Autopilot";
+    const title = typeof payload?.title === "string" ? payload.title : "Atlantium";
     const body = typeof payload?.body === "string" ? payload.body : "";
     const notification = new Notification({
       title: title.slice(0, 120),
@@ -702,7 +709,7 @@ function runSmokeTest() {
         ok,
         ok
           ? "La app de escritorio carga la web correctamente."
-          : "La página cargada no parece Academic Autopilot o falta la identificación de escritorio.",
+          : "La página cargada no parece Atlantium o falta la identificación de escritorio.",
       );
     })
     .catch((error) => finishSmoke(false, error.message));
