@@ -1,4 +1,4 @@
-# Academic Autopilot: guía para agentes
+# Atlantium: guía para agentes
 
 ## Stack
 

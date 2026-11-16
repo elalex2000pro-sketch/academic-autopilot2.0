@@ -1,4 +1,7 @@
-# Arquitectura de Academic Autopilot
+# Arquitectura de Atlantium
+
+Identidad comercial y nombres técnicos se distinguen en
+[Identificadores que no se renombran y por qué](README.md#identificadores-que-no-se-renombran-y-por-qué).
 
 App de estudio entre alumnos. Frontend Next.js/React, API FastAPI y escritorio Electron.
 
