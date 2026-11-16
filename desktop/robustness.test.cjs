@@ -9,6 +9,7 @@ const origins = ['https://academicautopilot.vercel.app', 'https://atlantium.verc
 const context = vm.createContext({ URL, Set, path, __dirname, APP_URL: origins[0], SMOKE: false, TRUSTED_ORIGINS: new Set(origins) });
 vm.runInContext(source.slice(source.indexOf('function isAppUrl('), source.indexOf('function openExternal(')), context);
 vm.runInContext(source.slice(source.indexOf('function attachLoadFailureHandlers('), source.indexOf('function createWindow(')), context);
+vm.runInContext(source.slice(source.indexOf('function isTrustedRenderer('), source.indexOf('function registerUpdaterControls(')), context);
 
 function windowFixture() {
   const files = [], urls = [], webContents = new EventEmitter();
@@ -55,11 +56,13 @@ test('will-navigate confía en ambos orígenes HTTPS y bloquea otros', () => {
     navigate({ preventDefault() { blocked = true; } }, origin + '/login');
     assert.equal(blocked, false);
     assert.equal(context.isAppOrigin(origin), true);
+    assert.equal(context.isTrustedRenderer({ senderFrame: { url: origin + '/login' } }), true);
   }
   for (const url of ['https://evil.test/', 'https://atlantium.vercel.app.evil.test/', 'http://atlantium.vercel.app/']) {
     let blocked = false;
     navigate({ preventDefault() { blocked = true; } }, url);
     assert.equal(blocked, true);
+    assert.equal(context.isTrustedRenderer({ senderFrame: { url } }), false);
   }
   assert.equal(external.length, 3);
 });

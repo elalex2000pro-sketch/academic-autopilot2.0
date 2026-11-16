@@ -569,7 +569,7 @@ function scheduleUpdateChecks() {
 function isTrustedRenderer(event) {
   try {
     const rawUrl = event.senderFrame?.url || event.sender.getURL();
-    return new URL(rawUrl).origin === APP_ORIGIN;
+    return isAppOrigin(rawUrl);
   } catch {
     return false;
   }
@@ -726,7 +726,7 @@ function runSmokeTest() {
       const ok =
         result &&
         typeof result.href === "string" &&
-        result.href.startsWith(APP_ORIGIN) &&
+        isAppOrigin(result.href) &&
         String(result.userAgent).includes("AcademicAutopilotDesktop/") &&
         (["Academic Autopilot", "Atlantium"].some((name) =>
           String(result.title).includes(name) || String(result.text).includes(name)));
