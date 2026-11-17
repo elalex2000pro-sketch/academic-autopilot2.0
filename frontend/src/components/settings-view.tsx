@@ -768,16 +768,16 @@ export function SettingsView() {
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-300/40 pt-4 dark:border-white/[0.06]">
                     <div className="min-w-0">
                       <p className="text-[12.5px] font-medium text-slate-700 dark:text-white/80">
-                        Barra compacta
+                        Mostrar nombres en la barra
                       </p>
                       <p className="mt-0.5 text-[10.5px] leading-4 text-slate-500 dark:text-white/35">
-                        Reduce la anchura del rail sin ocultar ningún acceso.
+                        Muestra las etiquetas junto a los iconos de navegación.
                       </p>
                     </div>
                     <Switch
-                      checked={sidebarLayout.collapsed}
-                      onCheckedChange={(value) => updateSidebar({ collapsed: value })}
-                      aria-label="Barra compacta"
+                      checked={!sidebarLayout.collapsed}
+                      onCheckedChange={(value) => updateSidebar({ collapsed: !value })}
+                      aria-label="Mostrar nombres en la barra"
                     />
                   </div>
 
