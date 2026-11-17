@@ -69,6 +69,7 @@ async function main() {
     await until(async () => { try { return (await fetch(WEB + '/login')).ok; } catch { return false; } }, 'web startup', 180000);
   }
   assert.equal((await (await fetch(API + '/health')).json()).environment, 'isolated-chat-test', 'Never run against production');
+  execFileSync(process.execPath, [path.join(__dirname, 'sidebar-e2e.cjs')], { stdio: 'inherit', windowsHide: true, env: { ...process.env, SMOKE_API: API, SMOKE_WEB: WEB, REDESIGN_OUTPUT: path.join(output, 'sidebar') } });
   const { access_token: token } = await request('/auth/register', null, 'POST', { email: `smoke-${Date.now()}@example.com`, password: 'SmokeRouteTest123', full_name: 'Usuario de humo' });
   const user = await request('/auth/me', token);
   const group = await request('/classes', token, 'POST', { name: 'Clase de humo' });

@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Fragment, lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Loader2, LogOut, Settings } from "lucide-react";
+import { Loader2, LogOut } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
 import { ContextPanel } from "@/components/context-panel";
@@ -20,16 +20,13 @@ import { usePreferences } from "@/components/preferences-provider";
 import { SystemNotifications } from "@/components/system-notifications";
 import { OverdueTaskPrompt } from "@/components/overdue-task-prompt";
 import { ThemeCycleButton } from "@/components/theme-toggle";
-import { WindowControls } from "@/components/window-controls";
+import { Sidebar } from "@/components/navigation/sidebar";
 import { Button } from "@/components/ui/button";
 import { AI_DRAWER_EVENT } from "@/lib/ai-drawer";
 import { lockBodyScroll } from "@/lib/scroll-lock";
 import {
-  NAV_GROUPS,
   SECONDARY_NAV_ITEMS,
-  SETTINGS_ITEM,
   isActive,
-  type NavItem,
 } from "@/lib/navigation";
 import { useSidebarPreferences } from "@/lib/layout-preferences";
 import { hasCompletedOnboarding, markOnboardingCompleted } from "@/lib/onboarding";
@@ -54,14 +51,6 @@ const IAStudio = lazy(() =>
   import("@/components/ia-studio").then((module) => ({ default: module.IAStudio })),
 );
 
-const RAIL_SPRING = {
-  type: "spring",
-  stiffness: 300,
-  damping: 30,
-} as const;
-
-const RAIL_ITEMS = [...NAV_GROUPS.flatMap((group) => group.items), SETTINGS_ITEM];
-
 const HEADER_CONTROL =
   "flex items-center justify-center rounded-full border border-white/20 bg-white/50 p-2 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/[0.07]";
 
@@ -72,58 +61,12 @@ const HEADER_CONTROL_FLAT = "flex items-center justify-center p-2";
 const HEADER_BUTTON =
   "h-9 w-9 rounded-full text-literal-3f3852 hover:bg-white/60 hover:text-text-on-selection dark:text-white/65 dark:hover:bg-white/10 dark:hover:text-white";
 
-function RailNavLink({
-  href,
-  label,
-  icon: Icon,
-  active,
-  reduceMotion,
-  registerRef,
-}: {
-  href: string;
-  label: string;
-  icon: NavItem["icon"];
-  active: boolean;
-  reduceMotion: boolean;
-  registerRef?: (element: HTMLAnchorElement | null) => void;
-}) {
-  return (
-    <Link
-      ref={registerRef}
-      href={href}
-      aria-current={active ? "page" : undefined}
-      aria-label={label}
-      title={label}
-      className="group relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-white/55"
-    >
-      <motion.span
-        aria-hidden="true"
-        className="relative z-10 flex h-full w-full items-center justify-center"
-        whileHover={active || reduceMotion ? undefined : { scale: 1.1 }}
-        transition={{ type: "spring", stiffness: 400, damping: 24 }}
-      >
-        <Icon
-          aria-hidden="true"
-          className={cn(
-            "h-[19px] w-[19px] transition-colors",
-            active ? "text-text-on-selection" : "text-white/55 group-hover:text-white",
-          )}
-          strokeWidth={active ? 2.05 : 1.8}
-        />
-      </motion.span>
-    </Link>
-  );
-}
-
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const { animationLevel } = usePreferences();
   const { sidebar: sidebarLayout } = useSidebarPreferences();
-  const railRef = useRef<HTMLElement | null>(null);
-  const railLinks = useRef(new Map<string, HTMLAnchorElement>());
-  const [railBubble, setRailBubble] = useState<{ x: number; y: number } | null>(null);
   const reduceMotion = animationLevel === "reduced";
   const isPublic = pathname === "/login";
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -141,27 +84,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (loading || !user || isPublic) return;
     if (!hasCompletedOnboarding()) setShowOnboarding(true);
   }, [loading, user, isPublic]);
-
-  // La burbuja del rail se mide con `offsetTop`/`offsetLeft`, que no dependen del
-  // scroll ni del contenedor: así Framer anima desde la pestaña anterior real y
-  // no desde una coordenada inventada fuera de la barra.
-  useEffect(() => {
-    const measure = () => {
-      const rail = railRef.current;
-      if (!rail) return;
-      const active = RAIL_ITEMS.find((item) => isActive(pathname, item.href));
-      const link = active ? railLinks.current.get(active.href) : null;
-      if (!link) {
-        setRailBubble(null);
-        return;
-      }
-      setRailBubble({ x: link.offsetLeft, y: link.offsetTop });
-    };
-
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [pathname, sidebarLayout.collapsed, loading, user, isPublic]);
 
   // El drawer de IA se abre desde cualquier pantalla mediante un evento.
   useEffect(() => {
@@ -226,91 +148,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           sidebarLayout.side === "right" && "md:flex-row-reverse",
         )}
       >
-        <aside
-          ref={railRef}
-          className={cn(
-            "v18-rail hide-scrollbar relative sticky top-3 hidden h-[calc(100dvh-1.5rem)] shrink-0 flex-col items-center overflow-y-auto overflow-x-hidden rounded-[var(--radius-32)] border border-white/10 bg-surface-inverse pb-4 pt-2 shadow-[shadow:var(--elevation-app-shell-0)] transition-[width] duration-200 md:flex",
-            sidebarLayout.side === "right" ? "mr-4" : "ml-4",
-            sidebarLayout.collapsed ? "w-[62px]" : "w-[78px]",
-          )}
-        >
-          {railBubble ? (
-            <motion.div
-              aria-hidden="true"
-              className="pointer-events-none absolute left-0 top-0 h-11 w-11 rounded-full bg-selection-soft shadow-[shadow:var(--elevation-app-shell-1)]"
-              initial={false}
-              animate={{ x: railBubble.x, y: railBubble.y }}
-              transition={reduceMotion ? { duration: 0 } : RAIL_SPRING}
-            />
-          ) : null}
-
-          {/* Los semáforos viven dentro del rail oscuro, no en una franja suelta. */}
-          <div className="app-drag flex h-9 w-full shrink-0 items-center justify-center">
-            <WindowControls compact />
-          </div>
-          <Link
-            href="/"
-            aria-label="Atlantium · Inicio"
-            title="Atlantium"
-            className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white outline-none transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/55"
-          >
-            <Logo className={sidebarLayout.collapsed ? "h-8 w-8" : "h-10 w-10"} />
-          </Link>
-
-          <nav
-            aria-label="Navegación principal"
-            className="hide-scrollbar mt-6 flex w-full min-h-0 flex-1 flex-col items-center gap-1 px-2"
-          >
-            {NAV_GROUPS.map((group, groupIndex) => (
-              <Fragment key={group.label}>
-                {groupIndex > 0 ? (
-                  <span
-                    aria-hidden="true"
-                    className="my-2 h-px w-6 shrink-0 bg-white/10"
-                  />
-                ) : null}
-                {group.items.map(({ href, label, icon }) => (
-                  <RailNavLink
-                    key={href}
-                    href={href}
-                    label={label}
-                    icon={icon}
-                    active={isActive(pathname, href)}
-                    reduceMotion={Boolean(reduceMotion)}
-                    registerRef={(element) => {
-                      if (element) railLinks.current.set(href, element);
-                      else railLinks.current.delete(href);
-                    }}
-                  />
-                ))}
-              </Fragment>
-            ))}
-          </nav>
-
-          <div className="mt-2 flex shrink-0 flex-col items-center gap-1 border-t border-white/10 px-2 pt-3">
-            <RailNavLink
-              href={SETTINGS_ITEM.href}
-              label={SETTINGS_ITEM.label}
-              icon={Settings}
-              active={isActive(pathname, SETTINGS_ITEM.href)}
-              reduceMotion={Boolean(reduceMotion)}
-              registerRef={(element) => {
-                if (element) railLinks.current.set(SETTINGS_ITEM.href, element);
-                else railLinks.current.delete(SETTINGS_ITEM.href);
-              }}
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={logout}
-              aria-label="Cerrar sesión"
-              title="Cerrar sesión"
-              className="h-11 w-11 rounded-full text-white/55 hover:bg-white/10 hover:text-white dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white"
-            >
-              <LogOut className="h-[18px] w-[18px]" />
-            </Button>
-          </div>
-        </aside>
+        <Sidebar reduceMotion={reduceMotion} logout={logout} name={name} email={user.email} />
 
         <div className="flex min-w-0 flex-1 flex-col bg-transparent">
           {/* Cabecera móvil: el rail de escritorio empieza en `md`. */}
