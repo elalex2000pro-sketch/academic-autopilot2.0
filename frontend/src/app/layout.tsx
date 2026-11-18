@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 
 import { AppChrome } from "@/components/app-chrome";
 import { AppShell } from "@/components/app-shell";
@@ -79,6 +80,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </AuthProvider>
           </PreferencesProvider>
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
